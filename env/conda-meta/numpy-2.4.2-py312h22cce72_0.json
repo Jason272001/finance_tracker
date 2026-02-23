@@ -1,0 +1,42 @@
+{
+  "name": "numpy",
+  "version": "2.4.2",
+  "build": "py312h22cce72_0",
+  "build_number": 0,
+  "channel": "https://repo.anaconda.com/pkgs/main/win-64",
+  "subdir": "win-64",
+  "fn": "numpy-2.4.2-py312h22cce72_0.conda",
+  "md5": "c02d9a1c722a851bfc599c4186e4f69b",
+  "url": "https://repo.anaconda.com/pkgs/main/win-64/numpy-2.4.2-py312h22cce72_0.conda",
+  "sha256": "dd41ac5b7c7335005b348099a5d453a823b300993165a79294823457563aed95",
+  "depends": [
+    "blas 1.0 mkl",
+    "mkl >=2025.0.0,<2026.0a0",
+    "mkl-service >=2.3.0,<3.0a0",
+    "mkl_fft",
+    "mkl_random",
+    "numpy-base 2.4.2 py312h1df51cf_0",
+    "python >=3.12,<3.13.0a0",
+    "ucrt >=10.0.20348.0",
+    "vc >=14.2,<15.0a0",
+    "vc >=14.3,<15",
+    "vc14_runtime >=14.44.35208",
+    "vs2015_runtime >=14.29.30133,<15.0a0"
+  ],
+  "constrains": [],
+  "license": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+  "timestamp": 1770732935000,
+  "size": 20162,
+  "requested_spec": "numpy",
+  "package_tarball_full_path": "C:\\Users\\jacks\\miniconda3\\pkgs\\numpy-2.4.2-py312h22cce72_0.conda",
+  "extracted_package_dir": "C:\\Users\\jacks\\miniconda3\\pkgs\\numpy-2.4.2-py312h22cce72_0",
+  "files": [],
+  "paths_data": {
+    "paths_version": 1,
+    "paths": []
+  },
+  "link": {
+    "source": "C:\\Users\\jacks\\miniconda3\\pkgs\\numpy-2.4.2-py312h22cce72_0",
+    "type": 1
+  }
+}

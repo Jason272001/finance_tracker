@@ -1,0 +1,16 @@
+prefix=D:/finance_tracker/env/Library
+includedir=${prefix}/include
+libdir=${prefix}/lib
+
+sysconfdir=D:/finance_tracker/env/Library/etc
+localstatedir=D:/finance_tracker/env/Library/var
+confdir=D:/finance_tracker/env/Library/etc/fonts
+cachedir=LOCAL_APPDATA_FONTCONFIG_CACHE
+
+Name: Fontconfig
+Description: Font configuration and customization library
+Version: 2.15.0
+Requires: freetype2 >=  21.0.15
+Libs: -L${libdir} -lfontconfig
+Libs.private: D:/finance_tracker/env/Library/lib/expat.lib
+Cflags: -I${includedir}

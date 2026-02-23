@@ -1,0 +1,460 @@
+{
+  "name": "mysql-common",
+  "version": "9.3.0",
+  "build": "hc394544_4",
+  "build_number": 4,
+  "channel": "https://repo.anaconda.com/pkgs/main/win-64",
+  "subdir": "win-64",
+  "fn": "mysql-common-9.3.0-hc394544_4.conda",
+  "md5": "09a953bc2c977ee13fe299fdce651767",
+  "url": "https://repo.anaconda.com/pkgs/main/win-64/mysql-common-9.3.0-hc394544_4.conda",
+  "sha256": "c97aaa272df8d6707288a8f2df852ab225aff554ae15e571ed2c38a6b4e3bd6c",
+  "depends": [
+    "openssl >=3.0.18,<4.0a0",
+    "ucrt >=10.0.20348.0",
+    "vc >=14.2,<15",
+    "vc14_runtime >=14.29.30133"
+  ],
+  "constrains": [],
+  "license": "GPL-2.0-or-later",
+  "timestamp": 1764931559000,
+  "size": 631673,
+  "requested_spec": "None",
+  "package_tarball_full_path": "C:\\Users\\jacks\\miniconda3\\pkgs\\mysql-common-9.3.0-hc394544_4.conda",
+  "extracted_package_dir": "C:\\Users\\jacks\\miniconda3\\pkgs\\mysql-common-9.3.0-hc394544_4",
+  "files": [
+    "Library/share/mysql/bulgarian/errmsg.sys",
+    "Library/share/mysql/charsets/Index.xml",
+    "Library/share/mysql/charsets/README",
+    "Library/share/mysql/charsets/armscii8.xml",
+    "Library/share/mysql/charsets/ascii.xml",
+    "Library/share/mysql/charsets/cp1250.xml",
+    "Library/share/mysql/charsets/cp1251.xml",
+    "Library/share/mysql/charsets/cp1256.xml",
+    "Library/share/mysql/charsets/cp1257.xml",
+    "Library/share/mysql/charsets/cp850.xml",
+    "Library/share/mysql/charsets/cp852.xml",
+    "Library/share/mysql/charsets/cp866.xml",
+    "Library/share/mysql/charsets/dec8.xml",
+    "Library/share/mysql/charsets/geostd8.xml",
+    "Library/share/mysql/charsets/greek.xml",
+    "Library/share/mysql/charsets/hebrew.xml",
+    "Library/share/mysql/charsets/hp8.xml",
+    "Library/share/mysql/charsets/keybcs2.xml",
+    "Library/share/mysql/charsets/koi8r.xml",
+    "Library/share/mysql/charsets/koi8u.xml",
+    "Library/share/mysql/charsets/latin1.xml",
+    "Library/share/mysql/charsets/latin2.xml",
+    "Library/share/mysql/charsets/latin5.xml",
+    "Library/share/mysql/charsets/latin7.xml",
+    "Library/share/mysql/charsets/macce.xml",
+    "Library/share/mysql/charsets/macroman.xml",
+    "Library/share/mysql/charsets/swe7.xml",
+    "Library/share/mysql/czech/errmsg.sys",
+    "Library/share/mysql/danish/errmsg.sys",
+    "Library/share/mysql/dictionary.txt",
+    "Library/share/mysql/dutch/errmsg.sys",
+    "Library/share/mysql/english/errmsg.sys",
+    "Library/share/mysql/estonian/errmsg.sys",
+    "Library/share/mysql/french/errmsg.sys",
+    "Library/share/mysql/german/errmsg.sys",
+    "Library/share/mysql/greek/errmsg.sys",
+    "Library/share/mysql/hungarian/errmsg.sys",
+    "Library/share/mysql/italian/errmsg.sys",
+    "Library/share/mysql/japanese/errmsg.sys",
+    "Library/share/mysql/korean/errmsg.sys",
+    "Library/share/mysql/messages_to_clients.txt",
+    "Library/share/mysql/messages_to_error_log.txt",
+    "Library/share/mysql/norwegian-ny/errmsg.sys",
+    "Library/share/mysql/norwegian/errmsg.sys",
+    "Library/share/mysql/polish/errmsg.sys",
+    "Library/share/mysql/portuguese/errmsg.sys",
+    "Library/share/mysql/romanian/errmsg.sys",
+    "Library/share/mysql/russian/errmsg.sys",
+    "Library/share/mysql/serbian/errmsg.sys",
+    "Library/share/mysql/slovak/errmsg.sys",
+    "Library/share/mysql/spanish/errmsg.sys",
+    "Library/share/mysql/swedish/errmsg.sys",
+    "Library/share/mysql/ukrainian/errmsg.sys"
+  ],
+  "paths_data": {
+    "paths_version": 1,
+    "paths": [
+      {
+        "_path": "Library/share/mysql/bulgarian/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "84850165d105f2e8c20a6d3642043e479953229bd02bb51a2070fa454471898f",
+        "size_in_bytes": 419724,
+        "sha256_in_prefix": "84850165d105f2e8c20a6d3642043e479953229bd02bb51a2070fa454471898f"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/Index.xml",
+        "path_type": "hardlink",
+        "sha256": "c810a80e8e9a9b826dc6dd3336081c2b32b5f9ca06cfc52046f73c4a11db5173",
+        "size_in_bytes": 19525,
+        "sha256_in_prefix": "c810a80e8e9a9b826dc6dd3336081c2b32b5f9ca06cfc52046f73c4a11db5173"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/README",
+        "path_type": "hardlink",
+        "sha256": "0af62ce1ae651e980006f2e9d29bd2f24e1cd18c6a0b1914e9c437cc80e990ab",
+        "size_in_bytes": 1749,
+        "sha256_in_prefix": "0af62ce1ae651e980006f2e9d29bd2f24e1cd18c6a0b1914e9c437cc80e990ab"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/armscii8.xml",
+        "path_type": "hardlink",
+        "sha256": "c444d9c1c8083c0aaca4fea80ef370079e6fbb72ac059febee2bbf611dc1959b",
+        "size_in_bytes": 5976,
+        "sha256_in_prefix": "c444d9c1c8083c0aaca4fea80ef370079e6fbb72ac059febee2bbf611dc1959b"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/ascii.xml",
+        "path_type": "hardlink",
+        "sha256": "3f62fa244277109144ffa4e2e10e952c11f14436e6cff0b082f6c216edc9e236",
+        "size_in_bytes": 5962,
+        "sha256_in_prefix": "3f62fa244277109144ffa4e2e10e952c11f14436e6cff0b082f6c216edc9e236"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/cp1250.xml",
+        "path_type": "hardlink",
+        "sha256": "246ac6ba2cac8b35a82fdbd0770ee5049624420bdcb0703a615b4edc032403b4",
+        "size_in_bytes": 8691,
+        "sha256_in_prefix": "246ac6ba2cac8b35a82fdbd0770ee5049624420bdcb0703a615b4edc032403b4"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/cp1251.xml",
+        "path_type": "hardlink",
+        "sha256": "8e0cbe6a1a11acca345dee2b665cc424e1d08f43ee0bcfe1d42c280c57760961",
+        "size_in_bytes": 8812,
+        "sha256_in_prefix": "8e0cbe6a1a11acca345dee2b665cc424e1d08f43ee0bcfe1d42c280c57760961"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/cp1256.xml",
+        "path_type": "hardlink",
+        "sha256": "20fb9d5db009463da94413c74c73375d75a19e7e89520cfd6cbdf4936ba3c387",
+        "size_in_bytes": 6025,
+        "sha256_in_prefix": "20fb9d5db009463da94413c74c73375d75a19e7e89520cfd6cbdf4936ba3c387"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/cp1257.xml",
+        "path_type": "hardlink",
+        "sha256": "f8998cd9a8b1e4641963cc7bfaaf568c1d9fd7e8027d5b93b215e2b62c960632",
+        "size_in_bytes": 9358,
+        "sha256_in_prefix": "f8998cd9a8b1e4641963cc7bfaaf568c1d9fd7e8027d5b93b215e2b62c960632"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/cp850.xml",
+        "path_type": "hardlink",
+        "sha256": "6250456109b6b35712542779fb738be2054d590e7d4eef348471907d816fe7ba",
+        "size_in_bytes": 5962,
+        "sha256_in_prefix": "6250456109b6b35712542779fb738be2054d590e7d4eef348471907d816fe7ba"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/cp852.xml",
+        "path_type": "hardlink",
+        "sha256": "b125bf064a38fe2d80983b42045fa4c740848458c2a328e507c6abc3578018c2",
+        "size_in_bytes": 5978,
+        "sha256_in_prefix": "b125bf064a38fe2d80983b42045fa4c740848458c2a328e507c6abc3578018c2"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/cp866.xml",
+        "path_type": "hardlink",
+        "sha256": "693c6f81dcfc93d07465dbb96b80311282d43a6b7aaaba9d1b5e8743fb1214b3",
+        "size_in_bytes": 6069,
+        "sha256_in_prefix": "693c6f81dcfc93d07465dbb96b80311282d43a6b7aaaba9d1b5e8743fb1214b3"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/dec8.xml",
+        "path_type": "hardlink",
+        "sha256": "3bc86b5f0aad1cb1b4b23fc85185762eef01c78d91fc19f642b0aaf3430fd102",
+        "size_in_bytes": 6985,
+        "sha256_in_prefix": "3bc86b5f0aad1cb1b4b23fc85185762eef01c78d91fc19f642b0aaf3430fd102"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/geostd8.xml",
+        "path_type": "hardlink",
+        "sha256": "8bd0bd786c1b7876ecb74b5c1f62e8b9f70d47997db245d656637ebdade31113",
+        "size_in_bytes": 5972,
+        "sha256_in_prefix": "8bd0bd786c1b7876ecb74b5c1f62e8b9f70d47997db245d656637ebdade31113"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/greek.xml",
+        "path_type": "hardlink",
+        "sha256": "8c8ce6dee18baf661ee07e9c4e20b185d32eeaa2a95311a7f9f789b09a230fa3",
+        "size_in_bytes": 6184,
+        "sha256_in_prefix": "8c8ce6dee18baf661ee07e9c4e20b185d32eeaa2a95311a7f9f789b09a230fa3"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/hebrew.xml",
+        "path_type": "hardlink",
+        "sha256": "9b675b755f243444e23b723db1562ea3b0855a51875d744c3d878cffe789b8b3",
+        "size_in_bytes": 5967,
+        "sha256_in_prefix": "9b675b755f243444e23b723db1562ea3b0855a51875d744c3d878cffe789b8b3"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/hp8.xml",
+        "path_type": "hardlink",
+        "sha256": "d758180f763e96bf078e82b6b6846483066d79ea5d8b7ecf1f0e99c3ed581eb5",
+        "size_in_bytes": 5958,
+        "sha256_in_prefix": "d758180f763e96bf078e82b6b6846483066d79ea5d8b7ecf1f0e99c3ed581eb5"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/keybcs2.xml",
+        "path_type": "hardlink",
+        "sha256": "0b40034bea0b7961af582e21bae8be677f7d492282a02eb9f7d52f834bfa756f",
+        "size_in_bytes": 5985,
+        "sha256_in_prefix": "0b40034bea0b7961af582e21bae8be677f7d492282a02eb9f7d52f834bfa756f"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/koi8r.xml",
+        "path_type": "hardlink",
+        "sha256": "6e063ea151fae55030fc1c2e63f039e054314a4cbbed972bade65e00da06a456",
+        "size_in_bytes": 5966,
+        "sha256_in_prefix": "6e063ea151fae55030fc1c2e63f039e054314a4cbbed972bade65e00da06a456"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/koi8u.xml",
+        "path_type": "hardlink",
+        "sha256": "ee6cccbc671e6dca2c4bb716c8036161fbbe7ac49702bf91ecd2e95b48f087c5",
+        "size_in_bytes": 6988,
+        "sha256_in_prefix": "ee6cccbc671e6dca2c4bb716c8036161fbbe7ac49702bf91ecd2e95b48f087c5"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/latin1.xml",
+        "path_type": "hardlink",
+        "sha256": "e244ca7720eb0cb3fc668068e27f9f0dbe14507b13e604f73f586a801d8d9239",
+        "size_in_bytes": 10266,
+        "sha256_in_prefix": "e244ca7720eb0cb3fc668068e27f9f0dbe14507b13e604f73f586a801d8d9239"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/latin2.xml",
+        "path_type": "hardlink",
+        "sha256": "114ff367efbf810fa103fdc9c9e21fb5949410eb9783ec8e94ee8123f8f4e99a",
+        "size_in_bytes": 7688,
+        "sha256_in_prefix": "114ff367efbf810fa103fdc9c9e21fb5949410eb9783ec8e94ee8123f8f4e99a"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/latin5.xml",
+        "path_type": "hardlink",
+        "sha256": "04f1605c8ca534e9aa2169c25cd67505cf28147e44e889e5b6720e3b929c7355",
+        "size_in_bytes": 5965,
+        "sha256_in_prefix": "04f1605c8ca534e9aa2169c25cd67505cf28147e44e889e5b6720e3b929c7355"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/latin7.xml",
+        "path_type": "hardlink",
+        "sha256": "e5d89ec07301660967ac2d6c9908fad45ec512bde08fd7c16d6fcfb143412b47",
+        "size_in_bytes": 7894,
+        "sha256_in_prefix": "e5d89ec07301660967ac2d6c9908fad45ec512bde08fd7c16d6fcfb143412b47"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/macce.xml",
+        "path_type": "hardlink",
+        "sha256": "4711c0da388ca76b5076977b6803d7a5720f46bda43327482b1a76023264d5a2",
+        "size_in_bytes": 8503,
+        "sha256_in_prefix": "4711c0da388ca76b5076977b6803d7a5720f46bda43327482b1a76023264d5a2"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/macroman.xml",
+        "path_type": "hardlink",
+        "sha256": "d86b3bb937b831a72332a3b113382437dd3e0d4dfd0fc53cbc35881306f6fa24",
+        "size_in_bytes": 8514,
+        "sha256_in_prefix": "d86b3bb937b831a72332a3b113382437dd3e0d4dfd0fc53cbc35881306f6fa24"
+      },
+      {
+        "_path": "Library/share/mysql/charsets/swe7.xml",
+        "path_type": "hardlink",
+        "sha256": "5c90f9b7ac70d4dd1049426acda66ea6953505f740acb3c559043f8630bc8c83",
+        "size_in_bytes": 6986,
+        "sha256_in_prefix": "5c90f9b7ac70d4dd1049426acda66ea6953505f740acb3c559043f8630bc8c83"
+      },
+      {
+        "_path": "Library/share/mysql/czech/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "7b5336b61ca0f777bbed9981f5b8f494a676a20662833cda505bd78a53abb5d8",
+        "size_in_bytes": 419646,
+        "sha256_in_prefix": "7b5336b61ca0f777bbed9981f5b8f494a676a20662833cda505bd78a53abb5d8"
+      },
+      {
+        "_path": "Library/share/mysql/danish/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "86a6c2aab6c860c15c1771cb89b8e15b43e7f036512e82c0505a88fb5864d943",
+        "size_in_bytes": 419620,
+        "sha256_in_prefix": "86a6c2aab6c860c15c1771cb89b8e15b43e7f036512e82c0505a88fb5864d943"
+      },
+      {
+        "_path": "Library/share/mysql/dictionary.txt",
+        "path_type": "hardlink",
+        "sha256": "d031a0f90d77595abe02112adf69a86560e3168ba379fd450176a8e070763077",
+        "size_in_bytes": 25575,
+        "sha256_in_prefix": "d031a0f90d77595abe02112adf69a86560e3168ba379fd450176a8e070763077"
+      },
+      {
+        "_path": "Library/share/mysql/dutch/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "24f8208543ce445141d8dfbce7b0714f40a8f5b9cd0d6ab9b84b1ddf670a1e74",
+        "size_in_bytes": 420634,
+        "sha256_in_prefix": "24f8208543ce445141d8dfbce7b0714f40a8f5b9cd0d6ab9b84b1ddf670a1e74"
+      },
+      {
+        "_path": "Library/share/mysql/english/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "42395f3f2ce236cf8898cac5c36e1d34f36a649444eb42c88fea083fbebae1bc",
+        "size_in_bytes": 418887,
+        "sha256_in_prefix": "42395f3f2ce236cf8898cac5c36e1d34f36a649444eb42c88fea083fbebae1bc"
+      },
+      {
+        "_path": "Library/share/mysql/estonian/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "870e6958b7ea874f0fa0ae98d9394e480bfe2bbee939a3aa6e8f55fda6f75169",
+        "size_in_bytes": 419151,
+        "sha256_in_prefix": "870e6958b7ea874f0fa0ae98d9394e480bfe2bbee939a3aa6e8f55fda6f75169"
+      },
+      {
+        "_path": "Library/share/mysql/french/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "509a3a147ede75de7407bd3f829a7a66b5751ed53d60ab2555469fb1621c7746",
+        "size_in_bytes": 420260,
+        "sha256_in_prefix": "509a3a147ede75de7407bd3f829a7a66b5751ed53d60ab2555469fb1621c7746"
+      },
+      {
+        "_path": "Library/share/mysql/german/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "0c465b882de050a5d20b3d125d27bece26c7bad7ef6a06b6b97bbf20a89eb06f",
+        "size_in_bytes": 426404,
+        "sha256_in_prefix": "0c465b882de050a5d20b3d125d27bece26c7bad7ef6a06b6b97bbf20a89eb06f"
+      },
+      {
+        "_path": "Library/share/mysql/greek/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "997e3baa2699086b13e97bcf5854029fb507dd7e873817dcc6375bf399006228",
+        "size_in_bytes": 425678,
+        "sha256_in_prefix": "997e3baa2699086b13e97bcf5854029fb507dd7e873817dcc6375bf399006228"
+      },
+      {
+        "_path": "Library/share/mysql/hungarian/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "87e58353ca5cbf1eaab0905179e86b6410fbb525e9feba1a9a0afdf6296746e9",
+        "size_in_bytes": 419528,
+        "sha256_in_prefix": "87e58353ca5cbf1eaab0905179e86b6410fbb525e9feba1a9a0afdf6296746e9"
+      },
+      {
+        "_path": "Library/share/mysql/italian/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "a72aefeaa57fb4ab3cf482a37b8f7de204197cdf59d63883fc658522fa03a6dd",
+        "size_in_bytes": 420631,
+        "sha256_in_prefix": "a72aefeaa57fb4ab3cf482a37b8f7de204197cdf59d63883fc658522fa03a6dd"
+      },
+      {
+        "_path": "Library/share/mysql/japanese/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "19e901e0a91f9bf8f88b09350e6a6b843d53805f05710d96a9ea5040d1417571",
+        "size_in_bytes": 426256,
+        "sha256_in_prefix": "19e901e0a91f9bf8f88b09350e6a6b843d53805f05710d96a9ea5040d1417571"
+      },
+      {
+        "_path": "Library/share/mysql/korean/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "0b9977135c0fe0464ad964e9caad6e0f34bf6dd36587f3638039772050ce5100",
+        "size_in_bytes": 421927,
+        "sha256_in_prefix": "0b9977135c0fe0464ad964e9caad6e0f34bf6dd36587f3638039772050ce5100"
+      },
+      {
+        "_path": "Library/share/mysql/messages_to_clients.txt",
+        "path_type": "hardlink",
+        "sha256": "aefc9dbf161d17f20c4e380578ea9bc383a25569a193455021b9405eb1a48fdd",
+        "size_in_bytes": 649038,
+        "sha256_in_prefix": "aefc9dbf161d17f20c4e380578ea9bc383a25569a193455021b9405eb1a48fdd"
+      },
+      {
+        "_path": "Library/share/mysql/messages_to_error_log.txt",
+        "path_type": "hardlink",
+        "sha256": "e3fdbd09b8f89a82a196f05515dcbfeacd37e5f5163bbf542e6018f23eefc9bc",
+        "size_in_bytes": 430202,
+        "sha256_in_prefix": "e3fdbd09b8f89a82a196f05515dcbfeacd37e5f5163bbf542e6018f23eefc9bc"
+      },
+      {
+        "_path": "Library/share/mysql/norwegian-ny/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "5e95122c20d8c06ab16d6bfca348b3ba838ffc67cd2baa34b0a7db4e3ad77668",
+        "size_in_bytes": 419010,
+        "sha256_in_prefix": "5e95122c20d8c06ab16d6bfca348b3ba838ffc67cd2baa34b0a7db4e3ad77668"
+      },
+      {
+        "_path": "Library/share/mysql/norwegian/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "9952f815aa62932dedb43097b50e09d9d225c87a8b892eb3413624d88e23e2be",
+        "size_in_bytes": 418957,
+        "sha256_in_prefix": "9952f815aa62932dedb43097b50e09d9d225c87a8b892eb3413624d88e23e2be"
+      },
+      {
+        "_path": "Library/share/mysql/polish/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "b1738857e748d8547075b96ced6cea679461fed6024beff8d01bbcb099f9a9ef",
+        "size_in_bytes": 419816,
+        "sha256_in_prefix": "b1738857e748d8547075b96ced6cea679461fed6024beff8d01bbcb099f9a9ef"
+      },
+      {
+        "_path": "Library/share/mysql/portuguese/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "b2d87290fbbf9fdd783a577f589dbc67ccffd87b7461f0a492a071a2effa9ca6",
+        "size_in_bytes": 421736,
+        "sha256_in_prefix": "b2d87290fbbf9fdd783a577f589dbc67ccffd87b7461f0a492a071a2effa9ca6"
+      },
+      {
+        "_path": "Library/share/mysql/romanian/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "554cfc5170253de393bed4efd6638e3aa273fe20118d1d437038a2b24742f77a",
+        "size_in_bytes": 420599,
+        "sha256_in_prefix": "554cfc5170253de393bed4efd6638e3aa273fe20118d1d437038a2b24742f77a"
+      },
+      {
+        "_path": "Library/share/mysql/russian/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "62d786ff1d65c9de781aa31840c42a1be0a2c849e05dfab0a7e66bd17ad7937e",
+        "size_in_bytes": 434072,
+        "sha256_in_prefix": "62d786ff1d65c9de781aa31840c42a1be0a2c849e05dfab0a7e66bd17ad7937e"
+      },
+      {
+        "_path": "Library/share/mysql/serbian/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "bbbe16901b3151ca07bb9f9cbeb4cc6f5e24904cc5d41d9a3e6049ba7c53f885",
+        "size_in_bytes": 421219,
+        "sha256_in_prefix": "bbbe16901b3151ca07bb9f9cbeb4cc6f5e24904cc5d41d9a3e6049ba7c53f885"
+      },
+      {
+        "_path": "Library/share/mysql/slovak/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "e6fe0ff32e42514e8cc185a11f71eda9df63c8c73d5120be8aaa7d7c82a7074e",
+        "size_in_bytes": 419413,
+        "sha256_in_prefix": "e6fe0ff32e42514e8cc185a11f71eda9df63c8c73d5120be8aaa7d7c82a7074e"
+      },
+      {
+        "_path": "Library/share/mysql/spanish/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "b7704255e7a270bd65582b5b22450b4b833ee5a90075c0bd5a2460df9233b548",
+        "size_in_bytes": 420487,
+        "sha256_in_prefix": "b7704255e7a270bd65582b5b22450b4b833ee5a90075c0bd5a2460df9233b548"
+      },
+      {
+        "_path": "Library/share/mysql/swedish/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "2f5eb905688b6934a0451a72aaf7024694ff83304111b1ad8ddc1847a3bdbd71",
+        "size_in_bytes": 419700,
+        "sha256_in_prefix": "2f5eb905688b6934a0451a72aaf7024694ff83304111b1ad8ddc1847a3bdbd71"
+      },
+      {
+        "_path": "Library/share/mysql/ukrainian/errmsg.sys",
+        "path_type": "hardlink",
+        "sha256": "5c671b1708bf53c4deeabc330ee95a74ae60d749af18dbd59a150417c176d627",
+        "size_in_bytes": 428695,
+        "sha256_in_prefix": "5c671b1708bf53c4deeabc330ee95a74ae60d749af18dbd59a150417c176d627"
+      }
+    ]
+  },
+  "link": {
+    "source": "C:\\Users\\jacks\\miniconda3\\pkgs\\mysql-common-9.3.0-hc394544_4",
+    "type": 1
+  }
+}

@@ -1,0 +1,1819 @@
+{
+  "name": "jupyter_server",
+  "version": "2.17.0",
+  "build": "py312haa95532_1",
+  "build_number": 1,
+  "channel": "https://repo.anaconda.com/pkgs/main/win-64",
+  "subdir": "win-64",
+  "fn": "jupyter_server-2.17.0-py312haa95532_1.conda",
+  "md5": "d3c66488a6e806c4d31802bcc48cb442",
+  "url": "https://repo.anaconda.com/pkgs/main/win-64/jupyter_server-2.17.0-py312haa95532_1.conda",
+  "sha256": "4803dea6a5f4d3584c336f14e6ade627ba60f475770dca5b3370c2cc915cc2f3",
+  "depends": [
+    "anyio >=3.1.0",
+    "argon2-cffi >=21.1",
+    "jinja2 >=3.0.3",
+    "jupyter_client >=7.4.4",
+    "jupyter_core >=4.12,!=5.0.*",
+    "jupyter_events >=0.11.0",
+    "jupyter_server_terminals >=0.4.4",
+    "nbconvert-core >=6.4.4",
+    "nbformat >=5.3.0",
+    "packaging >=22.0",
+    "prometheus_client >=0.9",
+    "python >=3.12,<3.13.0a0",
+    "pywinpty >=2.0.1",
+    "pyzmq >=24",
+    "send2trash >=1.8.2",
+    "terminado >=0.8.3",
+    "tornado >=6.2.0",
+    "traitlets >=5.6.0",
+    "websocket-client >=1.7"
+  ],
+  "constrains": [],
+  "license": "BSD-3-Clause",
+  "timestamp": 1769613513000,
+  "size": 618607,
+  "requested_spec": "None",
+  "package_tarball_full_path": "C:\\Users\\jacks\\miniconda3\\pkgs\\jupyter_server-2.17.0-py312haa95532_1.conda",
+  "extracted_package_dir": "C:\\Users\\jacks\\miniconda3\\pkgs\\jupyter_server-2.17.0-py312haa95532_1",
+  "files": [
+    "Lib/site-packages/jupyter_server-2.17.0.dist-info/INSTALLER",
+    "Lib/site-packages/jupyter_server-2.17.0.dist-info/METADATA",
+    "Lib/site-packages/jupyter_server-2.17.0.dist-info/RECORD",
+    "Lib/site-packages/jupyter_server-2.17.0.dist-info/REQUESTED",
+    "Lib/site-packages/jupyter_server-2.17.0.dist-info/WHEEL",
+    "Lib/site-packages/jupyter_server-2.17.0.dist-info/direct_url.json",
+    "Lib/site-packages/jupyter_server-2.17.0.dist-info/entry_points.txt",
+    "Lib/site-packages/jupyter_server-2.17.0.dist-info/licenses/LICENSE",
+    "Lib/site-packages/jupyter_server/__init__.py",
+    "Lib/site-packages/jupyter_server/__main__.py",
+    "Lib/site-packages/jupyter_server/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/__pycache__/__main__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/__pycache__/_sysinfo.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/__pycache__/_tz.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/__pycache__/_version.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/__pycache__/config_manager.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/__pycache__/log.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/__pycache__/pytest_plugin.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/__pycache__/serverapp.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/__pycache__/traittypes.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/__pycache__/transutils.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/__pycache__/utils.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/_sysinfo.py",
+    "Lib/site-packages/jupyter_server/_tz.py",
+    "Lib/site-packages/jupyter_server/_version.py",
+    "Lib/site-packages/jupyter_server/auth/__init__.py",
+    "Lib/site-packages/jupyter_server/auth/__main__.py",
+    "Lib/site-packages/jupyter_server/auth/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/auth/__pycache__/__main__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/auth/__pycache__/authorizer.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/auth/__pycache__/decorator.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/auth/__pycache__/identity.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/auth/__pycache__/login.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/auth/__pycache__/logout.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/auth/__pycache__/security.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/auth/__pycache__/utils.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/auth/authorizer.py",
+    "Lib/site-packages/jupyter_server/auth/decorator.py",
+    "Lib/site-packages/jupyter_server/auth/identity.py",
+    "Lib/site-packages/jupyter_server/auth/login.py",
+    "Lib/site-packages/jupyter_server/auth/logout.py",
+    "Lib/site-packages/jupyter_server/auth/security.py",
+    "Lib/site-packages/jupyter_server/auth/utils.py",
+    "Lib/site-packages/jupyter_server/base/__init__.py",
+    "Lib/site-packages/jupyter_server/base/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/base/__pycache__/call_context.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/base/__pycache__/handlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/base/__pycache__/websocket.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/base/__pycache__/zmqhandlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/base/call_context.py",
+    "Lib/site-packages/jupyter_server/base/handlers.py",
+    "Lib/site-packages/jupyter_server/base/websocket.py",
+    "Lib/site-packages/jupyter_server/base/zmqhandlers.py",
+    "Lib/site-packages/jupyter_server/config_manager.py",
+    "Lib/site-packages/jupyter_server/event_schemas/contents_service/v1.yaml",
+    "Lib/site-packages/jupyter_server/event_schemas/gateway_client/v1.yaml",
+    "Lib/site-packages/jupyter_server/event_schemas/kernel_actions/v1.yaml",
+    "Lib/site-packages/jupyter_server/extension/__init__.py",
+    "Lib/site-packages/jupyter_server/extension/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/extension/__pycache__/application.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/extension/__pycache__/config.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/extension/__pycache__/handler.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/extension/__pycache__/manager.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/extension/__pycache__/serverextension.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/extension/__pycache__/utils.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/extension/application.py",
+    "Lib/site-packages/jupyter_server/extension/config.py",
+    "Lib/site-packages/jupyter_server/extension/handler.py",
+    "Lib/site-packages/jupyter_server/extension/manager.py",
+    "Lib/site-packages/jupyter_server/extension/serverextension.py",
+    "Lib/site-packages/jupyter_server/extension/utils.py",
+    "Lib/site-packages/jupyter_server/files/__init__.py",
+    "Lib/site-packages/jupyter_server/files/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/files/__pycache__/handlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/files/handlers.py",
+    "Lib/site-packages/jupyter_server/gateway/__init__.py",
+    "Lib/site-packages/jupyter_server/gateway/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/gateway/__pycache__/connections.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/gateway/__pycache__/gateway_client.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/gateway/__pycache__/handlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/gateway/__pycache__/managers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/gateway/connections.py",
+    "Lib/site-packages/jupyter_server/gateway/gateway_client.py",
+    "Lib/site-packages/jupyter_server/gateway/handlers.py",
+    "Lib/site-packages/jupyter_server/gateway/managers.py",
+    "Lib/site-packages/jupyter_server/i18n/README.md",
+    "Lib/site-packages/jupyter_server/i18n/__init__.py",
+    "Lib/site-packages/jupyter_server/i18n/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/i18n/babel_nbui.cfg",
+    "Lib/site-packages/jupyter_server/i18n/babel_notebook.cfg",
+    "Lib/site-packages/jupyter_server/i18n/nbjs.json",
+    "Lib/site-packages/jupyter_server/i18n/nbui.pot",
+    "Lib/site-packages/jupyter_server/i18n/notebook.pot",
+    "Lib/site-packages/jupyter_server/i18n/zh_CN/LC_MESSAGES/nbui.po",
+    "Lib/site-packages/jupyter_server/i18n/zh_CN/LC_MESSAGES/notebook.po",
+    "Lib/site-packages/jupyter_server/kernelspecs/__init__.py",
+    "Lib/site-packages/jupyter_server/kernelspecs/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/kernelspecs/__pycache__/handlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/kernelspecs/handlers.py",
+    "Lib/site-packages/jupyter_server/log.py",
+    "Lib/site-packages/jupyter_server/nbconvert/__init__.py",
+    "Lib/site-packages/jupyter_server/nbconvert/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/nbconvert/__pycache__/handlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/nbconvert/handlers.py",
+    "Lib/site-packages/jupyter_server/prometheus/__init__.py",
+    "Lib/site-packages/jupyter_server/prometheus/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/prometheus/__pycache__/log_functions.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/prometheus/__pycache__/metrics.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/prometheus/log_functions.py",
+    "Lib/site-packages/jupyter_server/prometheus/metrics.py",
+    "Lib/site-packages/jupyter_server/py.typed",
+    "Lib/site-packages/jupyter_server/pytest_plugin.py",
+    "Lib/site-packages/jupyter_server/serverapp.py",
+    "Lib/site-packages/jupyter_server/services/__init__.py",
+    "Lib/site-packages/jupyter_server/services/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/__pycache__/shutdown.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/api/__init__.py",
+    "Lib/site-packages/jupyter_server/services/api/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/api/__pycache__/handlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/api/api.yaml",
+    "Lib/site-packages/jupyter_server/services/api/handlers.py",
+    "Lib/site-packages/jupyter_server/services/config/__init__.py",
+    "Lib/site-packages/jupyter_server/services/config/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/config/__pycache__/handlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/config/__pycache__/manager.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/config/handlers.py",
+    "Lib/site-packages/jupyter_server/services/config/manager.py",
+    "Lib/site-packages/jupyter_server/services/contents/__init__.py",
+    "Lib/site-packages/jupyter_server/services/contents/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/contents/__pycache__/checkpoints.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/contents/__pycache__/filecheckpoints.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/contents/__pycache__/fileio.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/contents/__pycache__/filemanager.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/contents/__pycache__/handlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/contents/__pycache__/largefilemanager.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/contents/__pycache__/manager.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/contents/checkpoints.py",
+    "Lib/site-packages/jupyter_server/services/contents/filecheckpoints.py",
+    "Lib/site-packages/jupyter_server/services/contents/fileio.py",
+    "Lib/site-packages/jupyter_server/services/contents/filemanager.py",
+    "Lib/site-packages/jupyter_server/services/contents/handlers.py",
+    "Lib/site-packages/jupyter_server/services/contents/largefilemanager.py",
+    "Lib/site-packages/jupyter_server/services/contents/manager.py",
+    "Lib/site-packages/jupyter_server/services/events/__init__.py",
+    "Lib/site-packages/jupyter_server/services/events/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/events/__pycache__/handlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/events/handlers.py",
+    "Lib/site-packages/jupyter_server/services/kernels/__init__.py",
+    "Lib/site-packages/jupyter_server/services/kernels/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/kernels/__pycache__/handlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/kernels/__pycache__/kernelmanager.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/kernels/__pycache__/websocket.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/kernels/connection/__init__.py",
+    "Lib/site-packages/jupyter_server/services/kernels/connection/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/kernels/connection/__pycache__/abc.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/kernels/connection/__pycache__/base.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/kernels/connection/__pycache__/channels.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/kernels/connection/abc.py",
+    "Lib/site-packages/jupyter_server/services/kernels/connection/base.py",
+    "Lib/site-packages/jupyter_server/services/kernels/connection/channels.py",
+    "Lib/site-packages/jupyter_server/services/kernels/handlers.py",
+    "Lib/site-packages/jupyter_server/services/kernels/kernelmanager.py",
+    "Lib/site-packages/jupyter_server/services/kernels/websocket.py",
+    "Lib/site-packages/jupyter_server/services/kernelspecs/__init__.py",
+    "Lib/site-packages/jupyter_server/services/kernelspecs/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/kernelspecs/__pycache__/handlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/kernelspecs/handlers.py",
+    "Lib/site-packages/jupyter_server/services/nbconvert/__init__.py",
+    "Lib/site-packages/jupyter_server/services/nbconvert/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/nbconvert/__pycache__/handlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/nbconvert/handlers.py",
+    "Lib/site-packages/jupyter_server/services/security/__init__.py",
+    "Lib/site-packages/jupyter_server/services/security/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/security/__pycache__/handlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/security/handlers.py",
+    "Lib/site-packages/jupyter_server/services/sessions/__init__.py",
+    "Lib/site-packages/jupyter_server/services/sessions/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/sessions/__pycache__/handlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/sessions/__pycache__/sessionmanager.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/services/sessions/handlers.py",
+    "Lib/site-packages/jupyter_server/services/sessions/sessionmanager.py",
+    "Lib/site-packages/jupyter_server/services/shutdown.py",
+    "Lib/site-packages/jupyter_server/static/favicon.ico",
+    "Lib/site-packages/jupyter_server/static/favicons/favicon-busy-1.ico",
+    "Lib/site-packages/jupyter_server/static/favicons/favicon-busy-2.ico",
+    "Lib/site-packages/jupyter_server/static/favicons/favicon-busy-3.ico",
+    "Lib/site-packages/jupyter_server/static/favicons/favicon-file.ico",
+    "Lib/site-packages/jupyter_server/static/favicons/favicon-notebook.ico",
+    "Lib/site-packages/jupyter_server/static/favicons/favicon-terminal.ico",
+    "Lib/site-packages/jupyter_server/static/favicons/favicon.ico",
+    "Lib/site-packages/jupyter_server/static/logo/logo.png",
+    "Lib/site-packages/jupyter_server/static/style/bootstrap-theme.min.css",
+    "Lib/site-packages/jupyter_server/static/style/bootstrap-theme.min.css.map",
+    "Lib/site-packages/jupyter_server/static/style/bootstrap.min.css",
+    "Lib/site-packages/jupyter_server/static/style/bootstrap.min.css.map",
+    "Lib/site-packages/jupyter_server/static/style/index.css",
+    "Lib/site-packages/jupyter_server/templates/404.html",
+    "Lib/site-packages/jupyter_server/templates/browser-open.html",
+    "Lib/site-packages/jupyter_server/templates/error.html",
+    "Lib/site-packages/jupyter_server/templates/login.html",
+    "Lib/site-packages/jupyter_server/templates/logout.html",
+    "Lib/site-packages/jupyter_server/templates/main.html",
+    "Lib/site-packages/jupyter_server/templates/page.html",
+    "Lib/site-packages/jupyter_server/templates/view.html",
+    "Lib/site-packages/jupyter_server/terminal/__init__.py",
+    "Lib/site-packages/jupyter_server/terminal/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/terminal/__pycache__/api_handlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/terminal/__pycache__/handlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/terminal/__pycache__/terminalmanager.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/terminal/api_handlers.py",
+    "Lib/site-packages/jupyter_server/terminal/handlers.py",
+    "Lib/site-packages/jupyter_server/terminal/terminalmanager.py",
+    "Lib/site-packages/jupyter_server/traittypes.py",
+    "Lib/site-packages/jupyter_server/transutils.py",
+    "Lib/site-packages/jupyter_server/utils.py",
+    "Lib/site-packages/jupyter_server/view/__init__.py",
+    "Lib/site-packages/jupyter_server/view/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/view/__pycache__/handlers.cpython-312.pyc",
+    "Lib/site-packages/jupyter_server/view/handlers.py",
+    "Scripts/jupyter-server-script.py",
+    "Scripts/jupyter-server.exe"
+  ],
+  "paths_data": {
+    "paths_version": 1,
+    "paths": [
+      {
+        "_path": "Lib/site-packages/jupyter_server-2.17.0.dist-info/INSTALLER",
+        "path_type": "hardlink",
+        "sha256": "d0edee15f91b406f3f99726e44eb990be6e34fd0345b52b910c568e0eef6a2a8",
+        "size_in_bytes": 5,
+        "sha256_in_prefix": "d0edee15f91b406f3f99726e44eb990be6e34fd0345b52b910c568e0eef6a2a8"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server-2.17.0.dist-info/METADATA",
+        "path_type": "hardlink",
+        "sha256": "7d6d5cf068dfe9d0e476a3469d6252130ae1f4282ab03299b1288eb52872fe80",
+        "size_in_bytes": 8502,
+        "sha256_in_prefix": "7d6d5cf068dfe9d0e476a3469d6252130ae1f4282ab03299b1288eb52872fe80"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server-2.17.0.dist-info/RECORD",
+        "path_type": "hardlink",
+        "sha256": "868fe37ce881b42c9111873eb0c87824a9a451c31b5217dee68d1639de0f207d",
+        "size_in_bytes": 18452,
+        "sha256_in_prefix": "868fe37ce881b42c9111873eb0c87824a9a451c31b5217dee68d1639de0f207d"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server-2.17.0.dist-info/REQUESTED",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server-2.17.0.dist-info/WHEEL",
+        "path_type": "hardlink",
+        "sha256": "aad0b0a12256807936d52d4a6f88a1773236ae527564a688bab4e3fe780e8724",
+        "size_in_bytes": 87,
+        "sha256_in_prefix": "aad0b0a12256807936d52d4a6f88a1773236ae527564a688bab4e3fe780e8724"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server-2.17.0.dist-info/direct_url.json",
+        "path_type": "hardlink",
+        "sha256": "79516a6e91decc5952f71db4155bfae4463ebc2b0fa6ca38e0eb5a8eed0d8d3f",
+        "size_in_bytes": 104,
+        "sha256_in_prefix": "79516a6e91decc5952f71db4155bfae4463ebc2b0fa6ca38e0eb5a8eed0d8d3f"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server-2.17.0.dist-info/entry_points.txt",
+        "path_type": "hardlink",
+        "sha256": "f234b7148fa86d768d1bd4d21fa791a558d068c97b2f20fbb7f9b7779704ddc5",
+        "size_in_bytes": 65,
+        "sha256_in_prefix": "f234b7148fa86d768d1bd4d21fa791a558d068c97b2f20fbb7f9b7779704ddc5"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server-2.17.0.dist-info/licenses/LICENSE",
+        "path_type": "hardlink",
+        "sha256": "5ca74e4d2eeb9330b0d129c25f874d3544a13413bc62ae8d367819100d095072",
+        "size_in_bytes": 1588,
+        "sha256_in_prefix": "5ca74e4d2eeb9330b0d129c25f874d3544a13413bc62ae8d367819100d095072"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "efe1d58fef7b54e991c3773c1e7fa91ef7da413b26bac732c8d5d40057131f75",
+        "size_in_bytes": 771,
+        "sha256_in_prefix": "efe1d58fef7b54e991c3773c1e7fa91ef7da413b26bac732c8d5d40057131f75"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/__main__.py",
+        "path_type": "hardlink",
+        "sha256": "4aed47d88fa833d543873639fd9411989636ba496af229d19ae03ce93286f596",
+        "size_in_bytes": 154,
+        "sha256_in_prefix": "4aed47d88fa833d543873639fd9411989636ba496af229d19ae03ce93286f596"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "6bb9e985918269b72934bc234ee0cbac026b3c136042a1fb59b4e196b12b68a5",
+        "size_in_bytes": 1140,
+        "sha256_in_prefix": "6bb9e985918269b72934bc234ee0cbac026b3c136042a1fb59b4e196b12b68a5"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/__pycache__/__main__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "10162132a64abe161ec7ac2d1aa5ead6776859894da99d4a9e14adfcf57a404d",
+        "size_in_bytes": 369,
+        "sha256_in_prefix": "10162132a64abe161ec7ac2d1aa5ead6776859894da99d4a9e14adfcf57a404d"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/__pycache__/_sysinfo.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "195c8064fbf6035bfe0661d9bd0dec30445126c1a53cc4ce05bb67446b3d1b3b",
+        "size_in_bytes": 3150,
+        "sha256_in_prefix": "195c8064fbf6035bfe0661d9bd0dec30445126c1a53cc4ce05bb67446b3d1b3b"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/__pycache__/_tz.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "09b69f7bc925534ebc2eeee1fda6621785e8c81b6a394fc25fcd3b12e597264f",
+        "size_in_bytes": 1801,
+        "sha256_in_prefix": "09b69f7bc925534ebc2eeee1fda6621785e8c81b6a394fc25fcd3b12e597264f"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/__pycache__/_version.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "5ead03c09ca16161f2e1bd1a959c281745cc015c96844f00580de88ceea50bc1",
+        "size_in_bytes": 762,
+        "sha256_in_prefix": "5ead03c09ca16161f2e1bd1a959c281745cc015c96844f00580de88ceea50bc1"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/__pycache__/config_manager.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "775276454546058273cacf285c035a666ae352ec08c0c9c79bae69c3981215cc",
+        "size_in_bytes": 6519,
+        "sha256_in_prefix": "775276454546058273cacf285c035a666ae352ec08c0c9c79bae69c3981215cc"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/__pycache__/log.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "f6f90c4c3ed2d832d0e050d265a3bf610020d9bac8845d8be46baefa1d377e6c",
+        "size_in_bytes": 4077,
+        "sha256_in_prefix": "f6f90c4c3ed2d832d0e050d265a3bf610020d9bac8845d8be46baefa1d377e6c"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/__pycache__/pytest_plugin.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "9fa42687068c98655683ffabed3fb131173047bb2924d0e0786942767dbe6e47",
+        "size_in_bytes": 2474,
+        "sha256_in_prefix": "9fa42687068c98655683ffabed3fb131173047bb2924d0e0786942767dbe6e47"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/__pycache__/serverapp.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "6afb9f897fa8ef005ed14c7eaaf791f7581407e3cef4ca0a8962336268b37b00",
+        "size_in_bytes": 132432,
+        "sha256_in_prefix": "6afb9f897fa8ef005ed14c7eaaf791f7581407e3cef4ca0a8962336268b37b00"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/__pycache__/traittypes.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "9d71dc646b1f7a8bb0e5a18f6ef6c17f7538f6c197ba7ecf0511e733792e5678",
+        "size_in_bytes": 11883,
+        "sha256_in_prefix": "9d71dc646b1f7a8bb0e5a18f6ef6c17f7538f6c197ba7ecf0511e733792e5678"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/__pycache__/transutils.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "cb3726be34ef3e3b7872ba929531c01053e72fef2bff39055bdf673052710e9f",
+        "size_in_bytes": 1178,
+        "sha256_in_prefix": "cb3726be34ef3e3b7872ba929531c01053e72fef2bff39055bdf673052710e9f"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/__pycache__/utils.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "d678621d38bc1d94cfa52239cd31de0271602157a54a73d3355b679182df0840",
+        "size_in_bytes": 18509,
+        "sha256_in_prefix": "d678621d38bc1d94cfa52239cd31de0271602157a54a73d3355b679182df0840"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/_sysinfo.py",
+        "path_type": "hardlink",
+        "sha256": "e240c1b30a5eb04fc4c321fa38e652e5bd27b08db4a762131800ff85290df679",
+        "size_in_bytes": 2477,
+        "sha256_in_prefix": "e240c1b30a5eb04fc4c321fa38e652e5bd27b08db4a762131800ff85290df679"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/_tz.py",
+        "path_type": "hardlink",
+        "sha256": "50809d55e28009d876556644e109d16424edcb31887413c0b70108af3a167d55",
+        "size_in_bytes": 1057,
+        "sha256_in_prefix": "50809d55e28009d876556644e109d16424edcb31887413c0b70108af3a167d55"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/_version.py",
+        "path_type": "hardlink",
+        "sha256": "40662f86bceb5c0c8387179c9759f69598dbe4b4c0c1870b8d70f004827335fd",
+        "size_in_bytes": 503,
+        "sha256_in_prefix": "40662f86bceb5c0c8387179c9759f69598dbe4b4c0c1870b8d70f004827335fd"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "58cd6a5b94db6657f92024d495ec9fe45c864221eaf2e74952aa3bd07827e49d",
+        "size_in_bytes": 113,
+        "sha256_in_prefix": "58cd6a5b94db6657f92024d495ec9fe45c864221eaf2e74952aa3bd07827e49d"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/__main__.py",
+        "path_type": "hardlink",
+        "sha256": "f059fbb6780b791d8c7cfd95dbccab034889738d1b3fb9b212836f5b160ef362",
+        "size_in_bytes": 1940,
+        "sha256_in_prefix": "f059fbb6780b791d8c7cfd95dbccab034889738d1b3fb9b212836f5b160ef362"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "3b143bd71f378a305c8f9349a06589a09959fe6dcd10af30d9433d61faff8682",
+        "size_in_bytes": 286,
+        "sha256_in_prefix": "3b143bd71f378a305c8f9349a06589a09959fe6dcd10af30d9433d61faff8682"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/__pycache__/__main__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "712727014470533ac27cd009eb144f1ce4dd4d59ef9ff2fd32cdc14cc40d11b0",
+        "size_in_bytes": 2774,
+        "sha256_in_prefix": "712727014470533ac27cd009eb144f1ce4dd4d59ef9ff2fd32cdc14cc40d11b0"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/__pycache__/authorizer.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "04ece69d6ec27c228d99262fc9f98b58884443c39cf26e7395b46c93a41559bc",
+        "size_in_bytes": 3349,
+        "sha256_in_prefix": "04ece69d6ec27c228d99262fc9f98b58884443c39cf26e7395b46c93a41559bc"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/__pycache__/decorator.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "a329c9dce6c9c8530bc334b471eee15fad289e72da55d956a33e49b578fb2982",
+        "size_in_bytes": 5279,
+        "sha256_in_prefix": "a329c9dce6c9c8530bc334b471eee15fad289e72da55d956a33e49b578fb2982"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/__pycache__/identity.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "a0e8d020487cc54c4007ab255660774269bfe69be241ed9ed59e45524c00a14f",
+        "size_in_bytes": 34228,
+        "sha256_in_prefix": "a0e8d020487cc54c4007ab255660774269bfe69be241ed9ed59e45524c00a14f"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/__pycache__/login.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "fb76b520ed8ef315f12d9c013bf2dfbac33fdfa93b3712c48c74fb02ced56e48",
+        "size_in_bytes": 13144,
+        "sha256_in_prefix": "fb76b520ed8ef315f12d9c013bf2dfbac33fdfa93b3712c48c74fb02ced56e48"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/__pycache__/logout.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "c02a928e3c2076c48a3e68f09ca76b5ec89105613aa79657af0b6b82779fef27",
+        "size_in_bytes": 1220,
+        "sha256_in_prefix": "c02a928e3c2076c48a3e68f09ca76b5ec89105613aa79657af0b6b82779fef27"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/__pycache__/security.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "fe801e6dabe50114d69159446732d3c91404a573b4313607b4936195dec0762f",
+        "size_in_bytes": 6757,
+        "sha256_in_prefix": "fe801e6dabe50114d69159446732d3c91404a573b4313607b4936195dec0762f"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/__pycache__/utils.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "fd45bfb9ccc3ee1b92eb735d1ae6f8819d845311612cd6d925ef0d84f3b09065",
+        "size_in_bytes": 3439,
+        "sha256_in_prefix": "fd45bfb9ccc3ee1b92eb735d1ae6f8819d845311612cd6d925ef0d84f3b09065"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/authorizer.py",
+        "path_type": "hardlink",
+        "sha256": "f17a84583bb0e6e2b808ec4e9f69e1b5ffc27b28e57da7f3be00a82eb59e30f5",
+        "size_in_bytes": 2675,
+        "sha256_in_prefix": "f17a84583bb0e6e2b808ec4e9f69e1b5ffc27b28e57da7f3be00a82eb59e30f5"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/decorator.py",
+        "path_type": "hardlink",
+        "sha256": "e1062108b1a5adf5acc3cb80de73f969972685872639816718eceb4f922ea256",
+        "size_in_bytes": 4381,
+        "sha256_in_prefix": "e1062108b1a5adf5acc3cb80de73f969972685872639816718eceb4f922ea256"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/identity.py",
+        "path_type": "hardlink",
+        "sha256": "6a3ed3577f8bece23e272d80c671136ece3ed909ebffcd5f20093dfbc6aac814",
+        "size_in_bytes": 29837,
+        "sha256_in_prefix": "6a3ed3577f8bece23e272d80c671136ece3ed909ebffcd5f20093dfbc6aac814"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/login.py",
+        "path_type": "hardlink",
+        "sha256": "ed0ac90265157afc2173fa3a15d2032ee85ba0cebb68e251a6f62cb1fb2004c7",
+        "size_in_bytes": 12274,
+        "sha256_in_prefix": "ed0ac90265157afc2173fa3a15d2032ee85ba0cebb68e251a6f62cb1fb2004c7"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/logout.py",
+        "path_type": "hardlink",
+        "sha256": "27db629afddbd3c4957c1ef96254d11e1f27ee45ed77827d02ab958a70baf324",
+        "size_in_bytes": 785,
+        "sha256_in_prefix": "27db629afddbd3c4957c1ef96254d11e1f27ee45ed77827d02ab958a70baf324"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/security.py",
+        "path_type": "hardlink",
+        "sha256": "42e1b395c0d35b68ee6b90e0e57af4aed689e7102047aa14fd3c9fbd5b6884c7",
+        "size_in_bytes": 4741,
+        "sha256_in_prefix": "42e1b395c0d35b68ee6b90e0e57af4aed689e7102047aa14fd3c9fbd5b6884c7"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/auth/utils.py",
+        "path_type": "hardlink",
+        "sha256": "bda2678376952aba90c4cf42eda055f56b173ffeba49886538912856e97226b9",
+        "size_in_bytes": 3807,
+        "sha256_in_prefix": "bda2678376952aba90c4cf42eda055f56b173ffeba49886538912856e97226b9"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/base/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/base/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "aa51accfaab5131743ee2de9b5fb3feb69360c0fcf2078bbc2a30096458d59bb",
+        "size_in_bytes": 146,
+        "sha256_in_prefix": "aa51accfaab5131743ee2de9b5fb3feb69360c0fcf2078bbc2a30096458d59bb"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/base/__pycache__/call_context.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "f0750fb7729db4685b8c82217078aafe496d074e421bdf72fd0efe2219d35cd2",
+        "size_in_bytes": 3587,
+        "sha256_in_prefix": "f0750fb7729db4685b8c82217078aafe496d074e421bdf72fd0efe2219d35cd2"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/base/__pycache__/handlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "fc733549644cb6304b2e915ca10215d61e6387b771aef4bb4f218701b2718220",
+        "size_in_bytes": 56307,
+        "sha256_in_prefix": "fc733549644cb6304b2e915ca10215d61e6387b771aef4bb4f218701b2718220"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/base/__pycache__/websocket.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "cc4612585d80a539a6899cace15edaa09717248f21c73f782c72a9114bde29b3",
+        "size_in_bytes": 7853,
+        "sha256_in_prefix": "cc4612585d80a539a6899cace15edaa09717248f21c73f782c72a9114bde29b3"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/base/__pycache__/zmqhandlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "35bafac555db813bff1e7c881cdd97a15ad6aadc97bcee9107e2f234d292de29",
+        "size_in_bytes": 766,
+        "sha256_in_prefix": "35bafac555db813bff1e7c881cdd97a15ad6aadc97bcee9107e2f234d292de29"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/base/call_context.py",
+        "path_type": "hardlink",
+        "sha256": "2542ffc1b28001f86e662153ad3a8ef06e609d88c805ece88c404d6bb7b2851e",
+        "size_in_bytes": 3178,
+        "sha256_in_prefix": "2542ffc1b28001f86e662153ad3a8ef06e609d88c805ece88c404d6bb7b2851e"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/base/handlers.py",
+        "path_type": "hardlink",
+        "sha256": "c5efe5bd33eff52a69c312e50d39186ee7d3657820533487aa481993777e3d68",
+        "size_in_bytes": 44916,
+        "sha256_in_prefix": "c5efe5bd33eff52a69c312e50d39186ee7d3657820533487aa481993777e3d68"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/base/websocket.py",
+        "path_type": "hardlink",
+        "sha256": "98bbc0406786e2dadea402fd9fca222a1df8a1b2348941e1012b1e75f1dc7233",
+        "size_in_bytes": 5952,
+        "sha256_in_prefix": "98bbc0406786e2dadea402fd9fca222a1df8a1b2348941e1012b1e75f1dc7233"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/base/zmqhandlers.py",
+        "path_type": "hardlink",
+        "sha256": "b1ab6da84b821af005949ad2f36576a4d50a416872fff113f6b113df22082ad8",
+        "size_in_bytes": 555,
+        "sha256_in_prefix": "b1ab6da84b821af005949ad2f36576a4d50a416872fff113f6b113df22082ad8"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/config_manager.py",
+        "path_type": "hardlink",
+        "sha256": "149af8bdc23b1bba3a6e218e82eb24065e9acdd8b8abf32ba4811a90305b0771",
+        "size_in_bytes": 5032,
+        "sha256_in_prefix": "149af8bdc23b1bba3a6e218e82eb24065e9acdd8b8abf32ba4811a90305b0771"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/event_schemas/contents_service/v1.yaml",
+        "path_type": "hardlink",
+        "sha256": "a77a4ec46f68d3b4a3649225eea224163b06237b0f9f38ec52a07885b4c9821b",
+        "size_in_bytes": 2311,
+        "sha256_in_prefix": "a77a4ec46f68d3b4a3649225eea224163b06237b0f9f38ec52a07885b4c9821b"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/event_schemas/gateway_client/v1.yaml",
+        "path_type": "hardlink",
+        "sha256": "dbe3ffb7d3ec8b5094583da510bb0ff8189f6a3f0a6236c26d80d8c38367cb24",
+        "size_in_bytes": 987,
+        "sha256_in_prefix": "dbe3ffb7d3ec8b5094583da510bb0ff8189f6a3f0a6236c26d80d8c38367cb24"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/event_schemas/kernel_actions/v1.yaml",
+        "path_type": "hardlink",
+        "sha256": "1c5215544e7ee342d33fad58b8129112308da038ead82a686c61bb1242eb8fd3",
+        "size_in_bytes": 1766,
+        "sha256_in_prefix": "1c5215544e7ee342d33fad58b8129112308da038ead82a686c61bb1242eb8fd3"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/extension/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/extension/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "43e5db1921c920a417befe0fdc4ad60831bbb14a854a4ebe8eb86a24906dff70",
+        "size_in_bytes": 151,
+        "sha256_in_prefix": "43e5db1921c920a417befe0fdc4ad60831bbb14a854a4ebe8eb86a24906dff70"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/extension/__pycache__/application.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "1d743b31dcc2db24a92e827f2824270727c68299baf86a1dd2ed58063795d98e",
+        "size_in_bytes": 24464,
+        "sha256_in_prefix": "1d743b31dcc2db24a92e827f2824270727c68299baf86a1dd2ed58063795d98e"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/extension/__pycache__/config.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "635bb68e1ab14911848b567bd0fe9c9dbfa2233fb75689811de805ed16480b28",
+        "size_in_bytes": 2049,
+        "sha256_in_prefix": "635bb68e1ab14911848b567bd0fe9c9dbfa2233fb75689811de805ed16480b28"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/extension/__pycache__/handler.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "4521ebcf5dc5c1e150e39980badf2c006f50df3bec0313486524aa7d10493f24",
+        "size_in_bytes": 8337,
+        "sha256_in_prefix": "4521ebcf5dc5c1e150e39980badf2c006f50df3bec0313486524aa7d10493f24"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/extension/__pycache__/manager.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "14dcafc600e11bd6a939bcc15b0c477517b322e015dae5c636cc23f7db8b42f7",
+        "size_in_bytes": 22698,
+        "sha256_in_prefix": "14dcafc600e11bd6a939bcc15b0c477517b322e015dae5c636cc23f7db8b42f7"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/extension/__pycache__/serverextension.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "5d0261a849983e170a3dd11c01f1fb32083920c2c8019114b57e9a82ef212974",
+        "size_in_bytes": 14561,
+        "sha256_in_prefix": "5d0261a849983e170a3dd11c01f1fb32083920c2c8019114b57e9a82ef212974"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/extension/__pycache__/utils.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "e62d1660df74fcd625081db337f191a25d7e049391127a5ee2b9df64b4dcfca1",
+        "size_in_bytes": 4565,
+        "sha256_in_prefix": "e62d1660df74fcd625081db337f191a25d7e049391127a5ee2b9df64b4dcfca1"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/extension/application.py",
+        "path_type": "hardlink",
+        "sha256": "1269caa87051ae6876f7b3f98142bbcfa6cb6f12dd4b8a1236687dd9cde0e8fe",
+        "size_in_bytes": 23158,
+        "sha256_in_prefix": "1269caa87051ae6876f7b3f98142bbcfa6cb6f12dd4b8a1236687dd9cde0e8fe"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/extension/config.py",
+        "path_type": "hardlink",
+        "sha256": "bd273a6018fe1deb0b4d1ec2da88539d6d58e27b6e4a198cd7ce2d85e3d22adf",
+        "size_in_bytes": 1288,
+        "sha256_in_prefix": "bd273a6018fe1deb0b4d1ec2da88539d6d58e27b6e4a198cd7ce2d85e3d22adf"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/extension/handler.py",
+        "path_type": "hardlink",
+        "sha256": "8cd7f2b9dbbc75c4d42a666a2f1253355fb57f4bc17e2b8a760e6e88dfef5fc9",
+        "size_in_bytes": 5746,
+        "sha256_in_prefix": "8cd7f2b9dbbc75c4d42a666a2f1253355fb57f4bc17e2b8a760e6e88dfef5fc9"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/extension/manager.py",
+        "path_type": "hardlink",
+        "sha256": "49103cf078b09e034ec3154da23ba9225511d40f653faf503006daf77e33bd46",
+        "size_in_bytes": 16318,
+        "sha256_in_prefix": "49103cf078b09e034ec3154da23ba9225511d40f653faf503006daf77e33bd46"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/extension/serverextension.py",
+        "path_type": "hardlink",
+        "sha256": "9411d6bfdd8bda2c1df0f8829dc08edc8cb97081a6bafabb4834b3ca2552ac80",
+        "size_in_bytes": 13802,
+        "sha256_in_prefix": "9411d6bfdd8bda2c1df0f8829dc08edc8cb97081a6bafabb4834b3ca2552ac80"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/extension/utils.py",
+        "path_type": "hardlink",
+        "sha256": "f7383a4b66b8f6131e9721bafc8cdec6dc1fca61ca6b70c9c187a1706815580b",
+        "size_in_bytes": 3982,
+        "sha256_in_prefix": "f7383a4b66b8f6131e9721bafc8cdec6dc1fca61ca6b70c9c187a1706815580b"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/files/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/files/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "8025fba48c5f6a0a6590d3aaa41e5c939bff09160d4b526779d3e86813b763f3",
+        "size_in_bytes": 147,
+        "sha256_in_prefix": "8025fba48c5f6a0a6590d3aaa41e5c939bff09160d4b526779d3e86813b763f3"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/files/__pycache__/handlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "96ef5d1a8f2638d10ec908902718d242ef281fd98d1b748d417bb75031a72475",
+        "size_in_bytes": 4443,
+        "sha256_in_prefix": "96ef5d1a8f2638d10ec908902718d242ef281fd98d1b748d417bb75031a72475"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/files/handlers.py",
+        "path_type": "hardlink",
+        "sha256": "0773134a2e7a9d8894629a203fbe380edcc0820e8d5af04fc0c986cd3d6e325d",
+        "size_in_bytes": 3434,
+        "sha256_in_prefix": "0773134a2e7a9d8894629a203fbe380edcc0820e8d5af04fc0c986cd3d6e325d"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/gateway/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/gateway/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "093ee50a3671e944b1d4e5b3fa6e7601210cf9c0ce82d38b10618b91c5b3df1d",
+        "size_in_bytes": 149,
+        "sha256_in_prefix": "093ee50a3671e944b1d4e5b3fa6e7601210cf9c0ce82d38b10618b91c5b3df1d"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/gateway/__pycache__/connections.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "b738c610792c923585f00ee779c29d5a354ff13fad3809a781df61eee97b8981",
+        "size_in_bytes": 10257,
+        "sha256_in_prefix": "b738c610792c923585f00ee779c29d5a354ff13fad3809a781df61eee97b8981"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/gateway/__pycache__/gateway_client.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "17d3d7d37503616f31b02ec4ff817c71a396bba6427673476730e837e005947e",
+        "size_in_bytes": 39991,
+        "sha256_in_prefix": "17d3d7d37503616f31b02ec4ff817c71a396bba6427673476730e837e005947e"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/gateway/__pycache__/handlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "7bf13fef3ae0072dd1856b90df4e9fa17663294299cb55b7369edcaa30321b32",
+        "size_in_bytes": 17164,
+        "sha256_in_prefix": "7bf13fef3ae0072dd1856b90df4e9fa17663294299cb55b7369edcaa30321b32"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/gateway/__pycache__/managers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "7ab50d46d0e11f220ce47102bd18ff2de4a27064c22a62d3d1022b8c6f2b9dae",
+        "size_in_bytes": 43201,
+        "sha256_in_prefix": "7ab50d46d0e11f220ce47102bd18ff2de4a27064c22a62d3d1022b8c6f2b9dae"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/gateway/connections.py",
+        "path_type": "hardlink",
+        "sha256": "63e0f03988aa0108662687d12e3f7dbc10b0f543e5f0cd6436eb7717735e8621",
+        "size_in_bytes": 7361,
+        "sha256_in_prefix": "63e0f03988aa0108662687d12e3f7dbc10b0f543e5f0cd6436eb7717735e8621"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/gateway/gateway_client.py",
+        "path_type": "hardlink",
+        "sha256": "c627f65a3221ed9e3f0acad39265f5cf8170eea11c816c59d630bdf04767caa7",
+        "size_in_bytes": 32425,
+        "sha256_in_prefix": "c627f65a3221ed9e3f0acad39265f5cf8170eea11c816c59d630bdf04767caa7"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/gateway/handlers.py",
+        "path_type": "hardlink",
+        "sha256": "249dc83b4fb026643c85be632f33c410a800eb7f5a035fba0713107403bc54ba",
+        "size_in_bytes": 11940,
+        "sha256_in_prefix": "249dc83b4fb026643c85be632f33c410a800eb7f5a035fba0713107403bc54ba"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/gateway/managers.py",
+        "path_type": "hardlink",
+        "sha256": "9c70b779ba9266a9612f3006b1e2e8d534c5429cffff39bbe145679aad61ab64",
+        "size_in_bytes": 35717,
+        "sha256_in_prefix": "9c70b779ba9266a9612f3006b1e2e8d534c5429cffff39bbe145679aad61ab64"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/i18n/README.md",
+        "path_type": "hardlink",
+        "sha256": "fba97d74471a7ac54ff2da51bf528a8253d5bcb0489fd7c3f7998fa4d19ba2b8",
+        "size_in_bytes": 5738,
+        "sha256_in_prefix": "fba97d74471a7ac54ff2da51bf528a8253d5bcb0489fd7c3f7998fa4d19ba2b8"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/i18n/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "910a0b8e0890411dba1b309d1e61a72d78b21b427fa5fb9e6213c3960c656d05",
+        "size_in_bytes": 2717,
+        "sha256_in_prefix": "910a0b8e0890411dba1b309d1e61a72d78b21b427fa5fb9e6213c3960c656d05"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/i18n/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "6dfe8e10d6ad558700f64e35b20146387c01153ebbe998622094cff7be5fd242",
+        "size_in_bytes": 3607,
+        "sha256_in_prefix": "6dfe8e10d6ad558700f64e35b20146387c01153ebbe998622094cff7be5fd242"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/i18n/babel_nbui.cfg",
+        "path_type": "hardlink",
+        "sha256": "a9040e7f1ab9c1247f4a32aab853881a6fb3f40b9b353aef451abaa67a95f92f",
+        "size_in_bytes": 103,
+        "sha256_in_prefix": "a9040e7f1ab9c1247f4a32aab853881a6fb3f40b9b353aef451abaa67a95f92f"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/i18n/babel_notebook.cfg",
+        "path_type": "hardlink",
+        "sha256": "1d3d6632dcda10f28f7d586ee252d28841b4f2034046f6e7a25cfa3320cc0121",
+        "size_in_bytes": 66,
+        "sha256_in_prefix": "1d3d6632dcda10f28f7d586ee252d28841b4f2034046f6e7a25cfa3320cc0121"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/i18n/nbjs.json",
+        "path_type": "hardlink",
+        "sha256": "e49aa48decf97be5c841a820f2a20a0164a70688cd5f5697fa6a8729b9ae81e3",
+        "size_in_bytes": 148,
+        "sha256_in_prefix": "e49aa48decf97be5c841a820f2a20a0164a70688cd5f5697fa6a8729b9ae81e3"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/i18n/nbui.pot",
+        "path_type": "hardlink",
+        "sha256": "2b8ef32fdb2b21b8301fd5a5365c56dacc285c41431c05af8fc3b60a3f00f8d6",
+        "size_in_bytes": 15248,
+        "sha256_in_prefix": "2b8ef32fdb2b21b8301fd5a5365c56dacc285c41431c05af8fc3b60a3f00f8d6"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/i18n/notebook.pot",
+        "path_type": "hardlink",
+        "sha256": "2660ab9553e9053d815e46214cb3de78b6966a538559bd1b14171b84a1d673b6",
+        "size_in_bytes": 11712,
+        "sha256_in_prefix": "2660ab9553e9053d815e46214cb3de78b6966a538559bd1b14171b84a1d673b6"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/i18n/zh_CN/LC_MESSAGES/nbui.po",
+        "path_type": "hardlink",
+        "sha256": "2640827967e8557a873da98181ad7624e97714257c13b943cce7c9cc47179617",
+        "size_in_bytes": 18459,
+        "sha256_in_prefix": "2640827967e8557a873da98181ad7624e97714257c13b943cce7c9cc47179617"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/i18n/zh_CN/LC_MESSAGES/notebook.po",
+        "path_type": "hardlink",
+        "sha256": "d97bf52ff04b4d7988e357e1aced931376b430f9d8228439e6434f688511ccd9",
+        "size_in_bytes": 14333,
+        "sha256_in_prefix": "d97bf52ff04b4d7988e357e1aced931376b430f9d8228439e6434f688511ccd9"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/kernelspecs/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/kernelspecs/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "588f043ae87e0d7abb678c2edf3bbd0506b1634fad28c285050b944774496266",
+        "size_in_bytes": 153,
+        "sha256_in_prefix": "588f043ae87e0d7abb678c2edf3bbd0506b1634fad28c285050b944774496266"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/kernelspecs/__pycache__/handlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "899b97930f38aaa320b6448a09f6ca6ffaf576259bb40467e55b7ead5ac93b83",
+        "size_in_bytes": 3797,
+        "sha256_in_prefix": "899b97930f38aaa320b6448a09f6ca6ffaf576259bb40467e55b7ead5ac93b83"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/kernelspecs/handlers.py",
+        "path_type": "hardlink",
+        "sha256": "9d0559a205741322e67bd9fdbbbdf3f783cabcea738268cd3288b59e21e86e67",
+        "size_in_bytes": 2726,
+        "sha256_in_prefix": "9d0559a205741322e67bd9fdbbbdf3f783cabcea738268cd3288b59e21e86e67"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/log.py",
+        "path_type": "hardlink",
+        "sha256": "4cfe1d456a2d5e697b55c0ccc8c8d203a384bb34e09aebe1ea634b66cda12b25",
+        "size_in_bytes": 3864,
+        "sha256_in_prefix": "4cfe1d456a2d5e697b55c0ccc8c8d203a384bb34e09aebe1ea634b66cda12b25"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/nbconvert/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/nbconvert/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "a77c07c1f9d7c2195bb6983e6be129ac200227ef1d297a902b58a240ddce21fb",
+        "size_in_bytes": 151,
+        "sha256_in_prefix": "a77c07c1f9d7c2195bb6983e6be129ac200227ef1d297a902b58a240ddce21fb"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/nbconvert/__pycache__/handlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "e241f754fbb56f0ae068fe0882df060a0a40195d4d206c06f14ef389652c12f0",
+        "size_in_bytes": 9500,
+        "sha256_in_prefix": "e241f754fbb56f0ae068fe0882df060a0a40195d4d206c06f14ef389652c12f0"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/nbconvert/handlers.py",
+        "path_type": "hardlink",
+        "sha256": "c8646fee2cd316d1800b4bae90b59a50892169e796d1501624b4baafeca414c5",
+        "size_in_bytes": 6971,
+        "sha256_in_prefix": "c8646fee2cd316d1800b4bae90b59a50892169e796d1501624b4baafeca414c5"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/prometheus/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/prometheus/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "95a44721d25955ebcb20d7cdf82e0a6c84d3c17a1a530e63f1eb1cd70eaade48",
+        "size_in_bytes": 152,
+        "sha256_in_prefix": "95a44721d25955ebcb20d7cdf82e0a6c84d3c17a1a530e63f1eb1cd70eaade48"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/prometheus/__pycache__/log_functions.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "31179d437db4689101d0a56e984f12ff40c8dfaf3c81d780bc00a6bd30d73eb0",
+        "size_in_bytes": 1562,
+        "sha256_in_prefix": "31179d437db4689101d0a56e984f12ff40c8dfaf3c81d780bc00a6bd30d73eb0"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/prometheus/__pycache__/metrics.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "9ab4b5e2f1ef12281e887bb5fbdceb88b6dfaa8ce3c55f4f39019ab031df29fc",
+        "size_in_bytes": 2030,
+        "sha256_in_prefix": "9ab4b5e2f1ef12281e887bb5fbdceb88b6dfaa8ce3c55f4f39019ab031df29fc"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/prometheus/log_functions.py",
+        "path_type": "hardlink",
+        "sha256": "663c9530a110086a621f547125edb1567a10b2dfb0586338e3da77a7d23c5a98",
+        "size_in_bytes": 1066,
+        "sha256_in_prefix": "663c9530a110086a621f547125edb1567a10b2dfb0586338e3da77a7d23c5a98"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/prometheus/metrics.py",
+        "path_type": "hardlink",
+        "sha256": "cf7687856b23e7955dc8bb6687cfea652da7969577079a5764d4ad70d794bd51",
+        "size_in_bytes": 2790,
+        "sha256_in_prefix": "cf7687856b23e7955dc8bb6687cfea652da7969577079a5764d4ad70d794bd51"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/py.typed",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/pytest_plugin.py",
+        "path_type": "hardlink",
+        "sha256": "7541b7e3a1ba4bc8a457035872b17161223a0d890c31ebd59b1a6396d9bbddf5",
+        "size_in_bytes": 1849,
+        "sha256_in_prefix": "7541b7e3a1ba4bc8a457035872b17161223a0d890c31ebd59b1a6396d9bbddf5"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/serverapp.py",
+        "path_type": "hardlink",
+        "sha256": "e1a7e02821b9584d926f7aa2280f1b87a2198c670a3920ee78bf97736e8a700e",
+        "size_in_bytes": 120843,
+        "sha256_in_prefix": "e1a7e02821b9584d926f7aa2280f1b87a2198c670a3920ee78bf97736e8a700e"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "8e13d3bf687e40c91ac3f186612c3dcea7422c42212be4a8ed3dcad799adef84",
+        "size_in_bytes": 150,
+        "sha256_in_prefix": "8e13d3bf687e40c91ac3f186612c3dcea7422c42212be4a8ed3dcad799adef84"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/__pycache__/shutdown.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "0139ee852108c7b5602f3c1e3359df2d7ecd4943c1d978429082cf0139827698",
+        "size_in_bytes": 1417,
+        "sha256_in_prefix": "0139ee852108c7b5602f3c1e3359df2d7ecd4943c1d978429082cf0139827698"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/api/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/api/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "2bf24f1a6cd2b618e24d089ecf133c2cd3fe2adb045a9a4216168cea03f43bbd",
+        "size_in_bytes": 154,
+        "sha256_in_prefix": "2bf24f1a6cd2b618e24d089ecf133c2cd3fe2adb045a9a4216168cea03f43bbd"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/api/__pycache__/handlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "70a222cc67cacfec9f7d8538bf8ddb7aa2243210ef0f63e6fa861e33a393b551",
+        "size_in_bytes": 7590,
+        "sha256_in_prefix": "70a222cc67cacfec9f7d8538bf8ddb7aa2243210ef0f63e6fa861e33a393b551"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/api/api.yaml",
+        "path_type": "hardlink",
+        "sha256": "f309fcca541412fa02258fb551faa3080c18f14a2e210d62306d372bf6bf694c",
+        "size_in_bytes": 28676,
+        "sha256_in_prefix": "f309fcca541412fa02258fb551faa3080c18f14a2e210d62306d372bf6bf694c"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/api/handlers.py",
+        "path_type": "hardlink",
+        "sha256": "b7e4c136b780761088e6ce8d4cfde9e5c05e4ae81b7a9a39ba26ce9cf339fcd3",
+        "size_in_bytes": 5023,
+        "sha256_in_prefix": "b7e4c136b780761088e6ce8d4cfde9e5c05e4ae81b7a9a39ba26ce9cf339fcd3"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/config/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "7d58315d6d379331ee568d735d090b2685e0e90eb28a8a11aae8e28b72fcd7bc",
+        "size_in_bytes": 64,
+        "sha256_in_prefix": "7d58315d6d379331ee568d735d090b2685e0e90eb28a8a11aae8e28b72fcd7bc"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/config/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "f328e20522af0db151bb20146e9b516f668789c2aa370f4833a150793dcf5066",
+        "size_in_bytes": 233,
+        "sha256_in_prefix": "f328e20522af0db151bb20146e9b516f668789c2aa370f4833a150793dcf5066"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/config/__pycache__/handlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "9d659f78ff1fddb3ba7c614fe1fd3c868d57ff3000de9694536bb7368c2cc519",
+        "size_in_bytes": 2279,
+        "sha256_in_prefix": "9d659f78ff1fddb3ba7c614fe1fd3c868d57ff3000de9694536bb7368c2cc519"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/config/__pycache__/manager.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "9beac128eff1c413d76c05a5822989bd5e8f5cc3106cc040f48bc4268b07c456",
+        "size_in_bytes": 3549,
+        "sha256_in_prefix": "9beac128eff1c413d76c05a5822989bd5e8f5cc3106cc040f48bc4268b07c456"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/config/handlers.py",
+        "path_type": "hardlink",
+        "sha256": "0f493bae6292ba488a07d6bbad7c91c774c2ecefeec20318a19b6ddf58b598f3",
+        "size_in_bytes": 1373,
+        "sha256_in_prefix": "0f493bae6292ba488a07d6bbad7c91c774c2ecefeec20318a19b6ddf58b598f3"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/config/manager.py",
+        "path_type": "hardlink",
+        "sha256": "1309e8cd48c9290be35fc81a665323f5b6f7255a127f1f1ecb55dabc4a01f256",
+        "size_in_bytes": 2230,
+        "sha256_in_prefix": "1309e8cd48c9290be35fc81a665323f5b6f7255a127f1f1ecb55dabc4a01f256"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/contents/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/contents/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "f0f2aeb3df8b40c181ab9f0f246f637ade18b49bf6bfe3da6db7ab54165aa108",
+        "size_in_bytes": 159,
+        "sha256_in_prefix": "f0f2aeb3df8b40c181ab9f0f246f637ade18b49bf6bfe3da6db7ab54165aa108"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/contents/__pycache__/checkpoints.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "edf41cc742991ce3d5d15dc3c3329ed405703b2ce8047b1ee4da16ebe6ef90a6",
+        "size_in_bytes": 10124,
+        "sha256_in_prefix": "edf41cc742991ce3d5d15dc3c3329ed405703b2ce8047b1ee4da16ebe6ef90a6"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/contents/__pycache__/filecheckpoints.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "f8cf1575b67ef846b51b4f0ff65b728f112c7fe209ff93117abe9efdd8949985",
+        "size_in_bytes": 16422,
+        "sha256_in_prefix": "f8cf1575b67ef846b51b4f0ff65b728f112c7fe209ff93117abe9efdd8949985"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/contents/__pycache__/fileio.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "eed7ccc28580d3acac95589280ee213f7e1942eda086860bc2c3c9b0a5df72b1",
+        "size_in_bytes": 23344,
+        "sha256_in_prefix": "eed7ccc28580d3acac95589280ee213f7e1942eda086860bc2c3c9b0a5df72b1"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/contents/__pycache__/filemanager.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "f6ea316e752df691a989af2e592d581527caa2efd5d2845d98727fca016ae6ed",
+        "size_in_bytes": 55002,
+        "sha256_in_prefix": "f6ea316e752df691a989af2e592d581527caa2efd5d2845d98727fca016ae6ed"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/contents/__pycache__/handlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "ed9b202e165ff9a6d3135b0368386af738a07da15d28770f6a9e0e7d7dbed4fe",
+        "size_in_bytes": 21136,
+        "sha256_in_prefix": "ed9b202e165ff9a6d3135b0368386af738a07da15d28770f6a9e0e7d7dbed4fe"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/contents/__pycache__/largefilemanager.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "5fd1596d1f57f52d8a0be9385553cabc0200f59d5a01cad13c20d3f56f61bef8",
+        "size_in_bytes": 7908,
+        "sha256_in_prefix": "5fd1596d1f57f52d8a0be9385553cabc0200f59d5a01cad13c20d3f56f61bef8"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/contents/__pycache__/manager.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "7a869ccd18dd3d939f6b2cf019a7cae0d8e1553fbee9325a78379171e4998ccf",
+        "size_in_bytes": 40443,
+        "sha256_in_prefix": "7a869ccd18dd3d939f6b2cf019a7cae0d8e1553fbee9325a78379171e4998ccf"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/contents/checkpoints.py",
+        "path_type": "hardlink",
+        "sha256": "5b32e9cd06154341f0eca2ee237918b99a259f6dadf8f5ddda3716d2f57ae003",
+        "size_in_bytes": 8643,
+        "sha256_in_prefix": "5b32e9cd06154341f0eca2ee237918b99a259f6dadf8f5ddda3716d2f57ae003"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/contents/filecheckpoints.py",
+        "path_type": "hardlink",
+        "sha256": "b4a6d8381e077514b7f1f226b3e4c60e41a5cd63f4b44fdbb073cd58d0a971a6",
+        "size_in_bytes": 12337,
+        "sha256_in_prefix": "b4a6d8381e077514b7f1f226b3e4c60e41a5cd63f4b44fdbb073cd58d0a971a6"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/contents/fileio.py",
+        "path_type": "hardlink",
+        "sha256": "d41d90eff3fc9d62c8dc4c257f5a30a0bd4f2b67c03e4b80dc40110b516f56d2",
+        "size_in_bytes": 21034,
+        "sha256_in_prefix": "d41d90eff3fc9d62c8dc4c257f5a30a0bd4f2b67c03e4b80dc40110b516f56d2"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/contents/filemanager.py",
+        "path_type": "hardlink",
+        "sha256": "c97c73630f533668e915e4cdfdce66b8200038acbb83451023740de4e36f6b6c",
+        "size_in_bytes": 47205,
+        "sha256_in_prefix": "c97c73630f533668e915e4cdfdce66b8200038acbb83451023740de4e36f6b6c"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/contents/handlers.py",
+        "path_type": "hardlink",
+        "sha256": "0e7deda551fcfabf0016a5235da8d4e0e450880f46ade0815d53e1fa064099ee",
+        "size_in_bytes": 15289,
+        "sha256_in_prefix": "0e7deda551fcfabf0016a5235da8d4e0e450880f46ade0815d53e1fa064099ee"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/contents/largefilemanager.py",
+        "path_type": "hardlink",
+        "sha256": "b88ee867b9e7b82a8754c250c166898581be1eed26e38cafe715e9a289737037",
+        "size_in_bytes": 5936,
+        "sha256_in_prefix": "b88ee867b9e7b82a8754c250c166898581be1eed26e38cafe715e9a289737037"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/contents/manager.py",
+        "path_type": "hardlink",
+        "sha256": "89b9924b09b1b7dc147c4b60e1d9df9fe56bfe191d0109db5c10226d3a889cd1",
+        "size_in_bytes": 36212,
+        "sha256_in_prefix": "89b9924b09b1b7dc147c4b60e1d9df9fe56bfe191d0109db5c10226d3a889cd1"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/events/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/events/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "c0c031d1219c843a100b04bcb09fe53c464663d2d18d0c8f48a1fc130a99fcfa",
+        "size_in_bytes": 157,
+        "sha256_in_prefix": "c0c031d1219c843a100b04bcb09fe53c464663d2d18d0c8f48a1fc130a99fcfa"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/events/__pycache__/handlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "5189bbf5ef9b46058162c0a1a7a4ee253849bef01453fd3a0126bd8ea6146cbd",
+        "size_in_bytes": 6769,
+        "sha256_in_prefix": "5189bbf5ef9b46058162c0a1a7a4ee253849bef01453fd3a0126bd8ea6146cbd"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/events/handlers.py",
+        "path_type": "hardlink",
+        "sha256": "86864120b5c423ae143cc1b630f1d35b4a839025016cb7daabbc97fb0a9466d8",
+        "size_in_bytes": 4549,
+        "sha256_in_prefix": "86864120b5c423ae143cc1b630f1d35b4a839025016cb7daabbc97fb0a9466d8"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernels/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernels/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "4146916a79169ba08f65e486aee2e951273d534904df2544da6ab081637ca917",
+        "size_in_bytes": 158,
+        "sha256_in_prefix": "4146916a79169ba08f65e486aee2e951273d534904df2544da6ab081637ca917"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernels/__pycache__/handlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "84b0bcad111acf31a2844084238975e0d12dc0368b6e2208fbe0bfa7dd5325e0",
+        "size_in_bytes": 6473,
+        "sha256_in_prefix": "84b0bcad111acf31a2844084238975e0d12dc0368b6e2208fbe0bfa7dd5325e0"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernels/__pycache__/kernelmanager.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "d66ac0022702e62652243f7d7b608837f54aab1cfe9f8aaf5aae2d734502712d",
+        "size_in_bytes": 41762,
+        "sha256_in_prefix": "d66ac0022702e62652243f7d7b608837f54aab1cfe9f8aaf5aae2d734502712d"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernels/__pycache__/websocket.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "a111489c7cb8f9e156d40ba28423bfae6c8cc24c8694b932d0ef96c40c197541",
+        "size_in_bytes": 5188,
+        "sha256_in_prefix": "a111489c7cb8f9e156d40ba28423bfae6c8cc24c8694b932d0ef96c40c197541"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernels/connection/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernels/connection/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "3bd890e1e254ebbcb623f329ca04f25632eccfe18e7a9cf757d700ab2d84ce32",
+        "size_in_bytes": 169,
+        "sha256_in_prefix": "3bd890e1e254ebbcb623f329ca04f25632eccfe18e7a9cf757d700ab2d84ce32"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernels/connection/__pycache__/abc.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "c94390a32c5e89538a7a8e34d257fc894cdd0cba7b42df99a83e0e52a247904d",
+        "size_in_bytes": 1854,
+        "sha256_in_prefix": "c94390a32c5e89538a7a8e34d257fc894cdd0cba7b42df99a83e0e52a247904d"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernels/connection/__pycache__/base.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "8e712cde300b5e491d6c244b4a9b7fb9ee5cbd5dc4e68b31d928063d873fa60f",
+        "size_in_bytes": 8827,
+        "sha256_in_prefix": "8e712cde300b5e491d6c244b4a9b7fb9ee5cbd5dc4e68b31d928063d873fa60f"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernels/connection/__pycache__/channels.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "3a23b170e43e4bad504250a0566ae2c39fe34fc77128bf15617d9988fee3cf86",
+        "size_in_bytes": 39683,
+        "sha256_in_prefix": "3a23b170e43e4bad504250a0566ae2c39fe34fc77128bf15617d9988fee3cf86"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernels/connection/abc.py",
+        "path_type": "hardlink",
+        "sha256": "2ca6ff910aa6c8015b614e21700c6c760a7e5e18fe46cc1a417faf15144d5376",
+        "size_in_bytes": 921,
+        "sha256_in_prefix": "2ca6ff910aa6c8015b614e21700c6c760a7e5e18fe46cc1a417faf15144d5376"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernels/connection/base.py",
+        "path_type": "hardlink",
+        "sha256": "8d3f8fa9e36cccc92e6c5d1c17ce6e4dff3db835e2c709ef5486bbe2622d3ff2",
+        "size_in_bytes": 5544,
+        "sha256_in_prefix": "8d3f8fa9e36cccc92e6c5d1c17ce6e4dff3db835e2c709ef5486bbe2622d3ff2"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernels/connection/channels.py",
+        "path_type": "hardlink",
+        "sha256": "8db2312e4afc8f815d3c00e7b889ef37f5ecbf9c44108ea58193cdb70f48b242",
+        "size_in_bytes": 33564,
+        "sha256_in_prefix": "8db2312e4afc8f815d3c00e7b889ef37f5ecbf9c44108ea58193cdb70f48b242"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernels/handlers.py",
+        "path_type": "hardlink",
+        "sha256": "9d3317c7a4d261d799246f33af4e74d78b256d8ae3e83b4bceba861f6b3cb3ac",
+        "size_in_bytes": 4142,
+        "sha256_in_prefix": "9d3317c7a4d261d799246f33af4e74d78b256d8ae3e83b4bceba861f6b3cb3ac"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernels/kernelmanager.py",
+        "path_type": "hardlink",
+        "sha256": "cc4c3c8aea4177b029c0defe9bbbfe0c73c91524f8c8710b538d4e873c438dda",
+        "size_in_bytes": 36223,
+        "sha256_in_prefix": "cc4c3c8aea4177b029c0defe9bbbfe0c73c91524f8c8710b538d4e873c438dda"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernels/websocket.py",
+        "path_type": "hardlink",
+        "sha256": "1a43b006275be03547356fddf004266d51eddd2f8b3442af525641351dc5c800",
+        "size_in_bytes": 3535,
+        "sha256_in_prefix": "1a43b006275be03547356fddf004266d51eddd2f8b3442af525641351dc5c800"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernelspecs/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernelspecs/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "61f47635f5fd3b5555577b3953fd39511b84d3975775ed817f2d439e6e1f6da1",
+        "size_in_bytes": 162,
+        "sha256_in_prefix": "61f47635f5fd3b5555577b3953fd39511b84d3975775ed817f2d439e6e1f6da1"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernelspecs/__pycache__/handlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "3bb4a6895c0de8ee000472d2ac6c6ed134aa0c138e86ea40c35d3176a9b92d35",
+        "size_in_bytes": 5491,
+        "sha256_in_prefix": "3bb4a6895c0de8ee000472d2ac6c6ed134aa0c138e86ea40c35d3176a9b92d35"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/kernelspecs/handlers.py",
+        "path_type": "hardlink",
+        "sha256": "f4384ed3fb2b261414b84f285c6fad66404084cc0e2c81100a4190044f1e15ca",
+        "size_in_bytes": 3920,
+        "sha256_in_prefix": "f4384ed3fb2b261414b84f285c6fad66404084cc0e2c81100a4190044f1e15ca"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/nbconvert/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/nbconvert/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "6b75232fe5b28016be39ac9f22b0c9699a4928f73c28f07cfbb47d1cefefadf9",
+        "size_in_bytes": 160,
+        "sha256_in_prefix": "6b75232fe5b28016be39ac9f22b0c9699a4928f73c28f07cfbb47d1cefefadf9"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/nbconvert/__pycache__/handlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "9ac06c0d07bf3b7fdc5e52f60a1bfc428a4b9044848589bc80212c73423443a0",
+        "size_in_bytes": 2870,
+        "sha256_in_prefix": "9ac06c0d07bf3b7fdc5e52f60a1bfc428a4b9044848589bc80212c73423443a0"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/nbconvert/handlers.py",
+        "path_type": "hardlink",
+        "sha256": "62fa441e563faa703a0f08d4e65652dc1d0832fd932b409c784521f03eed3a37",
+        "size_in_bytes": 2270,
+        "sha256_in_prefix": "62fa441e563faa703a0f08d4e65652dc1d0832fd932b409c784521f03eed3a37"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/security/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "194c705d819c4590a4cbe930201ad64b061654026f3257e4086a8ee730aaf4eb",
+        "size_in_bytes": 263,
+        "sha256_in_prefix": "194c705d819c4590a4cbe930201ad64b061654026f3257e4086a8ee730aaf4eb"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/security/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "71479d24c5dd6b85545bb5d6327cd84f46c5064d711ec4f586d6ba8dc2bff7db",
+        "size_in_bytes": 209,
+        "sha256_in_prefix": "71479d24c5dd6b85545bb5d6327cd84f46c5064d711ec4f586d6ba8dc2bff7db"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/security/__pycache__/handlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "f26aba6a1c91e584ce29c32b90ddd386eb30a62fe1f3c96d3769679e20b2d7fc",
+        "size_in_bytes": 1696,
+        "sha256_in_prefix": "f26aba6a1c91e584ce29c32b90ddd386eb30a62fe1f3c96d3769679e20b2d7fc"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/security/handlers.py",
+        "path_type": "hardlink",
+        "sha256": "abbd244f4f1b8c8379b3b2b979b796ad929c49860ce78f800c99d8af6b1d9b53",
+        "size_in_bytes": 1022,
+        "sha256_in_prefix": "abbd244f4f1b8c8379b3b2b979b796ad929c49860ce78f800c99d8af6b1d9b53"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/sessions/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/sessions/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "e19ce19c276b8851619ee43f319d0ab807d2321359be3d67ba4bd15ef28c206e",
+        "size_in_bytes": 159,
+        "sha256_in_prefix": "e19ce19c276b8851619ee43f319d0ab807d2321359be3d67ba4bd15ef28c206e"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/sessions/__pycache__/handlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "49fcfcd33f6ff40d2d007348d21fce61e8590669ebc63f011aadeca11826477c",
+        "size_in_bytes": 9918,
+        "sha256_in_prefix": "49fcfcd33f6ff40d2d007348d21fce61e8590669ebc63f011aadeca11826477c"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/sessions/__pycache__/sessionmanager.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "eb0a8883358b52a07aa162cb308a76aa837f867d43e50ad88e30ae035bcfe0f2",
+        "size_in_bytes": 24501,
+        "sha256_in_prefix": "eb0a8883358b52a07aa162cb308a76aa837f867d43e50ad88e30ae035bcfe0f2"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/sessions/handlers.py",
+        "path_type": "hardlink",
+        "sha256": "ef2861468fa12455b363bd11c2f9e77720a1471290487010a34ef59e19c64699",
+        "size_in_bytes": 8432,
+        "sha256_in_prefix": "ef2861468fa12455b363bd11c2f9e77720a1471290487010a34ef59e19c64699"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/sessions/sessionmanager.py",
+        "path_type": "hardlink",
+        "sha256": "1299d2f7e0d3425db26a4aa630e962a5d525b0affe91537ca751c9eb2fde7191",
+        "size_in_bytes": 20193,
+        "sha256_in_prefix": "1299d2f7e0d3425db26a4aa630e962a5d525b0affe91537ca751c9eb2fde7191"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/services/shutdown.py",
+        "path_type": "hardlink",
+        "sha256": "4f489a7675bfc644ca9edc6567ee8ae9b84bc0969ab840b97e83eae0932d9836",
+        "size_in_bytes": 676,
+        "sha256_in_prefix": "4f489a7675bfc644ca9edc6567ee8ae9b84bc0969ab840b97e83eae0932d9836"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/static/favicon.ico",
+        "path_type": "hardlink",
+        "sha256": "c2638a89fde3633617ec624088730c1dbe4daf18d4f2e44729ece89df3e60176",
+        "size_in_bytes": 32038,
+        "sha256_in_prefix": "c2638a89fde3633617ec624088730c1dbe4daf18d4f2e44729ece89df3e60176"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/static/favicons/favicon-busy-1.ico",
+        "path_type": "hardlink",
+        "sha256": "5de41363f5f06a3a2fb517ab570a61138891849f46510b8465c41da02ef49912",
+        "size_in_bytes": 1150,
+        "sha256_in_prefix": "5de41363f5f06a3a2fb517ab570a61138891849f46510b8465c41da02ef49912"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/static/favicons/favicon-busy-2.ico",
+        "path_type": "hardlink",
+        "sha256": "4d9e5bc5bcdb03573d69a1a4c8b33f80bf7b7026117dec844269206c1601e936",
+        "size_in_bytes": 1150,
+        "sha256_in_prefix": "4d9e5bc5bcdb03573d69a1a4c8b33f80bf7b7026117dec844269206c1601e936"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/static/favicons/favicon-busy-3.ico",
+        "path_type": "hardlink",
+        "sha256": "3a646fc14338583dd6624424051856da06b0c06b30045ee268120fa924813522",
+        "size_in_bytes": 1150,
+        "sha256_in_prefix": "3a646fc14338583dd6624424051856da06b0c06b30045ee268120fa924813522"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/static/favicons/favicon-file.ico",
+        "path_type": "hardlink",
+        "sha256": "8d19ae451c9f411a6c60124ac750e3bee8719ff26f405de1c5abff629c51b329",
+        "size_in_bytes": 1150,
+        "sha256_in_prefix": "8d19ae451c9f411a6c60124ac750e3bee8719ff26f405de1c5abff629c51b329"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/static/favicons/favicon-notebook.ico",
+        "path_type": "hardlink",
+        "sha256": "e3d7b23e611172246668523675a107764d13fe65d0110de3d399de851515fe1c",
+        "size_in_bytes": 1150,
+        "sha256_in_prefix": "e3d7b23e611172246668523675a107764d13fe65d0110de3d399de851515fe1c"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/static/favicons/favicon-terminal.ico",
+        "path_type": "hardlink",
+        "sha256": "988e17e98b94c27a9b3065f297041b6a9629aa82819b3ca507e02b6fc1536518",
+        "size_in_bytes": 1150,
+        "sha256_in_prefix": "988e17e98b94c27a9b3065f297041b6a9629aa82819b3ca507e02b6fc1536518"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/static/favicons/favicon.ico",
+        "path_type": "hardlink",
+        "sha256": "c2638a89fde3633617ec624088730c1dbe4daf18d4f2e44729ece89df3e60176",
+        "size_in_bytes": 32038,
+        "sha256_in_prefix": "c2638a89fde3633617ec624088730c1dbe4daf18d4f2e44729ece89df3e60176"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/static/logo/logo.png",
+        "path_type": "hardlink",
+        "sha256": "5578515b485349fe206120dbf5604c75700178867d04331e0942e367370dc244",
+        "size_in_bytes": 5922,
+        "sha256_in_prefix": "5578515b485349fe206120dbf5604c75700178867d04331e0942e367370dc244"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/static/style/bootstrap-theme.min.css",
+        "path_type": "hardlink",
+        "sha256": "f2e1cc227d6bbb4192e4a3becdfed971c7fc530d76200e43add11c98cb962c53",
+        "size_in_bytes": 23411,
+        "sha256_in_prefix": "f2e1cc227d6bbb4192e4a3becdfed971c7fc530d76200e43add11c98cb962c53"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/static/style/bootstrap-theme.min.css.map",
+        "path_type": "hardlink",
+        "sha256": "5ebabc49db378681cf6412aa00bd3b7a111a09f2815231f4b56e296fac486130",
+        "size_in_bytes": 75600,
+        "sha256_in_prefix": "5ebabc49db378681cf6412aa00bd3b7a111a09f2815231f4b56e296fac486130"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/static/style/bootstrap.min.css",
+        "path_type": "hardlink",
+        "sha256": "6d92dfc1700fd38cd130ad818e23bc8aef697f815b2ea5face2b5dfad22f2e11",
+        "size_in_bytes": 121457,
+        "sha256_in_prefix": "6d92dfc1700fd38cd130ad818e23bc8aef697f815b2ea5face2b5dfad22f2e11"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/static/style/bootstrap.min.css.map",
+        "path_type": "hardlink",
+        "sha256": "78b58c9ebfd42ec2c61bc4fdf46a5df998e6cd907c773076a0a6e8f5686bafc3",
+        "size_in_bytes": 540434,
+        "sha256_in_prefix": "78b58c9ebfd42ec2c61bc4fdf46a5df998e6cd907c773076a0a6e8f5686bafc3"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/static/style/index.css",
+        "path_type": "hardlink",
+        "sha256": "97fda09b2b13b1cfd2466fdd4e30654155c9ab839121240f92790b5d0fd1fc29",
+        "size_in_bytes": 1414,
+        "sha256_in_prefix": "97fda09b2b13b1cfd2466fdd4e30654155c9ab839121240f92790b5d0fd1fc29"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/templates/404.html",
+        "path_type": "hardlink",
+        "sha256": "6e0d2a1cf6c8b985d265712b11e1b634d6eee60d7d883a8853c963b4bbe29444",
+        "size_in_bytes": 146,
+        "sha256_in_prefix": "6e0d2a1cf6c8b985d265712b11e1b634d6eee60d7d883a8853c963b4bbe29444"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/templates/browser-open.html",
+        "path_type": "hardlink",
+        "sha256": "540de5c05a77c00f8ac3b0f5a1f3b933ddf0ed5fb5998418403877bd53966c86",
+        "size_in_bytes": 507,
+        "sha256_in_prefix": "540de5c05a77c00f8ac3b0f5a1f3b933ddf0ed5fb5998418403877bd53966c86"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/templates/error.html",
+        "path_type": "hardlink",
+        "sha256": "500461efa51d2ddff5ce84be1c216a1cf90355f8bef6e4c7d7e448c0320cd235",
+        "size_in_bytes": 653,
+        "sha256_in_prefix": "500461efa51d2ddff5ce84be1c216a1cf90355f8bef6e4c7d7e448c0320cd235"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/templates/login.html",
+        "path_type": "hardlink",
+        "sha256": "ad5237711c0e3759d571a44752e0be3bb1a04f2a38ed47ad0572bdd6a49767b0",
+        "size_in_bytes": 4468,
+        "sha256_in_prefix": "ad5237711c0e3759d571a44752e0be3bb1a04f2a38ed47ad0572bdd6a49767b0"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/templates/logout.html",
+        "path_type": "hardlink",
+        "sha256": "67b840357db0639c29dc3690fbe00294f89dd76df428bf611f9d6f92caa35ef5",
+        "size_in_bytes": 823,
+        "sha256_in_prefix": "67b840357db0639c29dc3690fbe00294f89dd76df428bf611f9d6f92caa35ef5"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/templates/main.html",
+        "path_type": "hardlink",
+        "sha256": "e0aaa83e7daa6b6fa217f12c14febc62880494fc48690c62b383b740aa0cabd2",
+        "size_in_bytes": 147,
+        "sha256_in_prefix": "e0aaa83e7daa6b6fa217f12c14febc62880494fc48690c62b383b740aa0cabd2"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/templates/page.html",
+        "path_type": "hardlink",
+        "sha256": "9980c9248d95d85c503ccb19a89c34f1e5e13b7204cfd6e768db36a053ace032",
+        "size_in_bytes": 2834,
+        "sha256_in_prefix": "9980c9248d95d85c503ccb19a89c34f1e5e13b7204cfd6e768db36a053ace032"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/templates/view.html",
+        "path_type": "hardlink",
+        "sha256": "d2f467ea79fac3b714fb103a2d1ac579d3f9f93531bdd22110e76a2aa29bbcca",
+        "size_in_bytes": 558,
+        "sha256_in_prefix": "d2f467ea79fac3b714fb103a2d1ac579d3f9f93531bdd22110e76a2aa29bbcca"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/terminal/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "659d1fe1ed33840745ccce7089f74cef1bb1c8e6f073156da05d50481d055dba",
+        "size_in_bytes": 465,
+        "sha256_in_prefix": "659d1fe1ed33840745ccce7089f74cef1bb1c8e6f073156da05d50481d055dba"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/terminal/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "42f90023850d1e29a405e4dcfc559d6db6851b3bdddc441a737f22689e520b1c",
+        "size_in_bytes": 781,
+        "sha256_in_prefix": "42f90023850d1e29a405e4dcfc559d6db6851b3bdddc441a737f22689e520b1c"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/terminal/__pycache__/api_handlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "3e93369bc13a7b4151cbb5ba83bfb88649a7338d4008808962a69601cacd873c",
+        "size_in_bytes": 340,
+        "sha256_in_prefix": "3e93369bc13a7b4151cbb5ba83bfb88649a7338d4008808962a69601cacd873c"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/terminal/__pycache__/handlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "9566f4da2dcab3c837b9a2f3b6a3cd3bd83eb53b93fcb34a02b42c53cbe70f37",
+        "size_in_bytes": 284,
+        "sha256_in_prefix": "9566f4da2dcab3c837b9a2f3b6a3cd3bd83eb53b93fcb34a02b42c53cbe70f37"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/terminal/__pycache__/terminalmanager.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "6ce008ba2210dd66c77ffb802132ab425cad51cdf792523cd04674d1ee38a60f",
+        "size_in_bytes": 366,
+        "sha256_in_prefix": "6ce008ba2210dd66c77ffb802132ab425cad51cdf792523cd04674d1ee38a60f"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/terminal/api_handlers.py",
+        "path_type": "hardlink",
+        "sha256": "b9435c187fd9b00dbbf0daebbf6aa785cce83edc529c98261c4d2cca3a6aeee1",
+        "size_in_bytes": 154,
+        "sha256_in_prefix": "b9435c187fd9b00dbbf0daebbf6aa785cce83edc529c98261c4d2cca3a6aeee1"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/terminal/handlers.py",
+        "path_type": "hardlink",
+        "sha256": "190fd0832371b77a2140246146a4f02453c70d8fc6fc40d887f454f9d0a7838e",
+        "size_in_bytes": 210,
+        "sha256_in_prefix": "190fd0832371b77a2140246146a4f02453c70d8fc6fc40d887f454f9d0a7838e"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/terminal/terminalmanager.py",
+        "path_type": "hardlink",
+        "sha256": "17e556839174aad053df7a84595382bd9d9ae8ad492b6db6969dd04658f9570a",
+        "size_in_bytes": 282,
+        "sha256_in_prefix": "17e556839174aad053df7a84595382bd9d9ae8ad492b6db6969dd04658f9570a"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/traittypes.py",
+        "path_type": "hardlink",
+        "sha256": "a0a5b1d011b2132faeca315cb7449eddce6221cab4c25536940e7c6b0e14d31a",
+        "size_in_bytes": 9577,
+        "sha256_in_prefix": "a0a5b1d011b2132faeca315cb7449eddce6221cab4c25536940e7c6b0e14d31a"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/transutils.py",
+        "path_type": "hardlink",
+        "sha256": "71695d5d066e382417066b377235efa61303ba91688536f1c4fe278297a773b6",
+        "size_in_bytes": 768,
+        "sha256_in_prefix": "71695d5d066e382417066b377235efa61303ba91688536f1c4fe278297a773b6"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/utils.py",
+        "path_type": "hardlink",
+        "sha256": "fbe654ea10a3a17e86b084f46521492f922f66dcac401fd58febc95e108714c6",
+        "size_in_bytes": 13399,
+        "sha256_in_prefix": "fbe654ea10a3a17e86b084f46521492f922f66dcac401fd58febc95e108714c6"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/view/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "9573f9436a3a3af20dc7b5dc2b554d50fd4fe947d3f4c8c8123ba52108f80a06",
+        "size_in_bytes": 47,
+        "sha256_in_prefix": "9573f9436a3a3af20dc7b5dc2b554d50fd4fe947d3f4c8c8123ba52108f80a06"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/view/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "59cbe6cfa6b56baca268e490fd4a0130562dc4dfaf3e7a84a43606387a6416c7",
+        "size_in_bytes": 201,
+        "sha256_in_prefix": "59cbe6cfa6b56baca268e490fd4a0130562dc4dfaf3e7a84a43606387a6416c7"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/view/__pycache__/handlers.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "c414148e4a51694b9550b1dc4eec3d3638b71818909b569df57928ab508b5a49",
+        "size_in_bytes": 1847,
+        "sha256_in_prefix": "c414148e4a51694b9550b1dc4eec3d3638b71818909b569df57928ab508b5a49"
+      },
+      {
+        "_path": "Lib/site-packages/jupyter_server/view/handlers.py",
+        "path_type": "hardlink",
+        "sha256": "73c29f27a78e1ed49d1d8aad96075d5c084397e56522baee3e7da17679fef5e3",
+        "size_in_bytes": 1092,
+        "sha256_in_prefix": "73c29f27a78e1ed49d1d8aad96075d5c084397e56522baee3e7da17679fef5e3"
+      },
+      {
+        "_path": "Scripts/jupyter-server-script.py",
+        "path_type": "hardlink",
+        "sha256": "31f9be780f0d4c57f88defcb28b4ea9112e1f8de8f29ec9d2d46852c6dcb22d0",
+        "size_in_bytes": 218,
+        "sha256_in_prefix": "31f9be780f0d4c57f88defcb28b4ea9112e1f8de8f29ec9d2d46852c6dcb22d0"
+      },
+      {
+        "_path": "Scripts/jupyter-server.exe",
+        "path_type": "hardlink",
+        "sha256": "f24d102084620e54fe68d07f6e9169118b283f8d33d0c8f4b974c2e05a306059",
+        "size_in_bytes": 54032,
+        "sha256_in_prefix": "f24d102084620e54fe68d07f6e9169118b283f8d33d0c8f4b974c2e05a306059"
+      }
+    ]
+  },
+  "link": {
+    "source": "C:\\Users\\jacks\\miniconda3\\pkgs\\jupyter_server-2.17.0-py312haa95532_1",
+    "type": 1
+  }
+}

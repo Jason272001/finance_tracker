@@ -1,0 +1,71 @@
+{
+  "name": "winpty",
+  "version": "0.4.3",
+  "build": "haa95532_5",
+  "build_number": 5,
+  "channel": "https://repo.anaconda.com/pkgs/main/win-64",
+  "subdir": "win-64",
+  "fn": "winpty-0.4.3-haa95532_5.conda",
+  "md5": "cf58f1b7799eac3983ec342cb9a25002",
+  "url": "https://repo.anaconda.com/pkgs/main/win-64/winpty-0.4.3-haa95532_5.conda",
+  "sha256": "29f7039d2e5cadb5cd0e141e4fe1286448e325aba4610551c33c883f00006e6d",
+  "depends": [],
+  "constrains": [],
+  "license": "MIT",
+  "timestamp": 1769587849000,
+  "size": 377665,
+  "requested_spec": "None",
+  "package_tarball_full_path": "C:\\Users\\jacks\\miniconda3\\pkgs\\winpty-0.4.3-haa95532_5.conda",
+  "extracted_package_dir": "C:\\Users\\jacks\\miniconda3\\pkgs\\winpty-0.4.3-haa95532_5",
+  "files": [
+    "Library/bin/winpty-agent.exe",
+    "Library/bin/winpty.dll",
+    "Library/include/winpty.h",
+    "Library/include/winpty_constants.h",
+    "Library/lib/winpty.lib"
+  ],
+  "paths_data": {
+    "paths_version": 1,
+    "paths": [
+      {
+        "_path": "Library/bin/winpty-agent.exe",
+        "path_type": "hardlink",
+        "sha256": "8edc38fca4564bd5b4a580d1f639a21a06f0e5adc63d0a8ba20c236dbda816ca",
+        "size_in_bytes": 1055632,
+        "sha256_in_prefix": "8edc38fca4564bd5b4a580d1f639a21a06f0e5adc63d0a8ba20c236dbda816ca"
+      },
+      {
+        "_path": "Library/bin/winpty.dll",
+        "path_type": "hardlink",
+        "sha256": "a56e9477d66d9ea914fa8385b31b2f165ed90063718b122d31113cb5d1cba703",
+        "size_in_bytes": 915936,
+        "sha256_in_prefix": "a56e9477d66d9ea914fa8385b31b2f165ed90063718b122d31113cb5d1cba703"
+      },
+      {
+        "_path": "Library/include/winpty.h",
+        "path_type": "hardlink",
+        "sha256": "35ac2bd9561f26b8cc9324aa9f1be500ff4a7b13c2b66cf65c3499f559d7b4e7",
+        "size_in_bytes": 9189,
+        "sha256_in_prefix": "35ac2bd9561f26b8cc9324aa9f1be500ff4a7b13c2b66cf65c3499f559d7b4e7"
+      },
+      {
+        "_path": "Library/include/winpty_constants.h",
+        "path_type": "hardlink",
+        "sha256": "2720b82db1487ed9276b760c322207b7f1e9d1c4b62994f9f8431ee7c3d8424a",
+        "size_in_bytes": 5697,
+        "sha256_in_prefix": "2720b82db1487ed9276b760c322207b7f1e9d1c4b62994f9f8431ee7c3d8424a"
+      },
+      {
+        "_path": "Library/lib/winpty.lib",
+        "path_type": "hardlink",
+        "sha256": "b96d294b5563d89ac2a0169d1936c9b440ac2c7e190a226c84789aace43b66c9",
+        "size_in_bytes": 12794,
+        "sha256_in_prefix": "b96d294b5563d89ac2a0169d1936c9b440ac2c7e190a226c84789aace43b66c9"
+      }
+    ]
+  },
+  "link": {
+    "source": "C:\\Users\\jacks\\miniconda3\\pkgs\\winpty-0.4.3-haa95532_5",
+    "type": 1
+  }
+}

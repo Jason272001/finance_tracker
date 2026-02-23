@@ -1,0 +1,11 @@
+prefix=D:/finance_tracker/env/Library
+exec_prefix=${prefix}
+libdir=D:/finance_tracker/env/Library/lib
+includedir=D:/finance_tracker/env/Library/include
+
+Name: abseil_dll
+Description: Abseil DLL library
+URL: https://abseil.io/
+Version: 20250127
+Libs: -L${libdir} -labseil_dll 
+Cflags: -I${includedir}

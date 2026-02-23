@@ -1,0 +1,228 @@
+{
+  "name": "argon2-cffi",
+  "version": "25.1.0",
+  "build": "py312haa95532_0",
+  "build_number": 0,
+  "channel": "https://repo.anaconda.com/pkgs/main/win-64",
+  "subdir": "win-64",
+  "fn": "argon2-cffi-25.1.0-py312haa95532_0.conda",
+  "md5": "b350cbfcb49c95866f8b81173f250826",
+  "url": "https://repo.anaconda.com/pkgs/main/win-64/argon2-cffi-25.1.0-py312haa95532_0.conda",
+  "sha256": "950e75d517fd9cbdf5812eba2f3d1d8ce7d5d1440982ba028ab2b1b762424957",
+  "depends": [
+    "argon2-cffi-bindings",
+    "python >=3.12,<3.13.0a0"
+  ],
+  "constrains": [
+    "argon2_cffi 999"
+  ],
+  "license": "MIT",
+  "timestamp": 1766067928000,
+  "size": 34321,
+  "requested_spec": "None",
+  "package_tarball_full_path": "C:\\Users\\jacks\\miniconda3\\pkgs\\argon2-cffi-25.1.0-py312haa95532_0.conda",
+  "extracted_package_dir": "C:\\Users\\jacks\\miniconda3\\pkgs\\argon2-cffi-25.1.0-py312haa95532_0",
+  "files": [
+    "Lib/site-packages/argon2/__init__.py",
+    "Lib/site-packages/argon2/__main__.py",
+    "Lib/site-packages/argon2/__pycache__/__init__.cpython-312.pyc",
+    "Lib/site-packages/argon2/__pycache__/__main__.cpython-312.pyc",
+    "Lib/site-packages/argon2/__pycache__/_legacy.cpython-312.pyc",
+    "Lib/site-packages/argon2/__pycache__/_password_hasher.cpython-312.pyc",
+    "Lib/site-packages/argon2/__pycache__/_utils.cpython-312.pyc",
+    "Lib/site-packages/argon2/__pycache__/exceptions.cpython-312.pyc",
+    "Lib/site-packages/argon2/__pycache__/low_level.cpython-312.pyc",
+    "Lib/site-packages/argon2/__pycache__/profiles.cpython-312.pyc",
+    "Lib/site-packages/argon2/_legacy.py",
+    "Lib/site-packages/argon2/_password_hasher.py",
+    "Lib/site-packages/argon2/_utils.py",
+    "Lib/site-packages/argon2/exceptions.py",
+    "Lib/site-packages/argon2/low_level.py",
+    "Lib/site-packages/argon2/profiles.py",
+    "Lib/site-packages/argon2/py.typed",
+    "Lib/site-packages/argon2_cffi-25.1.0.dist-info/INSTALLER",
+    "Lib/site-packages/argon2_cffi-25.1.0.dist-info/METADATA",
+    "Lib/site-packages/argon2_cffi-25.1.0.dist-info/RECORD",
+    "Lib/site-packages/argon2_cffi-25.1.0.dist-info/REQUESTED",
+    "Lib/site-packages/argon2_cffi-25.1.0.dist-info/WHEEL",
+    "Lib/site-packages/argon2_cffi-25.1.0.dist-info/direct_url.json",
+    "Lib/site-packages/argon2_cffi-25.1.0.dist-info/licenses/LICENSE"
+  ],
+  "paths_data": {
+    "paths_version": 1,
+    "paths": [
+      {
+        "_path": "Lib/site-packages/argon2/__init__.py",
+        "path_type": "hardlink",
+        "sha256": "3784b72ef475cb75acb72b0e6f00d0b05e32b7c369128b7cb86026cbf319e5fc",
+        "size_in_bytes": 1869,
+        "sha256_in_prefix": "3784b72ef475cb75acb72b0e6f00d0b05e32b7c369128b7cb86026cbf319e5fc"
+      },
+      {
+        "_path": "Lib/site-packages/argon2/__main__.py",
+        "path_type": "hardlink",
+        "sha256": "6c28b5ac9921301a620d97b75be31f0b60c51f9c18247e110e6c922dc2ff2708",
+        "size_in_bytes": 2332,
+        "sha256_in_prefix": "6c28b5ac9921301a620d97b75be31f0b60c51f9c18247e110e6c922dc2ff2708"
+      },
+      {
+        "_path": "Lib/site-packages/argon2/__pycache__/__init__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "8f06ef5fd6e4ebc2960bb1df01c54218b06325b1737e9c7526702896d77bfdcd",
+        "size_in_bytes": 2146,
+        "sha256_in_prefix": "8f06ef5fd6e4ebc2960bb1df01c54218b06325b1737e9c7526702896d77bfdcd"
+      },
+      {
+        "_path": "Lib/site-packages/argon2/__pycache__/__main__.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "988f9413c62a3dad6813e7aa786a19fa48adaf24ee05ecaf1f5825327e22ddca",
+        "size_in_bytes": 3480,
+        "sha256_in_prefix": "988f9413c62a3dad6813e7aa786a19fa48adaf24ee05ecaf1f5825327e22ddca"
+      },
+      {
+        "_path": "Lib/site-packages/argon2/__pycache__/_legacy.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "8d1df57f59e819f531989c3c9e721276caf62bfaba07fa79d5fc3ffc40456eeb",
+        "size_in_bytes": 3049,
+        "sha256_in_prefix": "8d1df57f59e819f531989c3c9e721276caf62bfaba07fa79d5fc3ffc40456eeb"
+      },
+      {
+        "_path": "Lib/site-packages/argon2/__pycache__/_password_hasher.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "244f890975b4e1b2db3add04d2189ab3793a4fc7081fcf71cac2f5704e98775d",
+        "size_in_bytes": 10755,
+        "sha256_in_prefix": "244f890975b4e1b2db3add04d2189ab3793a4fc7081fcf71cac2f5704e98775d"
+      },
+      {
+        "_path": "Lib/site-packages/argon2/__pycache__/_utils.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "9b30cbf2ee7ba45c56e25f70eec58fb946c2dc78a8bdad6e207f9d1ab92fa304",
+        "size_in_bytes": 5504,
+        "sha256_in_prefix": "9b30cbf2ee7ba45c56e25f70eec58fb946c2dc78a8bdad6e207f9d1ab92fa304"
+      },
+      {
+        "_path": "Lib/site-packages/argon2/__pycache__/exceptions.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "90ffd60be93a18251962197e2f0cee3708eb209748825f7d84d86d4ce0ffde7c",
+        "size_in_bytes": 1976,
+        "sha256_in_prefix": "90ffd60be93a18251962197e2f0cee3708eb209748825f7d84d86d4ce0ffde7c"
+      },
+      {
+        "_path": "Lib/site-packages/argon2/__pycache__/low_level.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "20ff5c653854da9ad5f3853d4e042977ac0207d191f53eba2ba9724b8281810a",
+        "size_in_bytes": 7661,
+        "sha256_in_prefix": "20ff5c653854da9ad5f3853d4e042977ac0207d191f53eba2ba9724b8281810a"
+      },
+      {
+        "_path": "Lib/site-packages/argon2/__pycache__/profiles.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "8b4b021d0e2b35c7e06fbc3cb85af17fceb7f564946f1afced8ba5011d2362f8",
+        "size_in_bytes": 1638,
+        "sha256_in_prefix": "8b4b021d0e2b35c7e06fbc3cb85af17fceb7f564946f1afced8ba5011d2362f8"
+      },
+      {
+        "_path": "Lib/site-packages/argon2/_legacy.py",
+        "path_type": "hardlink",
+        "sha256": "7887e4ed25ae210406673dc563cd185b85d04009eb8f31607b2445828d8ab42a",
+        "size_in_bytes": 2416,
+        "sha256_in_prefix": "7887e4ed25ae210406673dc563cd185b85d04009eb8f31607b2445828d8ab42a"
+      },
+      {
+        "_path": "Lib/site-packages/argon2/_password_hasher.py",
+        "path_type": "hardlink",
+        "sha256": "a498126a9e02d9ecbbe0850389f6db47f11eabe19e5ef9779d165cd50cefde32",
+        "size_in_bytes": 8839,
+        "sha256_in_prefix": "a498126a9e02d9ecbbe0850389f6db47f11eabe19e5ef9779d165cd50cefde32"
+      },
+      {
+        "_path": "Lib/site-packages/argon2/_utils.py",
+        "path_type": "hardlink",
+        "sha256": "637264ae86118a84875d0e44dd26afec2725a806640972a8d5c6ec262c2a8199",
+        "size_in_bytes": 3751,
+        "sha256_in_prefix": "637264ae86118a84875d0e44dd26afec2725a806640972a8d5c6ec262c2a8199"
+      },
+      {
+        "_path": "Lib/site-packages/argon2/exceptions.py",
+        "path_type": "hardlink",
+        "sha256": "b00ea4f139e5a9c7b9b8634d6ce406d8f82057dd4415dd99136748881e07ea75",
+        "size_in_bytes": 1322,
+        "sha256_in_prefix": "b00ea4f139e5a9c7b9b8634d6ce406d8f82057dd4415dd99136748881e07ea75"
+      },
+      {
+        "_path": "Lib/site-packages/argon2/low_level.py",
+        "path_type": "hardlink",
+        "sha256": "40c4b13f05103cf6a718aa89a8b131521e20b6ac34bb8f503c4aa3cf59cd9583",
+        "size_in_bytes": 6172,
+        "sha256_in_prefix": "40c4b13f05103cf6a718aa89a8b131521e20b6ac34bb8f503c4aa3cf59cd9583"
+      },
+      {
+        "_path": "Lib/site-packages/argon2/profiles.py",
+        "path_type": "hardlink",
+        "sha256": "9cadbeee8605b86b43c5ebfd834e746c566c876d78ab09445f7a9e8f039010c6",
+        "size_in_bytes": 1650,
+        "sha256_in_prefix": "9cadbeee8605b86b43c5ebfd834e746c566c876d78ab09445f7a9e8f039010c6"
+      },
+      {
+        "_path": "Lib/site-packages/argon2/py.typed",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/argon2_cffi-25.1.0.dist-info/INSTALLER",
+        "path_type": "hardlink",
+        "sha256": "d0edee15f91b406f3f99726e44eb990be6e34fd0345b52b910c568e0eef6a2a8",
+        "size_in_bytes": 5,
+        "sha256_in_prefix": "d0edee15f91b406f3f99726e44eb990be6e34fd0345b52b910c568e0eef6a2a8"
+      },
+      {
+        "_path": "Lib/site-packages/argon2_cffi-25.1.0.dist-info/METADATA",
+        "path_type": "hardlink",
+        "sha256": "e90851075b68261faccf407b29430f45e6a5b1a0759a0d50b8d93101b0de2179",
+        "size_in_bytes": 4119,
+        "sha256_in_prefix": "e90851075b68261faccf407b29430f45e6a5b1a0759a0d50b8d93101b0de2179"
+      },
+      {
+        "_path": "Lib/site-packages/argon2_cffi-25.1.0.dist-info/RECORD",
+        "path_type": "hardlink",
+        "sha256": "9298c327e5c50dc26dbe27435bd1c758632226a691ab0d667a368d03e5c7250d",
+        "size_in_bytes": 1684,
+        "sha256_in_prefix": "9298c327e5c50dc26dbe27435bd1c758632226a691ab0d667a368d03e5c7250d"
+      },
+      {
+        "_path": "Lib/site-packages/argon2_cffi-25.1.0.dist-info/REQUESTED",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/argon2_cffi-25.1.0.dist-info/WHEEL",
+        "path_type": "hardlink",
+        "sha256": "aad0b0a12256807936d52d4a6f88a1773236ae527564a688bab4e3fe780e8724",
+        "size_in_bytes": 87,
+        "sha256_in_prefix": "aad0b0a12256807936d52d4a6f88a1773236ae527564a688bab4e3fe780e8724"
+      },
+      {
+        "_path": "Lib/site-packages/argon2_cffi-25.1.0.dist-info/direct_url.json",
+        "path_type": "hardlink",
+        "sha256": "7cc3794d0a4f150aaeafff28a59162fd7b35ac7eb3566dd51c7c0e7217758856",
+        "size_in_bytes": 101,
+        "sha256_in_prefix": "7cc3794d0a4f150aaeafff28a59162fd7b35ac7eb3566dd51c7c0e7217758856"
+      },
+      {
+        "_path": "Lib/site-packages/argon2_cffi-25.1.0.dist-info/licenses/LICENSE",
+        "path_type": "hardlink",
+        "sha256": "b6944d386e87ccf49d9632da083685a4b7624733e686a7fe283dd2d428341d77",
+        "size_in_bytes": 1115,
+        "sha256_in_prefix": "b6944d386e87ccf49d9632da083685a4b7624733e686a7fe283dd2d428341d77"
+      }
+    ]
+  },
+  "link": {
+    "source": "C:\\Users\\jacks\\miniconda3\\pkgs\\argon2-cffi-25.1.0-py312haa95532_0",
+    "type": 1
+  }
+}

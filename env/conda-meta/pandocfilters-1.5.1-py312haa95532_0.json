@@ -1,0 +1,113 @@
+{
+  "name": "pandocfilters",
+  "version": "1.5.1",
+  "build": "py312haa95532_0",
+  "build_number": 0,
+  "channel": "https://repo.anaconda.com/pkgs/main/win-64",
+  "subdir": "win-64",
+  "fn": "pandocfilters-1.5.1-py312haa95532_0.conda",
+  "md5": "67dc7a8c86c22b06c0936aa3dbab1dea",
+  "url": "https://repo.anaconda.com/pkgs/main/win-64/pandocfilters-1.5.1-py312haa95532_0.conda",
+  "sha256": "52293a062dca15cae194ebcec0a4b8b651d027d52145ca39cc11d7830c806f33",
+  "depends": [
+    "python >=3.12,<3.13.0a0"
+  ],
+  "constrains": [],
+  "license": "BSD-3-Clause",
+  "timestamp": 1756977656000,
+  "size": 17495,
+  "requested_spec": "None",
+  "package_tarball_full_path": "C:\\Users\\jacks\\miniconda3\\pkgs\\pandocfilters-1.5.1-py312haa95532_0.conda",
+  "extracted_package_dir": "C:\\Users\\jacks\\miniconda3\\pkgs\\pandocfilters-1.5.1-py312haa95532_0",
+  "files": [
+    "Lib/site-packages/__pycache__/pandocfilters.cpython-312.pyc",
+    "Lib/site-packages/pandocfilters-1.5.1.dist-info/INSTALLER",
+    "Lib/site-packages/pandocfilters-1.5.1.dist-info/METADATA",
+    "Lib/site-packages/pandocfilters-1.5.1.dist-info/RECORD",
+    "Lib/site-packages/pandocfilters-1.5.1.dist-info/REQUESTED",
+    "Lib/site-packages/pandocfilters-1.5.1.dist-info/WHEEL",
+    "Lib/site-packages/pandocfilters-1.5.1.dist-info/direct_url.json",
+    "Lib/site-packages/pandocfilters-1.5.1.dist-info/licenses/LICENSE",
+    "Lib/site-packages/pandocfilters-1.5.1.dist-info/top_level.txt",
+    "Lib/site-packages/pandocfilters.py"
+  ],
+  "paths_data": {
+    "paths_version": 1,
+    "paths": [
+      {
+        "_path": "Lib/site-packages/__pycache__/pandocfilters.cpython-312.pyc",
+        "path_type": "hardlink",
+        "sha256": "012e25fcd88be75f828b71b478fcf2e88c3d0be596c9d26854bae5707bd47d1b",
+        "size_in_bytes": 12109,
+        "sha256_in_prefix": "012e25fcd88be75f828b71b478fcf2e88c3d0be596c9d26854bae5707bd47d1b"
+      },
+      {
+        "_path": "Lib/site-packages/pandocfilters-1.5.1.dist-info/INSTALLER",
+        "path_type": "hardlink",
+        "sha256": "d0edee15f91b406f3f99726e44eb990be6e34fd0345b52b910c568e0eef6a2a8",
+        "size_in_bytes": 5,
+        "sha256_in_prefix": "d0edee15f91b406f3f99726e44eb990be6e34fd0345b52b910c568e0eef6a2a8"
+      },
+      {
+        "_path": "Lib/site-packages/pandocfilters-1.5.1.dist-info/METADATA",
+        "path_type": "hardlink",
+        "sha256": "0ca59ce17215295b9e42ea5eb7a3e926f7408e84e64bac42baf859735d0be49e",
+        "size_in_bytes": 9451,
+        "sha256_in_prefix": "0ca59ce17215295b9e42ea5eb7a3e926f7408e84e64bac42baf859735d0be49e"
+      },
+      {
+        "_path": "Lib/site-packages/pandocfilters-1.5.1.dist-info/RECORD",
+        "path_type": "hardlink",
+        "sha256": "cff91102cc6110e6903f0d1aa5177574058e457edc450689a7085bec381cfc51",
+        "size_in_bytes": 839,
+        "sha256_in_prefix": "cff91102cc6110e6903f0d1aa5177574058e457edc450689a7085bec381cfc51"
+      },
+      {
+        "_path": "Lib/site-packages/pandocfilters-1.5.1.dist-info/REQUESTED",
+        "path_type": "hardlink",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_in_bytes": 0,
+        "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "_path": "Lib/site-packages/pandocfilters-1.5.1.dist-info/WHEEL",
+        "path_type": "hardlink",
+        "sha256": "ef001b648f00d548cdfa3e3e6987faeaa071399d08a32d1037292463935c189a",
+        "size_in_bytes": 109,
+        "sha256_in_prefix": "ef001b648f00d548cdfa3e3e6987faeaa071399d08a32d1037292463935c189a"
+      },
+      {
+        "_path": "Lib/site-packages/pandocfilters-1.5.1.dist-info/direct_url.json",
+        "path_type": "hardlink",
+        "sha256": "ef6f8a758890aba22d6fed916b11de9a5239839366ea6b58f37678f1a4d4a2db",
+        "size_in_bytes": 91,
+        "sha256_in_prefix": "ef6f8a758890aba22d6fed916b11de9a5239839366ea6b58f37678f1a4d4a2db"
+      },
+      {
+        "_path": "Lib/site-packages/pandocfilters-1.5.1.dist-info/licenses/LICENSE",
+        "path_type": "hardlink",
+        "sha256": "56766ce9972a533fcf67330f1abbeb414e153c7e58c27dc54441bc0fafa81492",
+        "size_in_bytes": 1496,
+        "sha256_in_prefix": "56766ce9972a533fcf67330f1abbeb414e153c7e58c27dc54441bc0fafa81492"
+      },
+      {
+        "_path": "Lib/site-packages/pandocfilters-1.5.1.dist-info/top_level.txt",
+        "path_type": "hardlink",
+        "sha256": "87b8354e84563a696aadf8c4117127025462b410050e8abc988fab34e09263ff",
+        "size_in_bytes": 14,
+        "sha256_in_prefix": "87b8354e84563a696aadf8c4117127025462b410050e8abc988fab34e09263ff"
+      },
+      {
+        "_path": "Lib/site-packages/pandocfilters.py",
+        "path_type": "hardlink",
+        "sha256": "76a0d3fe5224b213f26d80974193675cab97aec081c775fc228f4dcd9bdcf026",
+        "size_in_bytes": 9070,
+        "sha256_in_prefix": "76a0d3fe5224b213f26d80974193675cab97aec081c775fc228f4dcd9bdcf026"
+      }
+    ]
+  },
+  "link": {
+    "source": "C:\\Users\\jacks\\miniconda3\\pkgs\\pandocfilters-1.5.1-py312haa95532_0",
+    "type": 1
+  }
+}

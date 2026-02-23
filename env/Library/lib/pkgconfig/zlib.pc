@@ -1,0 +1,13 @@
+prefix=D:/finance_tracker/env/Library
+exec_prefix=D:/finance_tracker/env/Library
+libdir=D:/finance_tracker/env/Library/lib
+sharedlibdir=D:/finance_tracker/env/Library/lib
+includedir=D:/finance_tracker/env/Library/include
+
+Name: zlib
+Description: zlib compression library
+Version: 1.3.1
+
+Requires:
+Libs: -L${libdir} -L${sharedlibdir} -lz
+Cflags: -I${includedir}

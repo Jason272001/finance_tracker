@@ -1,0 +1,34 @@
+{
+  "name": "matplotlib",
+  "version": "3.10.8",
+  "build": "py312haa95532_0",
+  "build_number": 0,
+  "channel": "https://repo.anaconda.com/pkgs/main/win-64",
+  "subdir": "win-64",
+  "fn": "matplotlib-3.10.8-py312haa95532_0.conda",
+  "md5": "b8c6d59a4ffe0a6998c4e90cad402dad",
+  "url": "https://repo.anaconda.com/pkgs/main/win-64/matplotlib-3.10.8-py312haa95532_0.conda",
+  "sha256": "de094384d8f41840a5226bc6cd000aeff8a0394a5552c53331396244b5b2126b",
+  "depends": [
+    "matplotlib-base >=3.10.8,<3.10.9.0a0",
+    "pyqt >=5",
+    "python >=3.12,<3.13.0a0",
+    "tornado >=5"
+  ],
+  "constrains": [],
+  "license": "LicenseRef-PSF-based",
+  "timestamp": 1768297007000,
+  "size": 6713,
+  "requested_spec": "matplotlib",
+  "package_tarball_full_path": "C:\\Users\\jacks\\miniconda3\\pkgs\\matplotlib-3.10.8-py312haa95532_0.conda",
+  "extracted_package_dir": "C:\\Users\\jacks\\miniconda3\\pkgs\\matplotlib-3.10.8-py312haa95532_0",
+  "files": [],
+  "paths_data": {
+    "paths_version": 1,
+    "paths": []
+  },
+  "link": {
+    "source": "C:\\Users\\jacks\\miniconda3\\pkgs\\matplotlib-3.10.8-py312haa95532_0",
+    "type": 1
+  }
+}

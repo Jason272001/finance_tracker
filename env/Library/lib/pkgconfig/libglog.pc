@@ -1,0 +1,10 @@
+prefix=D:/finance_tracker/env/Library
+exec_prefix=D:/finance_tracker/env/Library/bin
+libdir=D:/finance_tracker/env/Library/lib
+includedir=D:/finance_tracker/env/Library/include
+
+Name: libglog
+Description: Google Log (glog) C++ logging framework
+Version: 0.5.0
+Libs: -L${libdir} -lglog
+Cflags: -I${includedir}

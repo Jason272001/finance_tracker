@@ -1,0 +1,11 @@
+prefix=D:/finance_tracker/env/Library
+includedir=${prefix}/include
+libdir=${prefix}/lib
+
+Name: libpgtypes
+Description: PostgreSQL libpgtypes library
+URL: https://www.postgresql.org/
+Version: 17.6
+Libs: -L${libdir} -lpgtypes
+Libs.private: -lws2_32 -L${libdir} -lpgport D:/finance_tracker/env/Library/lib/libcrypto.lib D:/finance_tracker/env/Library/lib/libssl.lib -lpgcommon D:/finance_tracker/env/Library/lib/z.lib D:/finance_tracker/env/Library/lib/zstd.lib D:/finance_tracker/env/Library/lib/libcrypto.lib D:/finance_tracker/env/Library/lib/libssl.lib D:/finance_tracker/env/Library/lib/z.lib D:/finance_tracker/env/Library/lib/zstd.lib D:/finance_tracker/env/Library/lib/z.lib D:/finance_tracker/env/Library/lib/zstd.lib D:/finance_tracker/env/Library/lib/z.lib D:/finance_tracker/env/Library/lib/zstd.lib D:/finance_tracker/env/Library/lib/z.lib D:/finance_tracker/env/Library/lib/zstd.lib
+Cflags: -I${includedir}
