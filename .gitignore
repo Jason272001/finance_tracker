@@ -1,0 +1,10 @@
+env/
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
+
+# Local app data and secrets
+data/users.csv
+data/transactions.csv
+data/accounts.csv
+data/daily_balances.csv
