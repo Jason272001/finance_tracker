@@ -2,7 +2,10 @@ import os
 import hmac
 import hashlib
 import pandas as pd
+import tempfile
+import time
 from datetime import datetime
+from contextlib import contextmanager
 # ---------------------------
 # Paths
 # ---------------------------
@@ -12,6 +15,7 @@ USERS_CSV = os.path.join(DATA_DIR, "users.csv")
 T_PATH=os.path.join(DATA_DIR,"transactions.csv")
 A_PATH=os.path.join(DATA_DIR,"accounts.csv")
 D_PATH=os.path.join(DATA_DIR,"daily_balances.csv")
+C_PATH=os.path.join(DATA_DIR,"category.csv")
 PW_SCHEME = "pbkdf2_sha256"
 PW_ITERATIONS = 210000
 # ---------------------------
@@ -33,6 +37,67 @@ def _load_users():
         )
 
     return df
+
+
+def _atomic_write_csv(path, df):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(prefix=".tmp_", suffix=".csv", dir=os.path.dirname(path))
+    try:
+        os.close(fd)
+        df.to_csv(tmp_path, index=False)
+        # Windows can transiently deny replace if destination is briefly in use.
+        last_err = None
+        for i in range(12):
+            try:
+                os.replace(tmp_path, path)
+                last_err = None
+                break
+            except PermissionError as e:
+                last_err = e
+                time.sleep(0.03 * (i + 1))
+        if last_err is not None:
+            raise last_err
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+
+
+@contextmanager
+def _file_lock(path, timeout=5.0):
+    lock_path = f"{path}.lock"
+    start = time.time()
+    fd = None
+    while True:
+        try:
+            fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_RDWR)
+            break
+        except FileExistsError:
+            # Cleanup stale lock files older than 60 seconds.
+            try:
+                age = time.time() - os.path.getmtime(lock_path)
+                if age > 60:
+                    os.remove(lock_path)
+                    continue
+            except Exception:
+                pass
+            if time.time() - start >= timeout:
+                raise TimeoutError(f"Timed out waiting for lock: {lock_path}")
+            time.sleep(0.05)
+    try:
+        yield
+    finally:
+        if fd is not None:
+            try:
+                os.close(fd)
+            except Exception:
+                pass
+        try:
+            os.remove(lock_path)
+        except Exception:
+            pass
 
 
 def _hash_password(password, salt_hex=None):
@@ -77,17 +142,28 @@ def _verify_password(stored_password, provided_password):
 # ---------------------------
 
 class User:
+    _login_attempts = {}
 
     def __init__(self):
         self.uid = None
         self.name = None
 
     def login(self, name, pw):
-        u = _load_users()
         name_s = str(name)
+        key = name_s.strip().lower()
+        now_ts = time.time()
+        rec = self._login_attempts.get(key, {"count": 0, "until": 0.0})
+        if now_ts < rec["until"]:
+            return False
+
+        u = _load_users()
         candidates = u[u["name"].astype(str) == name_s]
 
         if candidates.empty:
+            rec["count"] += 1
+            if rec["count"] >= 5:
+                rec["until"] = now_ts + min(300, 2 ** (rec["count"] - 5))
+            self._login_attempts[key] = rec
             return False
 
         for idx, row in candidates.iterrows():
@@ -97,15 +173,52 @@ class User:
 
             self.uid = int(row["user_id"])
             self.name = str(row["name"])
+            self._login_attempts.pop(key, None)
 
             if needs_upgrade:
                 # Opportunistically migrate plaintext passwords on successful login.
-                u.at[idx, "password"] = _hash_password(pw)
-                u.to_csv(USERS_CSV, index=False)
+                with _file_lock(USERS_CSV):
+                    u2 = _load_users()
+                    hit = u2.index[
+                        (pd.to_numeric(u2["user_id"], errors="coerce") == int(self.uid))
+                        & (u2["name"].astype(str) == self.name)
+                    ]
+                    if len(hit) > 0:
+                        u2.at[hit[0], "password"] = _hash_password(pw)
+                        _atomic_write_csv(USERS_CSV, u2)
 
             return True
 
+        rec["count"] += 1
+        if rec["count"] >= 5:
+            rec["until"] = now_ts + min(300, 2 ** (rec["count"] - 5))
+        self._login_attempts[key] = rec
         return False
+
+    def register(self, name, pw):
+        name_s = str(name).strip()
+        pw_s = str(pw)
+        if not name_s:
+            raise ValueError("Name is required.")
+        if len(pw_s) < 10 or not any(ch.isalpha() for ch in pw_s) or not any(ch.isdigit() for ch in pw_s):
+            raise ValueError("Password must be 10+ chars and include letters and numbers.")
+
+        with _file_lock(USERS_CSV):
+            u = _load_users()
+            existing = u["name"].astype(str).str.strip().str.lower()
+            if (existing == name_s.lower()).any():
+                raise ValueError("User name already exists.")
+
+            uid_col = pd.to_numeric(u["user_id"], errors="coerce").dropna()
+            next_uid = 1 if uid_col.empty else int(uid_col.max()) + 1
+            new_row = {
+                "user_id": int(next_uid),
+                "name": name_s,
+                "password": _hash_password(pw_s),
+            }
+            u = pd.concat([u, pd.DataFrame([new_row])], ignore_index=True)
+            _atomic_write_csv(USERS_CSV, u)
+            return int(next_uid)
 
     def logout(self):
         self.uid = None
@@ -136,7 +249,7 @@ class Transaction:
         return df[self.cols]
 
     def _save(self, df):
-        df.to_csv(self.path, index=False)
+        _atomic_write_csv(self.path, df)
 
     def _normalize(self, df):
         df = df.copy()
@@ -151,6 +264,109 @@ class Transaction:
 
         s = pd.to_numeric(df["txn_id"], errors="coerce").dropna()
         return 1 if s.empty else int(s.max()) + 1
+
+    def _signed_delta(self, t_type, amount, user_id=None, account_id=None):
+        t = str(t_type).strip().lower()
+        a = float(amount)
+        if t not in {"income", "expense"}:
+            return 0.0
+
+        if self._is_credit_account(user_id, account_id):
+            # Credit account balance represents debt.
+            return a if t == "expense" else -a
+        return a if t == "income" else -a
+
+    def _is_credit_account(self, user_id, account_id):
+        if user_id is None or account_id is None:
+            return False
+        acc_row = Account().get(int(account_id), user_id=user_id)
+        if not acc_row:
+            return False
+        acc_type = str(acc_row.get("account_type", "")).strip().lower().replace(" ", "_")
+        return acc_type in {"credit", "credit_card"}
+
+    def _is_checking_or_cash_account(self, user_id, account_id):
+        if user_id is None or account_id is None:
+            return False
+        acc_row = Account().get(int(account_id), user_id=user_id)
+        if not acc_row:
+            return False
+        acc_type = str(acc_row.get("account_type", "")).strip().lower().replace(" ", "_")
+        return acc_type in {"checking", "cash", "asset", "saving", "bank"}
+
+    def _find_credit_account_id_by_name(self, user_id, account_name):
+        if user_id is None:
+            return None
+        name = str(account_name).strip().lower()
+        if not name:
+            return None
+        acc_df = Account().by_user(user_id)
+        if acc_df.empty:
+            return None
+        names = acc_df["account_name"].astype(str).str.strip().str.lower()
+        match = acc_df[names == name].copy()
+        if match.empty:
+            return None
+        match["account_type"] = (
+            match["account_type"]
+            .astype(str)
+            .str.strip()
+            .str.lower()
+            .str.replace(" ", "_", regex=False)
+        )
+        hit = match[match["account_type"].isin(["credit", "credit_card"])]
+        if hit.empty:
+            return None
+        return int(hit.iloc[0]["account_id"])
+
+    def _build_postings(self, user_id, t_type, amount, account_id, category):
+        t = str(t_type).strip().lower()
+        cat = str(category).strip()
+        src_account_id = int(account_id)
+        amt = float(amount)
+        if amt == 0:
+            return []
+
+        if t == "income":
+            # Income always increases selected account balance.
+            return [(src_account_id, amt)]
+
+        if t != "expense":
+            return []
+
+        if self._is_credit_account(user_id, src_account_id):
+            # Expense on a credit card increases card debt.
+            return [(src_account_id, amt)]
+
+        postings = [(src_account_id, -amt)]
+
+        # Credit card payment: category text matches a credit account name.
+        if self._is_checking_or_cash_account(user_id, src_account_id):
+            paydown_account_id = self._find_credit_account_id_by_name(user_id, cat)
+            if paydown_account_id is not None and int(paydown_account_id) != src_account_id:
+                postings.append((int(paydown_account_id), -amt))
+        return postings
+
+    def _apply_account_balance_delta(self, user_id, account_id, delta):
+        if user_id is None or account_id is None:
+            return False
+        acc = Account()
+        row = acc.get(int(account_id), user_id=user_id)
+        if not row:
+            return False
+        new_balance = float(row["balance"]) + float(delta)
+        return acc.update(int(account_id), user_id=user_id, balance=new_balance)
+
+    def _apply_postings(self, user_id, postings, reverse=False):
+        factor = -1.0 if reverse else 1.0
+        net = {}
+        for account_id, delta in postings:
+            aid = int(account_id)
+            net[aid] = net.get(aid, 0.0) + (float(delta) * factor)
+        for account_id, delta in net.items():
+            if delta == 0:
+                continue
+            self._apply_account_balance_delta(user_id=user_id, account_id=account_id, delta=delta)
 
     def by_user(self, user_id):
         if user_id is None:
@@ -181,58 +397,105 @@ class Transaction:
         if user_id is None:
             raise ValueError(" Need To login")
 
-        df = self._load()
-        next_id = self._next_id(df)
-        d = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with _file_lock(self.path):
+            df = self._load()
+            next_id = self._next_id(df)
+            d = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            postings = self._build_postings(
+                user_id=user_id,
+                t_type=t_type,
+                amount=amount,
+                account_id=account_id,
+                category=category,
+            )
 
-        new_row = {
-            "txn_id": next_id,
-            "date": d,
-            "type": t_type,
-            "amount": float(amount),
-            "account_id": int(account_id),
-            "category": category,
-            "note": note,
-            "user_id": int(user_id),
-        }
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        self._save(df)
+            new_row = {
+                "txn_id": next_id,
+                "date": d,
+                "type": t_type,
+                "amount": float(amount),
+                "account_id": int(account_id),
+                "category": category,
+                "note": note,
+                "user_id": int(user_id),
+            }
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            self._save(df)
+        self._apply_postings(user_id=user_id, postings=postings, reverse=False)
         return next_id
 
     def update(self, txn_id, user_id=None, **changes):
         if user_id is None:
             return False
-        df = self._load()
-        txn = pd.to_numeric(df["txn_id"], errors="coerce")
-        uid = pd.to_numeric(df["user_id"], errors="coerce")
-        idx = df.index[(txn == int(txn_id)) & (uid == int(user_id))]
-        if len(idx) == 0:
-            return False
+        with _file_lock(self.path):
+            df = self._load()
+            txn = pd.to_numeric(df["txn_id"], errors="coerce")
+            uid = pd.to_numeric(df["user_id"], errors="coerce")
+            idx = df.index[(txn == int(txn_id)) & (uid == int(user_id))]
+            if len(idx) == 0:
+                return False
 
-        i = idx[0]
-        allowed = {"type", "amount", "account_id", "category", "note"}
-        for k, v in changes.items():
-            if k not in allowed:
-                continue
-            if k == "amount":
-                v = float(v)
-            if k == "account_id":
-                v = int(v)
-            df.at[i, k] = v
+            i = idx[0]
+            old_type = str(df.at[i, "type"])
+            old_amount = float(df.at[i, "amount"])
+            old_account_id = int(df.at[i, "account_id"])
+            old_category = str(df.at[i, "category"])
+            old_postings = self._build_postings(
+                user_id=user_id,
+                t_type=old_type,
+                amount=old_amount,
+                account_id=old_account_id,
+                category=old_category,
+            )
+            self._apply_postings(user_id=user_id, postings=old_postings, reverse=True)
 
-        self._save(df)
+            allowed = {"type", "amount", "account_id", "category", "note"}
+            for k, v in changes.items():
+                if k not in allowed:
+                    continue
+                if k == "amount":
+                    v = float(v)
+                if k == "account_id":
+                    v = int(v)
+                df.at[i, k] = v
+
+            new_type = str(df.at[i, "type"])
+            new_amount = float(df.at[i, "amount"])
+            new_account_id = int(df.at[i, "account_id"])
+            new_category = str(df.at[i, "category"])
+            new_postings = self._build_postings(
+                user_id=user_id,
+                t_type=new_type,
+                amount=new_amount,
+                account_id=new_account_id,
+                category=new_category,
+            )
+
+            self._save(df)
+        self._apply_postings(user_id=user_id, postings=new_postings, reverse=False)
         return True
 
     def delete(self, txn_id, user_id=None):
         if user_id is None:
             return False
-        df = self._load()
-        txn = pd.to_numeric(df["txn_id"], errors="coerce")
-        uid = pd.to_numeric(df["user_id"], errors="coerce")
-        out = df[~((txn == int(txn_id)) & (uid == int(user_id)))].copy()
-        if len(out) == len(df):
-            return False
-        self._save(out)
+        with _file_lock(self.path):
+            df = self._load()
+            txn = pd.to_numeric(df["txn_id"], errors="coerce")
+            uid = pd.to_numeric(df["user_id"], errors="coerce")
+            hit = df[(txn == int(txn_id)) & (uid == int(user_id))]
+            if hit.empty:
+                return False
+            r = hit.iloc[0]
+            old_postings = self._build_postings(
+                user_id=user_id,
+                t_type=r["type"],
+                amount=r["amount"],
+                account_id=r["account_id"],
+                category=r["category"],
+            )
+            out = df[~((txn == int(txn_id)) & (uid == int(user_id)))].copy()
+            self._save(out)
+        self._apply_postings(user_id=user_id, postings=old_postings, reverse=True)
         return True
 
 
@@ -253,7 +516,7 @@ class Account:
         return df[self.cols]
 
     def _save(self, df):
-        df.to_csv(self.path, index=False)
+        _atomic_write_csv(self.path, df)
 
     def _normalize(self, df):
         df = df.copy()
@@ -268,6 +531,23 @@ class Account:
         s = pd.to_numeric(df["account_id"], errors="coerce").dropna()
         return 1 if s.empty else int(s.max()) + 1
 
+    def _is_credit_type(self, account_type):
+        v = str(account_type).strip().lower().replace(" ", "_")
+        return v in {"credit", "credit_card"}
+
+    def _is_auto_category_type(self, account_type):
+        v = str(account_type).strip().lower().replace(" ", "_")
+        return v in {"credit", "credit_card", "saving", "savings"}
+
+    def _movement_delta(self, account_type, amount, direction):
+        amt = float(amount)
+        is_credit = self._is_credit_type(account_type)
+        if direction == "out":
+            # Transfer out behaves like an expense for the source account.
+            return amt if is_credit else -amt
+        # Transfer in behaves like an income for the destination account.
+        return -amt if is_credit else amt
+
     def by_user(self, user_id):
         if user_id is None:
             return pd.DataFrame(columns=self.cols)
@@ -281,31 +561,360 @@ class Account:
     def add(self, account_name, account_type, group_name, balance=0.0, user_id=None):
         if user_id is None:
             raise ValueError("Need to login")
-        df = self._load()
-        next_id = self._next_id(df)
-        new_row = {
-            "account_id": next_id,
-            "account_name": str(account_name),
-            "account_type": str(account_type),
-            "group": str(group_name),
-            "user_id": int(user_id),
-            "balance": float(balance),
-        }
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        self._save(df)
+        with _file_lock(self.path):
+            df = self._load()
+            next_id = self._next_id(df)
+            new_row = {
+                "account_id": next_id,
+                "account_name": str(account_name),
+                "account_type": str(account_type),
+                "group": str(group_name),
+                "user_id": int(user_id),
+                "balance": float(balance),
+            }
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            self._save(df)
+        if self._is_auto_category_type(account_type):
+            Category().upsert_auto_credit_category(
+                user_id=int(user_id),
+                linked_account_id=int(next_id),
+                category_name=str(account_name),
+            )
         return next_id
+
+    def get(self, account_id, user_id=None):
+        if user_id is None:
+            return None
+        df = self._normalize(self._load())
+        hit = df[
+            (df["account_id"] == int(account_id)) &
+            (df["user_id"] == int(user_id))
+        ]
+        if hit.empty:
+            return None
+        r = hit.iloc[0].to_dict()
+        r["account_id"] = int(r["account_id"])
+        r["balance"] = float(r["balance"]) if pd.notna(r["balance"]) else 0.0
+        return r
+
+    def update(self, account_id, user_id=None, **changes):
+        if user_id is None:
+            return False
+        with _file_lock(self.path):
+            before = self.get(account_id, user_id=user_id)
+            if not before:
+                return False
+            df = self._load()
+            aid = pd.to_numeric(df["account_id"], errors="coerce")
+            uid = pd.to_numeric(df["user_id"], errors="coerce")
+            idx = df.index[(aid == int(account_id)) & (uid == int(user_id))]
+            if len(idx) == 0:
+                return False
+
+            i = idx[0]
+            allowed = {"account_name", "account_type", "group", "balance"}
+            for k, v in changes.items():
+                if k not in allowed:
+                    continue
+                if k == "balance":
+                    v = float(v)
+                df.at[i, k] = v
+
+            self._save(df)
+            after = self.get(account_id, user_id=user_id)
+            if not after:
+                return False
+        cat = Category()
+        if self._is_auto_category_type(after["account_type"]):
+            cat.upsert_auto_credit_category(
+                user_id=int(user_id),
+                linked_account_id=int(account_id),
+                category_name=str(after["account_name"]),
+            )
+        else:
+            cat.delete_auto_credit_category(
+                user_id=int(user_id),
+                linked_account_id=int(account_id),
+            )
+        return True
 
     def delete(self, account_id, user_id=None):
         if user_id is None:
             return False
-        df = self._load()
-        aid = pd.to_numeric(df["account_id"], errors="coerce")
-        uid = pd.to_numeric(df["user_id"], errors="coerce")
-        out = df[~((aid == int(account_id)) & (uid == int(user_id)))].copy()
-        if len(out) == len(df):
-            return False
-        self._save(out)
+        with _file_lock(self.path):
+            df = self._load()
+            aid = pd.to_numeric(df["account_id"], errors="coerce")
+            uid = pd.to_numeric(df["user_id"], errors="coerce")
+            out = df[~((aid == int(account_id)) & (uid == int(user_id)))].copy()
+            if len(out) == len(df):
+                return False
+            self._save(out)
+        Category().delete_auto_credit_category(
+            user_id=int(user_id),
+            linked_account_id=int(account_id),
+        )
         return True
+
+    def transfer(self, from_account_id, to_account_id, amount, user_id=None):
+        if user_id is None:
+            return False
+        if int(from_account_id) == int(to_account_id):
+            return False
+        amt = float(amount)
+        if amt <= 0:
+            return False
+
+        with _file_lock(self.path):
+            df = self._load()
+            ndf = self._normalize(df)
+            aid = pd.to_numeric(ndf["account_id"], errors="coerce")
+            uid = pd.to_numeric(ndf["user_id"], errors="coerce")
+            from_idx = ndf.index[(aid == int(from_account_id)) & (uid == int(user_id))]
+            to_idx = ndf.index[(aid == int(to_account_id)) & (uid == int(user_id))]
+            if len(from_idx) == 0 or len(to_idx) == 0:
+                return False
+
+            i_from = from_idx[0]
+            i_to = to_idx[0]
+
+            from_type = str(df.at[i_from, "account_type"])
+            to_type = str(df.at[i_to, "account_type"])
+            from_balance = float(ndf.at[i_from, "balance"]) if pd.notna(ndf.at[i_from, "balance"]) else 0.0
+            to_balance = float(ndf.at[i_to, "balance"]) if pd.notna(ndf.at[i_to, "balance"]) else 0.0
+
+            df.at[i_from, "balance"] = from_balance + self._movement_delta(from_type, amt, "out")
+            df.at[i_to, "balance"] = to_balance + self._movement_delta(to_type, amt, "in")
+            self._save(df)
+        return True
+
+
+class Category:
+    cols = ["category_id", "category_name", "user_id", "is_auto", "linked_account_id"]
+    default_categories = [
+        "Uber", "Job", "Gift",
+        "Gas", "Food", "Rent", "Electric Bill", "Phone Bill", "Internet Bill", "Fish",
+        "Shopping", "Half and Half", "Insurance", "Other",
+    ]
+
+    def __init__(self, path=C_PATH):
+        self.path = path
+        os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        if not os.path.exists(self.path):
+            pd.DataFrame(columns=self.cols).to_csv(self.path, index=False)
+
+    def _load(self):
+        df = pd.read_csv(self.path)
+        for c in self.cols:
+            if c not in df.columns:
+                df[c] = ""
+        return df[self.cols]
+
+    def _save(self, df):
+        _atomic_write_csv(self.path, df)
+
+    def _normalize(self, df):
+        out = df.copy()
+        out["category_id"] = pd.to_numeric(out["category_id"], errors="coerce")
+        out["user_id"] = pd.to_numeric(out["user_id"], errors="coerce")
+        out["linked_account_id"] = pd.to_numeric(out["linked_account_id"], errors="coerce")
+        out["is_auto"] = out["is_auto"].astype(str).str.lower().isin(["1", "true", "yes"])
+        return out
+
+    def _next_id(self, df):
+        if df.empty:
+            return 1
+        s = pd.to_numeric(df["category_id"], errors="coerce").dropna()
+        return 1 if s.empty else int(s.max()) + 1
+
+    def by_user(self, user_id):
+        if user_id is None:
+            return pd.DataFrame(columns=self.cols)
+        df = self._normalize(self._load())
+        out = df[df["user_id"] == int(user_id)].copy()
+        out = out[out["category_id"].notna()].copy()
+        out["category_id"] = out["category_id"].astype(int)
+        out["linked_account_id"] = out["linked_account_id"].fillna(0).astype(int)
+        out["is_auto"] = out["is_auto"].astype(bool)
+        return out
+
+    def _name_exists(self, user_id, category_name, exclude_category_id=None):
+        df = self.by_user(user_id)
+        if df.empty:
+            return False
+        names = df["category_name"].astype(str).str.strip().str.lower()
+        key = str(category_name).strip().lower()
+        if exclude_category_id is not None:
+            df = df[df["category_id"] != int(exclude_category_id)].copy()
+            names = df["category_name"].astype(str).str.strip().str.lower()
+        return (names == key).any()
+
+    def add(self, category_name, user_id=None, is_auto=False, linked_account_id=None):
+        if user_id is None:
+            raise ValueError("Need to login")
+        name = str(category_name).strip()
+        if not name:
+            raise ValueError("Category name is required.")
+        with _file_lock(self.path):
+            if self._name_exists(user_id, name):
+                raise ValueError("Category name already exists.")
+            df = self._load()
+            next_id = self._next_id(df)
+            new_row = {
+                "category_id": int(next_id),
+                "category_name": name,
+                "user_id": int(user_id),
+                "is_auto": bool(is_auto),
+                "linked_account_id": "" if linked_account_id in (None, "") else int(linked_account_id),
+            }
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            self._save(df)
+            return int(next_id)
+
+    def get(self, category_id, user_id=None):
+        if user_id is None:
+            return None
+        df = self.by_user(user_id)
+        hit = df[df["category_id"] == int(category_id)]
+        if hit.empty:
+            return None
+        r = hit.iloc[0].to_dict()
+        r["category_id"] = int(r["category_id"])
+        r["user_id"] = int(r["user_id"])
+        r["is_auto"] = bool(r["is_auto"])
+        r["linked_account_id"] = int(r["linked_account_id"]) if pd.notna(r["linked_account_id"]) else 0
+        return r
+
+    def update(self, category_id, user_id=None, **changes):
+        if user_id is None:
+            return False
+        with _file_lock(self.path):
+            df = self._load()
+            ndf = self._normalize(df)
+            cid = pd.to_numeric(ndf["category_id"], errors="coerce")
+            uid = pd.to_numeric(ndf["user_id"], errors="coerce")
+            idx = ndf.index[(cid == int(category_id)) & (uid == int(user_id))]
+            if len(idx) == 0:
+                return False
+            i = idx[0]
+            if bool(ndf.at[i, "is_auto"]):
+                return False
+            if "category_name" in changes:
+                name = str(changes["category_name"]).strip()
+                if not name:
+                    return False
+                if self._name_exists(user_id, name, exclude_category_id=category_id):
+                    return False
+                df.at[i, "category_name"] = name
+            self._save(df)
+            return True
+
+    def delete(self, category_id, user_id=None):
+        if user_id is None:
+            return False
+        with _file_lock(self.path):
+            df = self._load()
+            ndf = self._normalize(df)
+            cid = pd.to_numeric(ndf["category_id"], errors="coerce")
+            uid = pd.to_numeric(ndf["user_id"], errors="coerce")
+            idx = ndf.index[(cid == int(category_id)) & (uid == int(user_id))]
+            if len(idx) == 0:
+                return False
+            i = idx[0]
+            if bool(ndf.at[i, "is_auto"]):
+                return False
+            out = df.drop(index=i).copy()
+            self._save(out)
+            return True
+
+    def upsert_auto_credit_category(self, user_id, linked_account_id, category_name):
+        with _file_lock(self.path):
+            df = self._load()
+            ndf = self._normalize(df)
+            uid = pd.to_numeric(ndf["user_id"], errors="coerce")
+            aid = pd.to_numeric(ndf["linked_account_id"], errors="coerce")
+            auto = ndf["is_auto"] == True
+            idx = ndf.index[(uid == int(user_id)) & (aid == int(linked_account_id)) & auto]
+            if len(idx) > 0:
+                i = idx[0]
+                df.at[i, "category_name"] = str(category_name)
+                df.at[i, "is_auto"] = True
+                df.at[i, "linked_account_id"] = int(linked_account_id)
+                df.at[i, "user_id"] = int(user_id)
+                self._save(df)
+                return int(df.at[i, "category_id"])
+
+            next_id = self._next_id(df)
+            new_row = {
+                "category_id": int(next_id),
+                "category_name": str(category_name),
+                "user_id": int(user_id),
+                "is_auto": True,
+                "linked_account_id": int(linked_account_id),
+            }
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            self._save(df)
+            return int(next_id)
+
+    def delete_auto_credit_category(self, user_id, linked_account_id):
+        with _file_lock(self.path):
+            df = self._load()
+            ndf = self._normalize(df)
+            uid = pd.to_numeric(ndf["user_id"], errors="coerce")
+            aid = pd.to_numeric(ndf["linked_account_id"], errors="coerce")
+            auto = ndf["is_auto"] == True
+            out = df[~((uid == int(user_id)) & (aid == int(linked_account_id)) & auto)].copy()
+            if len(out) == len(df):
+                return False
+            self._save(out)
+            return True
+
+    def sync_auto_from_accounts(self, user_id):
+        if user_id is None:
+            return
+        acc_df = Account().by_user(user_id)
+        if acc_df.empty:
+            return
+        for _, r in acc_df.iterrows():
+            account_type = str(r["account_type"]).strip().lower().replace(" ", "_")
+            account_id = int(r["account_id"])
+            if account_type in {"credit", "credit_card", "saving", "savings"}:
+                self.upsert_auto_credit_category(
+                    user_id=int(user_id),
+                    linked_account_id=account_id,
+                    category_name=str(r["account_name"]),
+                )
+            else:
+                self.delete_auto_credit_category(
+                    user_id=int(user_id),
+                    linked_account_id=account_id,
+                )
+
+    def ensure_default_categories(self, user_id):
+        if user_id is None:
+            return
+        with _file_lock(self.path):
+            df = self._load()
+            ndf = self._normalize(df)
+            u = ndf[ndf["user_id"] == int(user_id)].copy()
+            existing_names = set(u["category_name"].astype(str).str.strip().str.lower().tolist())
+            rows = []
+            next_id = self._next_id(df)
+            for name in self.default_categories:
+                key = str(name).strip().lower()
+                if key in existing_names:
+                    continue
+                rows.append({
+                    "category_id": int(next_id),
+                    "category_name": str(name),
+                    "user_id": int(user_id),
+                    "is_auto": False,
+                    "linked_account_id": "",
+                })
+                next_id += 1
+
+            if rows:
+                df = pd.concat([df, pd.DataFrame(rows)], ignore_index=True)
+                self._save(df)
 
 
 class DailyBalance:
@@ -325,7 +934,7 @@ class DailyBalance:
         return df[self.cols]
 
     def _save(self, df):
-        df.to_csv(self.path, index=False)
+        _atomic_write_csv(self.path, df)
 
     def _normalize(self, df):
         df = df.copy()
@@ -352,33 +961,114 @@ class DailyBalance:
         out["balance"] = out["balance"].fillna(0.0).astype(float)
         return out
 
+    def auto_snapshot_from_accounts(self, user_id, accounts_df=None, date_value=None, type_name="auto_eod"):
+        if user_id is None:
+            return 0
+        date_s = str(date_value) if date_value else datetime.now().strftime("%Y-%m-%d")
+        acc_df = accounts_df if accounts_df is not None else Account().by_user(user_id)
+        if acc_df is None or acc_df.empty:
+            return 0
+        with _file_lock(self.path):
+            db_df = self._load()
+            db_norm = self._normalize(db_df)
+            existing = db_norm[
+                (db_norm["user_id"] == int(user_id)) &
+                (db_norm["date"].astype(str) == date_s)
+            ].copy()
+            existing_ids = set(pd.to_numeric(existing["account_id"], errors="coerce").dropna().astype(int).tolist())
+
+            next_id = self._next_id(db_df)
+            rows = []
+            for _, r in acc_df.iterrows():
+                aid = int(r["account_id"])
+                if aid in existing_ids:
+                    continue
+                bal = float(pd.to_numeric(pd.Series([r["balance"]]), errors="coerce").fillna(0.0).iloc[0])
+                rows.append({
+                    "dailyB_id": int(next_id),
+                    "date": date_s,
+                    "account_id": aid,
+                    "balance": bal,
+                    "type": str(type_name),
+                    "user_id": int(user_id),
+                })
+                next_id += 1
+
+            if rows:
+                db_df = pd.concat([db_df, pd.DataFrame(rows)], ignore_index=True)
+                self._save(db_df)
+            return len(rows)
+
     def add(self, account_id, balance, type_name, user_id=None, date_value=None):
         if user_id is None:
             raise ValueError("Need to login")
-        df = self._load()
-        next_id = self._next_id(df)
-        date_s = str(date_value) if date_value else datetime.now().strftime("%Y-%m-%d")
-        new_row = {
-            "dailyB_id": next_id,
-            "date": date_s,
-            "account_id": int(account_id),
-            "balance": float(balance),
-            "type": str(type_name),
-            "user_id": int(user_id),
-        }
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        self._save(df)
-        return next_id
+        with _file_lock(self.path):
+            df = self._load()
+            next_id = self._next_id(df)
+            date_s = str(date_value) if date_value else datetime.now().strftime("%Y-%m-%d")
+            new_row = {
+                "dailyB_id": next_id,
+                "date": date_s,
+                "account_id": int(account_id),
+                "balance": float(balance),
+                "type": str(type_name),
+                "user_id": int(user_id),
+            }
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            self._save(df)
+            return next_id
+
+    def get(self, dailyb_id, user_id=None):
+        if user_id is None:
+            return None
+        df = self._normalize(self._load())
+        hit = df[
+            (df["dailyB_id"] == int(dailyb_id)) &
+            (df["user_id"] == int(user_id))
+        ]
+        if hit.empty:
+            return None
+        r = hit.iloc[0].to_dict()
+        r["dailyB_id"] = int(r["dailyB_id"])
+        r["account_id"] = int(r["account_id"]) if pd.notna(r["account_id"]) else 0
+        r["balance"] = float(r["balance"]) if pd.notna(r["balance"]) else 0.0
+        return r
+
+    def update(self, dailyb_id, user_id=None, **changes):
+        if user_id is None:
+            return False
+        with _file_lock(self.path):
+            df = self._load()
+            did = pd.to_numeric(df["dailyB_id"], errors="coerce")
+            uid = pd.to_numeric(df["user_id"], errors="coerce")
+            idx = df.index[(did == int(dailyb_id)) & (uid == int(user_id))]
+            if len(idx) == 0:
+                return False
+
+            i = idx[0]
+            allowed = {"date", "account_id", "balance", "type"}
+            for k, v in changes.items():
+                if k not in allowed:
+                    continue
+                if k == "account_id":
+                    v = int(v)
+                if k == "balance":
+                    v = float(v)
+                df.at[i, k] = v
+
+            self._save(df)
+            return True
 
     def delete(self, dailyb_id, user_id=None):
         if user_id is None:
             return False
-        df = self._load()
-        did = pd.to_numeric(df["dailyB_id"], errors="coerce")
-        uid = pd.to_numeric(df["user_id"], errors="coerce")
-        out = df[~((did == int(dailyb_id)) & (uid == int(user_id)))].copy()
-        if len(out) == len(df):
-            return False
-        self._save(out)
-        return True
+        with _file_lock(self.path):
+            df = self._load()
+            did = pd.to_numeric(df["dailyB_id"], errors="coerce")
+            uid = pd.to_numeric(df["user_id"], errors="coerce")
+            out = df[~((did == int(dailyb_id)) & (uid == int(user_id)))].copy()
+            if len(out) == len(df):
+                return False
+            self._save(out)
+            return True
 

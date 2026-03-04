@@ -1,0 +1,23 @@
+category_id,category_name,user_id,is_auto,linked_account_id
+1,Chase Credit Card,1,True,5.0
+2,Capital One Credit Card,1,True,6.0
+3,Credit One Credit Card,1,True,7.0
+4,Montery,1,True,8.0
+5,GF,1,True,9.0
+6,Affirm,1,True,10.0
+7,Uber,1,False,
+8,Job,1,False,
+9,Gift,1,False,
+10,Gas,1,False,
+11,Food,1,False,
+12,Rent,1,False,
+13,Electric Bill,1,False,
+14,Phone Bill,1,False,
+15,Internet Bill,1,False,
+16,Fish,1,False,
+17,Shopping,1,False,
+18,Half and Half,1,False,
+19,Insurance,1,False,
+20,Other,1,False,
+21,Roth IRA,1,True,3.0
+22,BOA Checcking,1,True,4.0
