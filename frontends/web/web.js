@@ -221,7 +221,6 @@ async function deleteAccount(acc) {
         method: "DELETE",
       });
     } catch (e) {
-      if (!String(errMessage(e)).includes("Failed to fetch")) throw e;
       await api(`/accounts/${acc.account_id}/delete?user_id=${state.userId}`, {
         method: "POST",
       });
@@ -281,7 +280,6 @@ async function deleteTransaction(tx) {
         method: "DELETE",
       });
     } catch (e) {
-      if (!String(errMessage(e)).includes("Failed to fetch")) throw e;
       await api(`/transactions/${tx.txn_id}/delete?user_id=${state.userId}`, {
         method: "POST",
       });

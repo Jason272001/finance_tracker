@@ -356,9 +356,7 @@ def list_transactions(request: Request, user_id: int, authorization: Optional[st
 def create_transaction(body: TxCreateBody, request: Request, authorization: Optional[str] = Header(default=None)):
     _require_user(request, authorization, body.user_id)
     try:
-        dt = body.date or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         txn_id = Transaction().add(
-            data=dt,
             t_type=body.tx_type,
             amount=body.amount,
             account_id=body.account_id,

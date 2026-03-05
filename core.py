@@ -1,6 +1,7 @@
 import os
 import hmac
 import hashlib
+import math
 import pandas as pd
 import tempfile
 import time
@@ -441,8 +442,16 @@ class Transaction:
     def _build_postings(self, user_id, t_type, amount, account_id, category):
         t = str(t_type).strip().lower()
         cat = str(category).strip()
-        src_account_id = int(account_id)
-        amt = float(amount)
+        try:
+            src_account_id = int(float(account_id))
+        except Exception:
+            return []
+        try:
+            amt = float(amount)
+        except Exception:
+            return []
+        if not math.isfinite(amt):
+            return []
         if amt == 0:
             return []
 
