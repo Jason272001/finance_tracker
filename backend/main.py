@@ -328,6 +328,21 @@ def delete_account(
     return {"ok": True}
 
 
+@app.post("/accounts/{account_id}/delete")
+def delete_account_post(
+    account_id: int,
+    request: Request,
+    user_id: int,
+    authorization: Optional[str] = Header(default=None),
+):
+    return delete_account(
+        account_id=account_id,
+        request=request,
+        user_id=user_id,
+        authorization=authorization,
+    )
+
+
 @app.get("/transactions")
 def list_transactions(request: Request, user_id: int, authorization: Optional[str] = Header(default=None)):
     _require_user(request, authorization, user_id)
@@ -395,6 +410,21 @@ def delete_transaction(
     if not ok:
         raise HTTPException(status_code=404, detail="Transaction not found")
     return {"ok": True}
+
+
+@app.post("/transactions/{txn_id}/delete")
+def delete_transaction_post(
+    txn_id: int,
+    request: Request,
+    user_id: int,
+    authorization: Optional[str] = Header(default=None),
+):
+    return delete_transaction(
+        txn_id=txn_id,
+        request=request,
+        user_id=user_id,
+        authorization=authorization,
+    )
 
 
 @app.get("/categories")

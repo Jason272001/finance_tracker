@@ -211,9 +211,16 @@ async function deleteAccount(acc) {
   const ok = confirm(`Delete account "${acc.account_name}"?`);
   if (!ok) return;
   try {
-    await api(`/accounts/${acc.account_id}?user_id=${state.userId}`, {
-      method: "DELETE",
-    });
+    try {
+      await api(`/accounts/${acc.account_id}?user_id=${state.userId}`, {
+        method: "DELETE",
+      });
+    } catch (e) {
+      if (!String(errMessage(e)).includes("Failed to fetch")) throw e;
+      await api(`/accounts/${acc.account_id}/delete?user_id=${state.userId}`, {
+        method: "POST",
+      });
+    }
     await refreshAll();
   } catch (e) {
     alert(`Delete account failed: ${errMessage(e)}`);
@@ -264,9 +271,16 @@ async function deleteTransaction(tx) {
   const ok = confirm(`Delete transaction #${tx.txn_id}?`);
   if (!ok) return;
   try {
-    await api(`/transactions/${tx.txn_id}?user_id=${state.userId}`, {
-      method: "DELETE",
-    });
+    try {
+      await api(`/transactions/${tx.txn_id}?user_id=${state.userId}`, {
+        method: "DELETE",
+      });
+    } catch (e) {
+      if (!String(errMessage(e)).includes("Failed to fetch")) throw e;
+      await api(`/transactions/${tx.txn_id}/delete?user_id=${state.userId}`, {
+        method: "POST",
+      });
+    }
     await refreshAll();
   } catch (e) {
     alert(`Delete transaction failed: ${errMessage(e)}`);
