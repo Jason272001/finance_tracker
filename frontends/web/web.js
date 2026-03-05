@@ -1,15 +1,219 @@
 const $ = (id) => document.getElementById(id);
 
+const I18N = {
+  en: {
+    language: "Language",
+    welcome: "Welcome",
+    login: "Login",
+    register: "Register",
+    logout: "Logout",
+    name: "Name",
+    password: "Password",
+    accountName: "Account Name",
+    group: "Group",
+    balance: "Balance",
+    categoryName: "Category Name",
+    amount: "Amount",
+    category: "Category",
+    note: "Note",
+    accounts: "Accounts",
+    categories: "Categories",
+    transactions: "Transactions",
+    addAccount: "Add Account",
+    addCategory: "Add Category",
+    addTransaction: "Add Transaction",
+    thId: "ID",
+    thDate: "Date",
+    thType: "Type",
+    thAmount: "Amount",
+    thAccount: "Account",
+    thCategory: "Category",
+    thNote: "Note",
+    authRequired: "Name and password are required.",
+    registeredOk: "Registered. Switch to Login and sign in.",
+    authFailed: "{action} failed: {reason}",
+    signedIn: "Signed in: {name}",
+    apiHealthy: "API healthy: {ts}",
+    apiError: "API error: {reason}",
+    addAccountFailed: "Add account failed: {reason}",
+    addCategoryFailed: "Add category failed: {reason}",
+    addTxFailed: "Add transaction failed: {reason}",
+  },
+  es: {
+    language: "Idioma",
+    welcome: "Bienvenido",
+    login: "Iniciar sesion",
+    register: "Registrarse",
+    logout: "Cerrar sesion",
+    name: "Nombre",
+    password: "Contrasena",
+    accountName: "Nombre de cuenta",
+    group: "Grupo",
+    balance: "Saldo",
+    categoryName: "Nombre de categoria",
+    amount: "Monto",
+    category: "Categoria",
+    note: "Nota",
+    accounts: "Cuentas",
+    categories: "Categorias",
+    transactions: "Transacciones",
+    addAccount: "Agregar cuenta",
+    addCategory: "Agregar categoria",
+    addTransaction: "Agregar transaccion",
+    thId: "ID",
+    thDate: "Fecha",
+    thType: "Tipo",
+    thAmount: "Monto",
+    thAccount: "Cuenta",
+    thCategory: "Categoria",
+    thNote: "Nota",
+    authRequired: "Nombre y contrasena son obligatorios.",
+    registeredOk: "Registro completado. Cambia a Iniciar sesion.",
+    authFailed: "{action} error: {reason}",
+    signedIn: "Sesion iniciada: {name}",
+    apiHealthy: "API activa: {ts}",
+    apiError: "Error API: {reason}",
+    addAccountFailed: "Error al agregar cuenta: {reason}",
+    addCategoryFailed: "Error al agregar categoria: {reason}",
+    addTxFailed: "Error al agregar transaccion: {reason}",
+  },
+  fr: {
+    language: "Langue",
+    welcome: "Bienvenue",
+    login: "Connexion",
+    register: "Inscription",
+    logout: "Deconnexion",
+    name: "Nom",
+    password: "Mot de passe",
+    accountName: "Nom du compte",
+    group: "Groupe",
+    balance: "Solde",
+    categoryName: "Nom de categorie",
+    amount: "Montant",
+    category: "Categorie",
+    note: "Note",
+    accounts: "Comptes",
+    categories: "Categories",
+    transactions: "Transactions",
+    addAccount: "Ajouter compte",
+    addCategory: "Ajouter categorie",
+    addTransaction: "Ajouter transaction",
+    thId: "ID",
+    thDate: "Date",
+    thType: "Type",
+    thAmount: "Montant",
+    thAccount: "Compte",
+    thCategory: "Categorie",
+    thNote: "Note",
+    authRequired: "Nom et mot de passe requis.",
+    registeredOk: "Inscription reussie. Passez a Connexion.",
+    authFailed: "{action} echec: {reason}",
+    signedIn: "Connecte: {name}",
+    apiHealthy: "API active: {ts}",
+    apiError: "Erreur API: {reason}",
+    addAccountFailed: "Echec ajout compte: {reason}",
+    addCategoryFailed: "Echec ajout categorie: {reason}",
+    addTxFailed: "Echec ajout transaction: {reason}",
+  },
+  my: {
+    language: "ဘာသာစကား",
+    welcome: "ႀကိဳဆိုပါတယ္",
+    login: "လော့ဂ်အင်",
+    register: "စာရင္းသြင္းမည္",
+    logout: "ထြက္မည္",
+    name: "အမည္",
+    password: "စကားဝွက္",
+    accountName: "အေကာင့္အမည္",
+    group: "အုပ္စု",
+    balance: "လက္က်န္",
+    categoryName: "အမ်ိဳးအစားအမည္",
+    amount: "ပမာဏ",
+    category: "အမ်ိဳးအစား",
+    note: "မွတ္ခ်က္",
+    accounts: "အေကာင့္မ်ား",
+    categories: "အမ်ိဳးအစားမ်ား",
+    transactions: "ေငြလႊဲမွတ္တမ္းမ်ား",
+    addAccount: "အေကာင့္ထည့္မည္",
+    addCategory: "အမ်ိဳးအစားထည့္မည္",
+    addTransaction: "ေငြလႊဲမွတ္တမ္းထည့္မည္",
+    thId: "ID",
+    thDate: "ရက္စြဲ",
+    thType: "အမ်ိဳးအစား",
+    thAmount: "ပမာဏ",
+    thAccount: "အေကာင့္",
+    thCategory: "က႑",
+    thNote: "မွတ္ခ်က္",
+    authRequired: "အမည္ႏွင့္ စကားဝွက္ လိုအပ္ပါသည္။",
+    registeredOk: "စာရင္းသြင္းၿပီးပါၿပီ။ လော့ဂ်အင္လုပ္ပါ။",
+    authFailed: "{action} မေအာင္ျမင္ပါ: {reason}",
+    signedIn: "အသံုးျပဳသူ: {name}",
+    apiHealthy: "API အဆင္ေျပသည္: {ts}",
+    apiError: "API အမွား: {reason}",
+    addAccountFailed: "အေကာင့္ထည့္မရပါ: {reason}",
+    addCategoryFailed: "အမ်ိဳးအစားထည့္မရပါ: {reason}",
+    addTxFailed: "ေငြလႊဲမွတ္တမ္းထည့္မရပါ: {reason}",
+  },
+};
+
 let state = {
   apiBase: "https://keeperbma-backend.onrender.com",
   userId: Number(localStorage.getItem("keeperbma_user_id") || 0),
   userName: localStorage.getItem("keeperbma_user_name") || "",
   accounts: [],
   authMode: "login",
+  lang: localStorage.getItem("keeperbma_lang") || "en",
 };
+
+function tr(key, vars = {}) {
+  const langPack = I18N[state.lang] || I18N.en;
+  const fallback = I18N.en[key] || key;
+  let text = langPack[key] || fallback;
+  Object.keys(vars).forEach((k) => {
+    text = text.replace(`{${k}}`, String(vars[k]));
+  });
+  return text;
+}
 
 function setStatus(id, msg) {
   $(id).textContent = msg;
+}
+
+function applyLanguage() {
+  $("langLabel").textContent = tr("language");
+  $("welcomeTitle").textContent = tr("welcome");
+  $("tabLogin").textContent = tr("login");
+  $("tabRegister").textContent = tr("register");
+  $("labelName").textContent = tr("name");
+  $("labelPassword").textContent = tr("password");
+  $("btnLogout").textContent = tr("logout");
+  $("accountsTitle").textContent = tr("accounts");
+  $("categoriesTitle").textContent = tr("categories");
+  $("transactionsTitle").textContent = tr("transactions");
+  $("btnAddAccount").textContent = tr("addAccount");
+  $("btnAddCategory").textContent = tr("addCategory");
+  $("btnAddTx").textContent = tr("addTransaction");
+  $("thId").textContent = tr("thId");
+  $("thDate").textContent = tr("thDate");
+  $("thType").textContent = tr("thType");
+  $("thAmount").textContent = tr("thAmount");
+  $("thAccount").textContent = tr("thAccount");
+  $("thCategory").textContent = tr("thCategory");
+  $("thNote").textContent = tr("thNote");
+
+  $("loginName").placeholder = tr("name");
+  $("loginPass").placeholder = tr("password");
+  $("accName").placeholder = tr("accountName");
+  $("accGroup").placeholder = tr("group");
+  $("accBal").placeholder = tr("balance");
+  $("catName").placeholder = tr("categoryName");
+  $("txAmount").placeholder = tr("amount");
+  $("txCategory").placeholder = tr("category");
+  $("txNote").placeholder = tr("note");
+
+  $("authAction").textContent = state.authMode === "login" ? tr("login") : tr("register");
+  if (state.userId) {
+    $("userBadge").textContent = tr("signedIn", { name: state.userName });
+  }
 }
 
 async function api(path, opts = {}) {
@@ -56,8 +260,8 @@ function renderTx(rows) {
   const tbody = $("txRows");
   tbody.innerHTML = "";
   rows.forEach((r) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
+    const trNode = document.createElement("tr");
+    trNode.innerHTML = `
       <td>${r.txn_id ?? ""}</td>
       <td>${r.date ?? ""}</td>
       <td>${r.type ?? ""}</td>
@@ -66,7 +270,7 @@ function renderTx(rows) {
       <td>${r.category ?? ""}</td>
       <td>${r.note ?? ""}</td>
     `;
-    tbody.appendChild(tr);
+    tbody.appendChild(trNode);
   });
 }
 
@@ -75,14 +279,14 @@ function setAuthMode(mode) {
   const isLogin = state.authMode === "login";
   $("tabLogin").classList.toggle("active", isLogin);
   $("tabRegister").classList.toggle("active", !isLogin);
-  $("authAction").textContent = isLogin ? "Login" : "Register";
+  $("authAction").textContent = isLogin ? tr("login") : tr("register");
   setStatus("authStatus", "");
 }
 
 function setScreen(isLoggedIn) {
   $("authScreen").classList.toggle("hidden", isLoggedIn);
   $("appScreen").classList.toggle("hidden", !isLoggedIn);
-  $("userBadge").textContent = isLoggedIn ? `Signed in: ${state.userName}` : "";
+  $("userBadge").textContent = isLoggedIn ? tr("signedIn", { name: state.userName }) : "";
 }
 
 async function refreshAll() {
@@ -102,13 +306,26 @@ async function refreshAll() {
 async function checkHealth() {
   try {
     const h = await api("/health");
-    setStatus("health", `API healthy: ${h.ts}`);
+    setStatus("health", tr("apiHealthy", { ts: h.ts }));
   } catch (e) {
-    setStatus("health", `API error: ${e.message}`);
+    setStatus("health", tr("apiError", { reason: e.message }));
   }
 }
 
 window.addEventListener("load", async () => {
+  if (!I18N[state.lang]) {
+    state.lang = "en";
+  }
+  $("langSelect").value = state.lang;
+  applyLanguage();
+
+  $("langSelect").onchange = () => {
+    state.lang = $("langSelect").value;
+    localStorage.setItem("keeperbma_lang", state.lang);
+    applyLanguage();
+    checkHealth();
+  };
+
   $("tabLogin").onclick = () => setAuthMode("login");
   $("tabRegister").onclick = () => setAuthMode("register");
   $("authAction").onclick = async () => {
@@ -118,7 +335,7 @@ window.addEventListener("load", async () => {
         password: $("loginPass").value,
       };
       if (!payload.name || !payload.password) {
-        setStatus("authStatus", "Name and password are required.");
+        setStatus("authStatus", tr("authRequired"));
         return;
       }
       if (state.authMode === "register") {
@@ -126,7 +343,7 @@ window.addEventListener("load", async () => {
           method: "POST",
           body: JSON.stringify(payload),
         });
-        setStatus("authStatus", "Registered. Switch to Login and sign in.");
+        setStatus("authStatus", tr("registeredOk"));
         setAuthMode("login");
         return;
       }
@@ -139,9 +356,10 @@ window.addEventListener("load", async () => {
       localStorage.setItem("keeperbma_user_id", String(state.userId));
       localStorage.setItem("keeperbma_user_name", state.userName);
       await refreshAll();
+      applyLanguage();
     } catch (e) {
-      const action = state.authMode === "register" ? "Register" : "Login";
-      setStatus("authStatus", `${action} failed: ${e.message}`);
+      const action = state.authMode === "register" ? tr("register") : tr("login");
+      setStatus("authStatus", tr("authFailed", { action, reason: e.message }));
     }
   };
 
@@ -170,7 +388,7 @@ window.addEventListener("load", async () => {
       });
       await refreshAll();
     } catch (e) {
-      alert(`Add account failed: ${e.message}`);
+      alert(tr("addAccountFailed", { reason: e.message }));
     }
   };
 
@@ -185,7 +403,7 @@ window.addEventListener("load", async () => {
       });
       await refreshAll();
     } catch (e) {
-      alert(`Add category failed: ${e.message}`);
+      alert(tr("addCategoryFailed", { reason: e.message }));
     }
   };
 
@@ -204,7 +422,7 @@ window.addEventListener("load", async () => {
       });
       await refreshAll();
     } catch (e) {
-      alert(`Add transaction failed: ${e.message}`);
+      alert(tr("addTxFailed", { reason: e.message }));
     }
   };
 

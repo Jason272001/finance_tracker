@@ -8,12 +8,22 @@
 </head>
 <body>
   <main class="page">
+    <div class="lang-bar">
+      <label id="langLabel" for="langSelect">Language</label>
+      <select id="langSelect">
+        <option value="en">English</option>
+        <option value="es">Espanol</option>
+        <option value="fr">Francais</option>
+        <option value="my">Myanmar</option>
+      </select>
+    </div>
+
     <section id="authScreen" class="auth-shell">
       <div class="brand-row">
         <img class="brand-logo" src="../../assets/keeperbma-logo.png" alt="KeeperBMA" />
         <h1>KeeperBMA</h1>
       </div>
-      <p class="welcome">Welcome</p>
+      <p id="welcomeTitle" class="welcome">Welcome</p>
 
       <div class="tabs">
         <button id="tabLogin" class="tab active">Login</button>
@@ -21,10 +31,10 @@
       </div>
 
       <section class="card auth-card">
-        <label for="loginName">Name</label>
+        <label id="labelName" for="loginName">Name</label>
         <input id="loginName" placeholder="Name" />
 
-        <label for="loginPass">Password</label>
+        <label id="labelPassword" for="loginPass">Password</label>
         <input id="loginPass" type="password" placeholder="Password" />
 
         <button id="authAction" class="primary full">Login</button>
@@ -47,7 +57,7 @@
 
       <div class="grid">
         <section class="card">
-          <h2>Accounts</h2>
+          <h2 id="accountsTitle">Accounts</h2>
           <div class="row">
             <input id="accName" placeholder="Account Name" />
             <select id="accType">
@@ -65,7 +75,7 @@
         </section>
 
         <section class="card">
-          <h2>Categories</h2>
+          <h2 id="categoriesTitle">Categories</h2>
           <div class="row">
             <input id="catName" placeholder="Category Name" />
             <button id="btnAddCategory">Add Category</button>
@@ -74,7 +84,7 @@
         </section>
 
         <section class="card span-2">
-          <h2>Transactions</h2>
+          <h2 id="transactionsTitle">Transactions</h2>
           <div class="row">
             <select id="txType">
               <option>income</option>
@@ -88,7 +98,15 @@
           <button id="btnAddTx">Add Transaction</button>
           <table>
             <thead>
-              <tr><th>ID</th><th>Date</th><th>Type</th><th>Amount</th><th>Account</th><th>Category</th><th>Note</th></tr>
+              <tr>
+                <th id="thId">ID</th>
+                <th id="thDate">Date</th>
+                <th id="thType">Type</th>
+                <th id="thAmount">Amount</th>
+                <th id="thAccount">Account</th>
+                <th id="thCategory">Category</th>
+                <th id="thNote">Note</th>
+              </tr>
             </thead>
             <tbody id="txRows"></tbody>
           </table>
