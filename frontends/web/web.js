@@ -8,6 +8,7 @@ let state = {
   categories: [],
   tx: [],
   daily: [],
+  filteredTx: [],
   authMode: "login",
   charts: { income: null, expense: null, debt: null },
 };
@@ -164,6 +165,20 @@ function chartColors(n) {
   return out;
 }
 
+function inDateRange(dateText, startDate, endDate) {
+  const d = String(dateText || "").slice(0, 10);
+  if (!d) return false;
+  if (startDate && d < startDate) return false;
+  if (endDate && d > endDate) return false;
+  return true;
+}
+
+function applyTxRange() {
+  const start = $("sumStart").value || "";
+  const end = $("sumEnd").value || "";
+  state.filteredTx = state.tx.filter((t) => inDateRange(t.date, start, end));
+}
+
 function upsertPieChart(id, chartKey, labelMap) {
   const labels = [...labelMap.keys()];
   const data = labels.map((k) => Number(labelMap.get(k) || 0));
@@ -189,10 +204,13 @@ function upsertPieChart(id, chartKey, labelMap) {
 }
 
 function renderKpisAndCharts() {
-  const totalIncome = state.tx
+  const txForSummary = state.filteredTx.length > 0 || $("sumStart").value || $("sumEnd").value
+    ? state.filteredTx
+    : state.tx;
+  const totalIncome = txForSummary
     .filter((t) => String(t.type).toLowerCase() === "income")
     .reduce((s, t) => s + Number(t.amount || 0), 0);
-  const totalExpense = state.tx
+  const totalExpense = txForSummary
     .filter((t) => String(t.type).toLowerCase() === "expense")
     .reduce((s, t) => s + Number(t.amount || 0), 0);
   const netWorth = state.accounts.reduce((s, a) => s + Number(a.balance || 0), 0);
@@ -206,12 +224,12 @@ function renderKpisAndCharts() {
   $("kpiExpense").textContent = fmtMoney(totalExpense);
 
   const incomeByCat = sumByKey(
-    state.tx.filter((t) => String(t.type).toLowerCase() === "income"),
+    txForSummary.filter((t) => String(t.type).toLowerCase() === "income"),
     (r) => String(r.category || "Other"),
     (r) => r.amount,
   );
   const expenseByCat = sumByKey(
-    state.tx.filter((t) => String(t.type).toLowerCase() === "expense"),
+    txForSummary.filter((t) => String(t.type).toLowerCase() === "expense"),
     (r) => String(r.category || "Other"),
     (r) => r.amount,
   );
@@ -230,7 +248,10 @@ function renderDailySummary() {
   const rows = $("dailyRows");
   rows.innerHTML = "";
   const txByDay = new Map();
-  state.tx.forEach((t) => {
+  const txForSummary = state.filteredTx.length > 0 || $("sumStart").value || $("sumEnd").value
+    ? state.filteredTx
+    : state.tx;
+  txForSummary.forEach((t) => {
     const dateKey = String(t.date || "").slice(0, 10);
     if (!dateKey) return;
     const rec = txByDay.get(dateKey) || { income: 0, expense: 0 };
@@ -267,6 +288,78 @@ function renderDailySummary() {
   });
 }
 
+async function downloadSummaryPdf() {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert("PDF library failed to load.");
+    return;
+  }
+  const jsPDF = window.jspdf.jsPDF;
+  const doc = new jsPDF("p", "pt", "a4");
+  const txForSummary = state.filteredTx.length > 0 || $("sumStart").value || $("sumEnd").value
+    ? state.filteredTx
+    : state.tx;
+  const totalIncome = txForSummary
+    .filter((t) => String(t.type).toLowerCase() === "income")
+    .reduce((s, t) => s + Number(t.amount || 0), 0);
+  const totalExpense = txForSummary
+    .filter((t) => String(t.type).toLowerCase() === "expense")
+    .reduce((s, t) => s + Number(t.amount || 0), 0);
+  const netWorth = state.accounts.reduce((s, a) => s + Number(a.balance || 0), 0);
+  const debt = state.accounts
+    .filter((a) => ["credit", "credit_card"].includes(String(a.account_type || "").toLowerCase()))
+    .reduce((s, a) => s + Math.abs(Number(a.balance || 0)), 0);
+
+  const start = $("sumStart").value || "All";
+  const end = $("sumEnd").value || "All";
+  doc.setFontSize(22);
+  doc.text("KeeperBMA Summary Report", 36, 44);
+  doc.setFontSize(11);
+  doc.text(`Range: ${start} to ${end}`, 36, 64);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 36, 80);
+
+  doc.setFontSize(12);
+  doc.text(`Net Worth: ${fmtMoney(netWorth)}`, 36, 110);
+  doc.text(`Debt: ${fmtMoney(debt)}`, 220, 110);
+  doc.text(`Income: ${fmtMoney(totalIncome)}`, 36, 130);
+  doc.text(`Expense: ${fmtMoney(totalExpense)}`, 220, 130);
+
+  const incomeImg = state.charts.income ? state.charts.income.toBase64Image() : null;
+  const expenseImg = state.charts.expense ? state.charts.expense.toBase64Image() : null;
+  const debtImg = state.charts.debt ? state.charts.debt.toBase64Image() : null;
+  if (incomeImg) doc.addImage(incomeImg, "PNG", 36, 160, 165, 165);
+  if (expenseImg) doc.addImage(expenseImg, "PNG", 220, 160, 165, 165);
+  if (debtImg) doc.addImage(debtImg, "PNG", 404, 160, 165, 165);
+
+  let y = 350;
+  doc.setFontSize(13);
+  doc.text("Transactions", 36, y);
+  y += 16;
+  doc.setFontSize(10);
+  doc.text("Date", 36, y);
+  doc.text("Type", 145, y);
+  doc.text("Amount", 220, y);
+  doc.text("Category", 300, y);
+  doc.text("Note", 420, y);
+  y += 10;
+  doc.line(36, y, 560, y);
+  y += 14;
+
+  txForSummary.slice(0, 25).forEach((t) => {
+    if (y > 790) {
+      doc.addPage();
+      y = 50;
+    }
+    doc.text(String(t.date || "").slice(0, 10), 36, y);
+    doc.text(String(t.type || ""), 145, y);
+    doc.text(fmtMoney(t.amount), 220, y);
+    doc.text(String(t.category || "").slice(0, 16), 300, y);
+    doc.text(String(t.note || "").slice(0, 22), 420, y);
+    y += 14;
+  });
+
+  doc.save("keeperbma-summary.pdf");
+}
+
 async function refreshAll() {
   const results = await Promise.allSettled([
     api(`/accounts?user_id=${state.userId}`),
@@ -280,6 +373,7 @@ async function refreshAll() {
   state.categories = categoriesRes.status === "fulfilled" ? (categoriesRes.value || []) : [];
   state.tx = txRes.status === "fulfilled" ? (txRes.value || []) : [];
   state.daily = dailyRes.status === "fulfilled" ? (dailyRes.value || []) : [];
+  applyTxRange();
 
   renderAccountsTable();
   renderCategories();
@@ -405,6 +499,20 @@ window.addEventListener("load", async () => {
       alert(`Add transaction failed: ${errMessage(e)}`);
     }
   };
+
+  $("btnApplySummary").onclick = () => {
+    applyTxRange();
+    renderKpisAndCharts();
+    renderDailySummary();
+  };
+  $("btnResetSummary").onclick = () => {
+    $("sumStart").value = "";
+    $("sumEnd").value = "";
+    applyTxRange();
+    renderKpisAndCharts();
+    renderDailySummary();
+  };
+  $("btnDownloadPdf").onclick = downloadSummaryPdf;
 
   setAuthMode("login");
   setScreen(false);

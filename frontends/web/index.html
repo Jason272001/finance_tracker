@@ -8,7 +8,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="./styles.css?v=10" />
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <link rel="stylesheet" href="./styles.css?v=11" />
 </head>
 <body>
   <main class="page">
@@ -71,6 +72,17 @@
           <h3>Total Expense</h3>
           <p id="kpiExpense">$0.00</p>
         </article>
+      </section>
+
+      <section class="card">
+        <h2>Summary Export</h2>
+        <div class="row">
+          <input id="sumStart" type="date" />
+          <input id="sumEnd" type="date" />
+          <button id="btnApplySummary">Apply Range</button>
+          <button id="btnResetSummary">Reset</button>
+          <button id="btnDownloadPdf" class="secondary">Download PDF</button>
+        </div>
       </section>
 
       <section class="card app-status">
@@ -180,6 +192,6 @@
     </section>
   </main>
 
-  <script src="./web.js?v=10"></script>
+  <script src="./web.js?v=11"></script>
 </body>
 </html>
