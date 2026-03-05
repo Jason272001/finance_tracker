@@ -174,4 +174,59 @@ th { color: #3e5471; font-weight: 700; }
     -webkit-overflow-scrolling: touch;
   }
   th, td { white-space: nowrap; }
+  #accountsRows td,
+  #txRows td {
+    white-space: normal;
+    word-break: break-word;
+  }
+  #accountsRows tr,
+  #txRows tr {
+    line-height: 1.2;
+  }
+  #accountsRows td:first-child,
+  #txRows td:nth-child(5),
+  #txRows td:nth-child(6),
+  #txRows td:nth-child(7) {
+    min-width: 120px;
+  }
+  #accountsRows td:last-child,
+  #txRows td:last-child {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    white-space: normal;
+    min-width: 130px;
+  }
+  #accountsRows td:last-child button,
+  #txRows td:last-child button {
+    padding: 7px 10px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+  }
+  .chart-card canvas { height: 190px !important; }
+}
+
+@media (max-width: 480px) {
+  .page { width: 100vw; margin: 0; padding: 6px; }
+  .card { padding: 10px; border-radius: 10px; }
+  .top { padding: 10px; }
+  .top-left { gap: 8px; }
+  .top h1 { font-size: 1.5rem; }
+  .badge { font-size: 0.95rem; }
+  h2 { font-size: 1.35rem; margin-bottom: 8px; }
+  .kpi-card { padding: 10px; }
+  .kpi-card h3 { font-size: 0.85rem; }
+  .kpi-card p { font-size: 1.1rem; }
+  input, select, button { font-size: 0.95rem; }
+  th, td { font-size: 0.88rem; padding: 7px 5px; }
+  #accountsRows td,
+  #txRows td { font-size: 0.84rem; }
+  .chart-card canvas { height: 170px !important; }
+}
+
+@media (max-width: 380px) {
+  .top h1 { font-size: 1.25rem; }
+  .top-logo { width: 36px; height: 36px; }
+  .badge { font-size: 0.86rem; }
 }
