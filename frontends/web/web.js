@@ -12,8 +12,259 @@ let state = {
   authMode: "login",
   editingAccountId: 0,
   editingTxId: 0,
+  currentLang: "en",
   charts: { income: null, expense: null, debt: null },
 };
+
+const I18N = {
+  en: {
+    language: "Language",
+    welcome: "Welcome",
+    login: "Login",
+    register: "Register",
+    name: "Name",
+    password: "Password",
+    signed_in: "Signed in",
+    logout: "Logout",
+    available_balance: "Current Available Balance",
+    total_debt: "Total Debt",
+    total_income: "Total Income",
+    total_expense: "Total Expense",
+    summary_export: "Summary Export",
+    apply_range: "Apply Range",
+    reset: "Reset",
+    download_pdf: "Download PDF",
+    summary_charts: "Summary Charts",
+    income_by_category: "Income by Category",
+    expense_by_category: "Expense by Category",
+    debt_by_account: "Debt by Account",
+    daily_summary: "Daily Balance Summary",
+    date: "Date",
+    income: "Income",
+    expense: "Expense",
+    net: "Net",
+    snapshot: "Snapshot",
+    accounts: "Accounts",
+    account_name: "Account Name",
+    group: "Group",
+    balance: "Balance",
+    actions: "Actions",
+    id: "ID",
+    type: "Type",
+    categories: "Categories",
+    category_name: "Category Name",
+    add_category: "Add Category",
+    transactions: "Transactions",
+    amount: "Amount",
+    account: "Account",
+    category: "Category",
+    note: "Note",
+    add_account: "Add Account",
+    update_account: "Update Account",
+    add_tx: "Add Transaction",
+    update_tx: "Update Transaction",
+    cancel_edit: "Cancel Edit",
+    edit: "Edit",
+    delete: "Delete",
+  },
+  my: {
+    language: "ဘာသာစကား",
+    welcome: "ကြိုဆိုပါတယ်",
+    login: "လော့အင်",
+    register: "စာရင်းသွင်းမည်",
+    name: "အမည်",
+    password: "စကားဝှက်",
+    signed_in: "ဝင်ရောက်ထားသူ",
+    logout: "ထွက်မည်",
+    available_balance: "လက်ရှိအသုံးပြုနိုင်သော လက်ကျန်ငွေ",
+    total_debt: "စုစုပေါင်းအကြွေး",
+    total_income: "စုစုပေါင်းဝင်ငွေ",
+    total_expense: "စုစုပေါင်းအသုံးစရိတ်",
+    summary_export: "အနှစ်ချုပ်ထုတ်ယူရန်",
+    apply_range: "နေ့ရက်အသုံးချ",
+    reset: "ပြန်သတ်မှတ်",
+    download_pdf: "PDF ဒေါင်းလုဒ်",
+    summary_charts: "အနှစ်ချုပ်ဇယားများ",
+    income_by_category: "အမျိုးအစားလိုက် ဝင်ငွေ",
+    expense_by_category: "အမျိုးအစားလိုက် အသုံးစရိတ်",
+    debt_by_account: "အကောင့်လိုက် အကြွေး",
+    daily_summary: "နေ့စဉ်လက်ကျန်အနှစ်ချုပ်",
+    date: "ရက်စွဲ",
+    income: "ဝင်ငွေ",
+    expense: "အသုံးစရိတ်",
+    net: "ကျန်ငွေ",
+    snapshot: "ရက်စွဲအလိုက်",
+    accounts: "အကောင့်များ",
+    account_name: "အကောင့်အမည်",
+    group: "အုပ်စု",
+    balance: "လက်ကျန်",
+    actions: "လုပ်ဆောင်ချက်များ",
+    categories: "အမျိုးအစားများ",
+    category_name: "အမျိုးအစားအမည်",
+    add_category: "အမျိုးအစားထည့်",
+    transactions: "လွှဲပြောင်းမှုများ",
+    amount: "ပမာဏ",
+    account: "အကောင့်",
+    category: "အမျိုးအစား",
+    note: "မှတ်စု",
+    add_account: "အကောင့်ထည့်",
+    update_account: "အကောင့်ပြင်ဆင်",
+    add_tx: "လွှဲပြောင်းမှုထည့်",
+    update_tx: "လွှဲပြောင်းမှုပြင်ဆင်",
+    cancel_edit: "ပြင်ဆင်မှုမလုပ်တော့",
+    edit: "ပြင်ဆင်",
+    delete: "ဖျက်မည်",
+  },
+  ar: {
+    language: "اللغة",
+    welcome: "مرحبًا",
+    login: "تسجيل الدخول",
+    register: "إنشاء حساب",
+    name: "الاسم",
+    password: "كلمة المرور",
+    signed_in: "تم تسجيل الدخول",
+    logout: "تسجيل الخروج",
+    available_balance: "الرصيد المتاح الحالي",
+    total_debt: "إجمالي الدين",
+    total_income: "إجمالي الدخل",
+    total_expense: "إجمالي المصروف",
+    summary_export: "تصدير الملخص",
+    apply_range: "تطبيق الفترة",
+    reset: "إعادة تعيين",
+    download_pdf: "تنزيل PDF",
+    summary_charts: "رسوم الملخص",
+    income_by_category: "الدخل حسب الفئة",
+    expense_by_category: "المصروف حسب الفئة",
+    debt_by_account: "الدين حسب الحساب",
+    daily_summary: "ملخص الرصيد اليومي",
+    date: "التاريخ",
+    income: "الدخل",
+    expense: "المصروف",
+    net: "الصافي",
+    snapshot: "اللقطة",
+    accounts: "الحسابات",
+    account_name: "اسم الحساب",
+    group: "المجموعة",
+    balance: "الرصيد",
+    actions: "الإجراءات",
+    categories: "الفئات",
+    category_name: "اسم الفئة",
+    add_category: "إضافة فئة",
+    transactions: "المعاملات",
+    amount: "المبلغ",
+    account: "الحساب",
+    category: "الفئة",
+    note: "ملاحظة",
+    add_account: "إضافة حساب",
+    update_account: "تحديث الحساب",
+    add_tx: "إضافة معاملة",
+    update_tx: "تحديث المعاملة",
+    cancel_edit: "إلغاء التعديل",
+    edit: "تعديل",
+    delete: "حذف",
+  },
+  ja: {
+    language: "言語",
+    welcome: "ようこそ",
+    login: "ログイン",
+    register: "登録",
+    name: "名前",
+    password: "パスワード",
+    signed_in: "ログイン中",
+    logout: "ログアウト",
+    available_balance: "現在の利用可能残高",
+    total_debt: "総負債",
+    total_income: "総収入",
+    total_expense: "総支出",
+    summary_export: "サマリー出力",
+    apply_range: "期間適用",
+    reset: "リセット",
+    download_pdf: "PDFダウンロード",
+    summary_charts: "サマリーチャート",
+    income_by_category: "カテゴリ別収入",
+    expense_by_category: "カテゴリ別支出",
+    debt_by_account: "口座別負債",
+    daily_summary: "日次残高サマリー",
+    date: "日付",
+    income: "収入",
+    expense: "支出",
+    net: "差引",
+    snapshot: "スナップショット",
+    accounts: "口座",
+    account_name: "口座名",
+    group: "グループ",
+    balance: "残高",
+    actions: "操作",
+    categories: "カテゴリ",
+    category_name: "カテゴリ名",
+    add_category: "カテゴリ追加",
+    transactions: "取引",
+    amount: "金額",
+    account: "口座",
+    category: "カテゴリ",
+    note: "メモ",
+    add_account: "口座追加",
+    update_account: "口座更新",
+    add_tx: "取引追加",
+    update_tx: "取引更新",
+    cancel_edit: "編集取消",
+    edit: "編集",
+    delete: "削除",
+  },
+  zh: {
+    language: "语言",
+    welcome: "欢迎",
+    login: "登录",
+    register: "注册",
+    name: "姓名",
+    password: "密码",
+    signed_in: "已登录",
+    logout: "退出登录",
+    available_balance: "当前可用余额",
+    total_debt: "总负债",
+    total_income: "总收入",
+    total_expense: "总支出",
+    summary_export: "导出汇总",
+    apply_range: "应用区间",
+    reset: "重置",
+    download_pdf: "下载 PDF",
+    summary_charts: "汇总图表",
+    income_by_category: "按分类收入",
+    expense_by_category: "按分类支出",
+    debt_by_account: "按账户负债",
+    daily_summary: "每日余额汇总",
+    date: "日期",
+    income: "收入",
+    expense: "支出",
+    net: "净额",
+    snapshot: "快照",
+    accounts: "账户",
+    account_name: "账户名称",
+    group: "分组",
+    balance: "余额",
+    actions: "操作",
+    categories: "分类",
+    category_name: "分类名称",
+    add_category: "添加分类",
+    transactions: "交易",
+    amount: "金额",
+    account: "账户",
+    category: "分类",
+    note: "备注",
+    add_account: "添加账户",
+    update_account: "更新账户",
+    add_tx: "添加交易",
+    update_tx: "更新交易",
+    cancel_edit: "取消编辑",
+    edit: "编辑",
+    delete: "删除",
+  },
+};
+
+function t(key) {
+  const pack = I18N[state.currentLang] || I18N.en;
+  return pack[key] || I18N.en[key] || key;
+}
 
 function fmtMoney(v) {
   const n = Number(v || 0);
@@ -26,6 +277,78 @@ function setStatus(id, msg) {
 
 function notify(msg) {
   setStatus("health", msg);
+}
+
+function setText(id, key) {
+  const el = $(id);
+  if (el) el.textContent = t(key);
+}
+
+function applyLanguage(lang) {
+  state.currentLang = I18N[lang] ? lang : "en";
+  localStorage.setItem("keeperbma_lang", state.currentLang);
+  document.documentElement.lang = state.currentLang;
+
+  if ($("langSelect")) $("langSelect").value = state.currentLang;
+  if ($("appLangSelect")) $("appLangSelect").value = state.currentLang;
+
+  setText("langLabelAuth", "language");
+  setText("langLabelApp", "language");
+  setText("welcomeTitle", "welcome");
+  setText("labelLoginName", "name");
+  setText("labelLoginPass", "password");
+  setText("btnLogout", "logout");
+  setText("kpiLabelAvailable", "available_balance");
+  setText("kpiLabelDebt", "total_debt");
+  setText("kpiLabelIncome", "total_income");
+  setText("kpiLabelExpense", "total_expense");
+  setText("summaryExportTitle", "summary_export");
+  setText("btnApplySummary", "apply_range");
+  setText("btnResetSummary", "reset");
+  setText("btnDownloadPdf", "download_pdf");
+  setText("summaryChartsTitle", "summary_charts");
+  setText("incomeChartTitle", "income_by_category");
+  setText("expenseChartTitle", "expense_by_category");
+  setText("debtChartTitle", "debt_by_account");
+  setText("dailySummaryTitle", "daily_summary");
+  setText("dailyColDate", "date");
+  setText("dailyColIncome", "income");
+  setText("dailyColExpense", "expense");
+  setText("dailyColNet", "net");
+  setText("dailyColSnapshot", "snapshot");
+  setText("accountsTitle", "accounts");
+  setText("accountsColName", "name");
+  setText("accountsColType", "type");
+  setText("accountsColBalance", "balance");
+  setText("accountsColActions", "actions");
+  setText("categoriesTitle", "categories");
+  setText("btnAddCategory", "add_category");
+  setText("transactionsTitle", "transactions");
+  setText("txColId", "id");
+  setText("txColDate", "date");
+  setText("txColType", "type");
+  setText("txColAmount", "amount");
+  setText("txColAccount", "account");
+  setText("txColCategory", "category");
+  setText("txColNote", "note");
+  setText("txColActions", "actions");
+
+  if ($("loginName")) $("loginName").placeholder = t("name");
+  if ($("loginPass")) $("loginPass").placeholder = t("password");
+  if ($("accName")) $("accName").placeholder = t("account_name");
+  if ($("accGroup")) $("accGroup").placeholder = t("group");
+  if ($("accBal")) $("accBal").placeholder = t("balance");
+  if ($("catName")) $("catName").placeholder = t("category_name");
+  if ($("txAmount")) $("txAmount").placeholder = t("amount");
+  if ($("txCategory")) $("txCategory").placeholder = t("category");
+  if ($("txNote")) $("txNote").placeholder = t("note");
+
+  setAuthMode(state.authMode);
+  setScreen(state.userId > 0);
+  resetAccountForm();
+  resetTxForm();
+  renderAccountsTable();
+  renderTransactions();
 }
 
 function errMessage(e) {
@@ -49,14 +372,16 @@ function setAuthMode(mode) {
   const isLogin = state.authMode === "login";
   $("tabLogin").classList.toggle("active", isLogin);
   $("tabRegister").classList.toggle("active", !isLogin);
-  $("authAction").textContent = isLogin ? "Login" : "Register";
+  $("tabLogin").textContent = t("login");
+  $("tabRegister").textContent = t("register");
+  $("authAction").textContent = isLogin ? t("login") : t("register");
   setStatus("authStatus", "");
 }
 
 function setScreen(isLoggedIn) {
   $("authScreen").classList.toggle("hidden", isLoggedIn);
   $("appScreen").classList.toggle("hidden", !isLoggedIn);
-  $("userBadge").textContent = isLoggedIn ? `Signed in: ${state.userName}` : "";
+  $("userBadge").textContent = isLoggedIn ? `${t("signed_in")}: ${state.userName}` : "";
 }
 
 async function api(path, opts = {}) {
@@ -120,11 +445,11 @@ function renderAccountsTable() {
     const actionTd = document.createElement("td");
     const editBtn = document.createElement("button");
     editBtn.className = "secondary";
-    editBtn.textContent = "Edit";
+    editBtn.textContent = t("edit");
     editBtn.onclick = () => beginEditAccount(a);
     const delBtn = document.createElement("button");
     delBtn.className = "danger";
-    delBtn.textContent = "Delete";
+    delBtn.textContent = t("delete");
     delBtn.onclick = () => deleteAccount(a);
     actionTd.appendChild(editBtn);
     actionTd.appendChild(document.createTextNode(" "));
@@ -173,11 +498,11 @@ function renderTransactions() {
     const actionTd = document.createElement("td");
     const editBtn = document.createElement("button");
     editBtn.className = "secondary";
-    editBtn.textContent = "Edit";
+    editBtn.textContent = t("edit");
     editBtn.onclick = () => beginEditTransaction(r);
     const delBtn = document.createElement("button");
     delBtn.className = "danger";
-    delBtn.textContent = "Delete";
+    delBtn.textContent = t("delete");
     delBtn.onclick = () => deleteTransaction(r);
     actionTd.appendChild(editBtn);
     actionTd.appendChild(document.createTextNode(" "));
@@ -193,8 +518,9 @@ function beginEditAccount(acc) {
   $("accType").value = String(acc.account_type || "checking");
   $("accGroup").value = String(acc.group || "bank");
   $("accBal").value = String(Number(acc.balance || 0));
-  $("btnAddAccount").textContent = "Update Account";
+  $("btnAddAccount").textContent = t("update_account");
   $("btnCancelAccount").classList.remove("hidden");
+  $("btnCancelAccount").textContent = t("cancel_edit");
 }
 
 function resetAccountForm() {
@@ -203,7 +529,8 @@ function resetAccountForm() {
   $("accType").value = "checking";
   $("accGroup").value = "bank";
   $("accBal").value = "0";
-  $("btnAddAccount").textContent = "Add Account";
+  $("btnAddAccount").textContent = t("add_account");
+  $("btnCancelAccount").textContent = t("cancel_edit");
   $("btnCancelAccount").classList.add("hidden");
 }
 
@@ -235,8 +562,9 @@ function beginEditTransaction(tx) {
   $("txAccount").value = String(tx.account_id || "");
   $("txCategory").value = String(tx.category || "");
   $("txNote").value = String(tx.note || "");
-  $("btnAddTx").textContent = "Update Transaction";
+  $("btnAddTx").textContent = t("update_tx");
   $("btnCancelTx").classList.remove("hidden");
+  $("btnCancelTx").textContent = t("cancel_edit");
 }
 
 function resetTxForm() {
@@ -245,7 +573,8 @@ function resetTxForm() {
   $("txAmount").value = "";
   $("txCategory").value = "";
   $("txNote").value = "";
-  $("btnAddTx").textContent = "Add Transaction";
+  $("btnAddTx").textContent = t("add_tx");
+  $("btnCancelTx").textContent = t("cancel_edit");
   $("btnCancelTx").classList.add("hidden");
 }
 
@@ -516,6 +845,15 @@ async function refreshAll() {
 }
 
 window.addEventListener("load", async () => {
+  const savedLang = localStorage.getItem("keeperbma_lang") || "en";
+  if ($("langSelect")) {
+    $("langSelect").onchange = (e) => applyLanguage(e.target.value);
+  }
+  if ($("appLangSelect")) {
+    $("appLangSelect").onchange = (e) => applyLanguage(e.target.value);
+  }
+  applyLanguage(savedLang);
+
   $("tabLogin").onclick = () => setAuthMode("login");
   $("tabRegister").onclick = () => setAuthMode("register");
 

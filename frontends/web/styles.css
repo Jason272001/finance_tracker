@@ -31,6 +31,7 @@ body {
 .welcome { margin: 18px 0 12px; font-size: 2rem; font-weight: 700; }
 .lang-bar { display: flex; align-items: center; gap: 8px; }
 .lang-bar label { font-weight: 700; }
+.lang-select { width: auto; min-width: 140px; }
 .tabs { display: flex; gap: 10px; border-bottom: 1px solid #d6e4f8; margin-bottom: 12px; }
 .tab {
   border: 0;
@@ -166,6 +167,7 @@ th { color: #3e5471; font-weight: 700; }
   button { width: 100%; }
   td button { width: auto; }
   .top-right button { width: auto; }
+  .lang-select { width: 100%; min-width: 0; }
   table {
     display: block;
     overflow-x: auto;

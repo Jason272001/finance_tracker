@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <link rel="stylesheet" href="./styles.css?v=18" />
+  <link rel="stylesheet" href="./styles.css?v=19" />
 </head>
 <body>
   <main class="page">
@@ -21,13 +21,17 @@
           <h1>KeeperBMA</h1>
         </div>
         <div class="lang-bar">
-          <label for="langSelect">Language</label>
+          <label id="langLabelAuth" for="langSelect">Language</label>
           <select id="langSelect">
             <option value="en">English</option>
+            <option value="my">Myanmar</option>
+            <option value="ar">Arabic</option>
+            <option value="ja">Japanese</option>
+            <option value="zh">Chinese</option>
           </select>
         </div>
       </div>
-      <p class="welcome">Welcome</p>
+      <p id="welcomeTitle" class="welcome">Welcome</p>
 
       <div class="tabs">
         <button id="tabLogin" class="tab active">Login</button>
@@ -35,9 +39,9 @@
       </div>
 
       <section class="card auth-card">
-        <label for="loginName">Name</label>
+        <label id="labelLoginName" for="loginName">Name</label>
         <input id="loginName" placeholder="Name" />
-        <label for="loginPass">Password</label>
+        <label id="labelLoginPass" for="loginPass">Password</label>
         <input id="loginPass" type="password" placeholder="Password" />
         <button id="authAction" class="primary full">Login</button>
         <p id="authStatus" class="muted"></p>
@@ -51,6 +55,14 @@
           <h1>KeeperBMA</h1>
         </div>
         <div class="top-right">
+          <label id="langLabelApp" for="appLangSelect">Language</label>
+          <select id="appLangSelect" class="lang-select">
+            <option value="en">English</option>
+            <option value="my">Myanmar</option>
+            <option value="ar">Arabic</option>
+            <option value="ja">Japanese</option>
+            <option value="zh">Chinese</option>
+          </select>
           <span id="userBadge" class="badge"></span>
           <button id="btnLogout" class="secondary">Logout</button>
         </div>
@@ -58,25 +70,25 @@
 
       <section class="kpi-grid">
         <article class="kpi-card">
-          <h3>Current Available Balance</h3>
+          <h3 id="kpiLabelAvailable">Current Available Balance</h3>
           <p id="kpiNetWorth">$0.00</p>
         </article>
         <article class="kpi-card debt">
-          <h3>Total Debt</h3>
+          <h3 id="kpiLabelDebt">Total Debt</h3>
           <p id="kpiDebt">$0.00</p>
         </article>
         <article class="kpi-card income">
-          <h3>Total Income</h3>
+          <h3 id="kpiLabelIncome">Total Income</h3>
           <p id="kpiIncome">$0.00</p>
         </article>
         <article class="kpi-card expense">
-          <h3>Total Expense</h3>
+          <h3 id="kpiLabelExpense">Total Expense</h3>
           <p id="kpiExpense">$0.00</p>
         </article>
       </section>
 
       <section class="card">
-        <h2>Summary Export</h2>
+        <h2 id="summaryExportTitle">Summary Export</h2>
         <div class="row">
           <input id="sumStart" type="date" />
           <input id="sumEnd" type="date" />
@@ -91,33 +103,33 @@
       </section>
 
       <section class="card charts">
-        <h2>Summary Charts</h2>
+        <h2 id="summaryChartsTitle">Summary Charts</h2>
         <div class="chart-grid">
           <div class="chart-card">
-            <h3>Income by Category</h3>
+            <h3 id="incomeChartTitle">Income by Category</h3>
             <canvas id="incomeChart"></canvas>
           </div>
           <div class="chart-card">
-            <h3>Expense by Category</h3>
+            <h3 id="expenseChartTitle">Expense by Category</h3>
             <canvas id="expenseChart"></canvas>
           </div>
           <div class="chart-card">
-            <h3>Debt by Account</h3>
+            <h3 id="debtChartTitle">Debt by Account</h3>
             <canvas id="debtChart"></canvas>
           </div>
         </div>
       </section>
 
       <section class="card">
-        <h2>Daily Balance Summary</h2>
+        <h2 id="dailySummaryTitle">Daily Balance Summary</h2>
         <table>
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Income</th>
-              <th>Expense</th>
-              <th>Net</th>
-              <th>Snapshot</th>
+              <th id="dailyColDate">Date</th>
+              <th id="dailyColIncome">Income</th>
+              <th id="dailyColExpense">Expense</th>
+              <th id="dailyColNet">Net</th>
+              <th id="dailyColSnapshot">Snapshot</th>
             </tr>
           </thead>
           <tbody id="dailyRows"></tbody>
@@ -126,7 +138,7 @@
 
       <div class="grid">
         <section class="card">
-          <h2>Accounts</h2>
+          <h2 id="accountsTitle">Accounts</h2>
           <div class="row">
             <input id="accName" placeholder="Account Name" />
             <select id="accType">
@@ -144,10 +156,10 @@
           <table>
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Balance</th>
-                <th>Actions</th>
+                <th id="accountsColName">Name</th>
+                <th id="accountsColType">Type</th>
+                <th id="accountsColBalance">Balance</th>
+                <th id="accountsColActions">Actions</th>
               </tr>
             </thead>
             <tbody id="accountsRows"></tbody>
@@ -155,7 +167,7 @@
         </section>
 
         <section class="card">
-          <h2>Categories</h2>
+          <h2 id="categoriesTitle">Categories</h2>
           <div class="row">
             <input id="catName" placeholder="Category Name" />
             <button id="btnAddCategory">Add Category</button>
@@ -164,7 +176,7 @@
         </section>
 
         <section class="card span-2">
-          <h2>Transactions</h2>
+          <h2 id="transactionsTitle">Transactions</h2>
           <div class="row">
             <select id="txType">
               <option>income</option>
@@ -180,14 +192,14 @@
           <table>
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Amount</th>
-                <th>Account</th>
-                <th>Category</th>
-                <th>Note</th>
-                <th>Actions</th>
+                <th id="txColId">ID</th>
+                <th id="txColDate">Date</th>
+                <th id="txColType">Type</th>
+                <th id="txColAmount">Amount</th>
+                <th id="txColAccount">Account</th>
+                <th id="txColCategory">Category</th>
+                <th id="txColNote">Note</th>
+                <th id="txColActions">Actions</th>
               </tr>
             </thead>
             <tbody id="txRows"></tbody>
@@ -197,6 +209,6 @@
     </section>
   </main>
 
-  <script src="./web.js?v=18"></script>
+  <script src="./web.js?v=19"></script>
 </body>
 </html>
