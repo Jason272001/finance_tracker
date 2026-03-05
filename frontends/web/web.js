@@ -335,16 +335,14 @@ function renderKpisAndCharts() {
   const totalExpense = txForSummary
     .filter((t) => String(t.type).toLowerCase() === "expense")
     .reduce((s, t) => s + Number(t.amount || 0), 0);
-  const netWorth = state.accounts.reduce((s, a) => {
-    const bal = Number(a.balance || 0);
-    const t = String(a.account_type || "").toLowerCase();
-    return ["credit", "credit_card"].includes(t) ? s - Math.abs(bal) : s + bal;
-  }, 0);
+  const availableBalance = state.accounts
+    .filter((a) => !["credit", "credit_card"].includes(String(a.account_type || "").toLowerCase()))
+    .reduce((s, a) => s + Number(a.balance || 0), 0);
   const debt = state.accounts
     .filter((a) => ["credit", "credit_card"].includes(String(a.account_type || "").toLowerCase()))
     .reduce((s, a) => s + Math.abs(Number(a.balance || 0)), 0);
 
-  $("kpiNetWorth").textContent = fmtMoney(netWorth);
+  $("kpiNetWorth").textContent = fmtMoney(availableBalance);
   $("kpiDebt").textContent = fmtMoney(debt);
   $("kpiIncome").textContent = fmtMoney(totalIncome);
   $("kpiExpense").textContent = fmtMoney(totalExpense);
@@ -430,11 +428,9 @@ async function downloadSummaryPdf() {
   const totalExpense = txForSummary
     .filter((t) => String(t.type).toLowerCase() === "expense")
     .reduce((s, t) => s + Number(t.amount || 0), 0);
-  const netWorth = state.accounts.reduce((s, a) => {
-    const bal = Number(a.balance || 0);
-    const t = String(a.account_type || "").toLowerCase();
-    return ["credit", "credit_card"].includes(t) ? s - Math.abs(bal) : s + bal;
-  }, 0);
+  const availableBalance = state.accounts
+    .filter((a) => !["credit", "credit_card"].includes(String(a.account_type || "").toLowerCase()))
+    .reduce((s, a) => s + Number(a.balance || 0), 0);
   const debt = state.accounts
     .filter((a) => ["credit", "credit_card"].includes(String(a.account_type || "").toLowerCase()))
     .reduce((s, a) => s + Math.abs(Number(a.balance || 0)), 0);
@@ -448,7 +444,7 @@ async function downloadSummaryPdf() {
   doc.text(`Generated: ${new Date().toLocaleString()}`, 36, 80);
 
   doc.setFontSize(12);
-  doc.text(`Net Worth: ${fmtMoney(netWorth)}`, 36, 110);
+  doc.text(`Available Balance: ${fmtMoney(availableBalance)}`, 36, 110);
   doc.text(`Debt: ${fmtMoney(debt)}`, 220, 110);
   doc.text(`Income: ${fmtMoney(totalIncome)}`, 36, 130);
   doc.text(`Expense: ${fmtMoney(totalExpense)}`, 220, 130);
