@@ -6,18 +6,19 @@ import time
 from datetime import datetime
 from typing import Optional
 
-from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
-from core import Account, Category, Transaction, User
+from core import Account, Category, DailyBalance, Transaction, User
 
 
-app = FastAPI(title="KeeperBMA Backend", version="1.0.0")
+app = FastAPI(title="KeeperBMA Backend", version="1.1.0")
 TOKEN_SECRET = os.getenv("API_TOKEN_SECRET", "change-me-in-render")
-TOKEN_TTL_SECONDS = int(os.getenv("API_TOKEN_TTL_SECONDS", "43200"))
+TOKEN_TTL_SECONDS = int(os.getenv("API_TOKEN_TTL_SECONDS", "1800"))  # 30 minutes
 STRICT_TOKEN_SECRET = str(os.getenv("STRICT_TOKEN_SECRET", "1")).strip().lower() in {"1", "true", "yes"}
+SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "keeperbma_session")
 logger = logging.getLogger("keeperbma.api")
 
 _cors_raw = str(
@@ -33,7 +34,7 @@ if not CORS_ALLOW_ORIGINS:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ALLOW_ORIGINS,
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
@@ -105,10 +106,7 @@ def _issue_token(user_id: int, ttl_seconds: int = TOKEN_TTL_SECONDS) -> str:
     return f"{payload}.{sig}"
 
 
-def _verify_token(authorization: Optional[str]) -> int:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing bearer token")
-    token = authorization.split(" ", 1)[1].strip()
+def _verify_token(token: str) -> int:
     parts = token.split(".")
     if len(parts) != 3:
         raise HTTPException(status_code=401, detail="Invalid token format")
@@ -131,8 +129,18 @@ def _verify_token(authorization: Optional[str]) -> int:
     return uid
 
 
-def _require_user(authorization: Optional[str], expected_user_id: int) -> None:
-    token_uid = _verify_token(authorization)
+def _extract_token(request: Request, authorization: Optional[str]) -> str:
+    if authorization and authorization.startswith("Bearer "):
+        return authorization.split(" ", 1)[1].strip()
+    cookie_token = request.cookies.get(SESSION_COOKIE_NAME)
+    if cookie_token:
+        return cookie_token
+    raise HTTPException(status_code=401, detail="Missing auth token")
+
+
+def _require_user(request: Request, authorization: Optional[str], expected_user_id: int) -> None:
+    token = _extract_token(request, authorization)
+    token_uid = _verify_token(token)
     if int(token_uid) != int(expected_user_id):
         raise HTTPException(status_code=403, detail="Forbidden user scope")
 
@@ -154,7 +162,6 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "same-origin"
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
     response.headers["Cache-Control"] = "no-store"
-    # HSTS is safe when served behind HTTPS (Render).
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
     return response
 
@@ -180,18 +187,46 @@ def register(body: RegisterBody):
 
 
 @app.post("/auth/login")
-def login(body: LoginBody):
+def login(body: LoginBody, response: Response):
     u = User()
     ok = u.login(body.name, body.password)
     if not ok:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = _issue_token(int(u.uid))
-    return {"ok": True, "user_id": int(u.uid), "name": u.name, "token": token}
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=token,
+        max_age=TOKEN_TTL_SECONDS,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/",
+    )
+    return {"ok": True, "user_id": int(u.uid), "name": u.name, "session_minutes": TOKEN_TTL_SECONDS // 60}
+
+
+@app.post("/auth/logout")
+def logout(response: Response):
+    response.delete_cookie(
+        key=SESSION_COOKIE_NAME,
+        path="/",
+        secure=True,
+        samesite="none",
+    )
+    return {"ok": True}
+
+
+@app.get("/auth/session")
+def auth_session(request: Request, authorization: Optional[str] = Header(default=None)):
+    token = _extract_token(request, authorization)
+    uid = _verify_token(token)
+    name = User().get_name_by_id(uid) or f"user-{uid}"
+    return {"ok": True, "user_id": int(uid), "name": name}
 
 
 @app.get("/accounts")
-def list_accounts(user_id: int, authorization: Optional[str] = Header(default=None)):
-    _require_user(authorization, user_id)
+def list_accounts(request: Request, user_id: int, authorization: Optional[str] = Header(default=None)):
+    _require_user(request, authorization, user_id)
     df = Account().by_user(user_id)
     if df is None or df.empty:
         return []
@@ -199,8 +234,8 @@ def list_accounts(user_id: int, authorization: Optional[str] = Header(default=No
 
 
 @app.post("/accounts")
-def create_account(body: AccountCreateBody, authorization: Optional[str] = Header(default=None)):
-    _require_user(authorization, body.user_id)
+def create_account(body: AccountCreateBody, request: Request, authorization: Optional[str] = Header(default=None)):
+    _require_user(request, authorization, body.user_id)
     try:
         aid = Account().add(
             account_name=body.account_name,
@@ -215,8 +250,8 @@ def create_account(body: AccountCreateBody, authorization: Optional[str] = Heade
 
 
 @app.get("/transactions")
-def list_transactions(user_id: int, authorization: Optional[str] = Header(default=None)):
-    _require_user(authorization, user_id)
+def list_transactions(request: Request, user_id: int, authorization: Optional[str] = Header(default=None)):
+    _require_user(request, authorization, user_id)
     df = Transaction().by_user(user_id)
     if df is None or df.empty:
         return []
@@ -224,8 +259,8 @@ def list_transactions(user_id: int, authorization: Optional[str] = Header(defaul
 
 
 @app.post("/transactions")
-def create_transaction(body: TxCreateBody, authorization: Optional[str] = Header(default=None)):
-    _require_user(authorization, body.user_id)
+def create_transaction(body: TxCreateBody, request: Request, authorization: Optional[str] = Header(default=None)):
+    _require_user(request, authorization, body.user_id)
     try:
         dt = body.date or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         txn_id = Transaction().add(
@@ -243,8 +278,8 @@ def create_transaction(body: TxCreateBody, authorization: Optional[str] = Header
 
 
 @app.get("/categories")
-def list_categories(user_id: int, authorization: Optional[str] = Header(default=None)):
-    _require_user(authorization, user_id)
+def list_categories(request: Request, user_id: int, authorization: Optional[str] = Header(default=None)):
+    _require_user(request, authorization, user_id)
     cat = Category()
     cat.ensure_default_categories(user_id)
     cat.sync_auto_from_accounts(user_id)
@@ -255,10 +290,19 @@ def list_categories(user_id: int, authorization: Optional[str] = Header(default=
 
 
 @app.post("/categories")
-def create_category(body: CategoryCreateBody, authorization: Optional[str] = Header(default=None)):
-    _require_user(authorization, body.user_id)
+def create_category(body: CategoryCreateBody, request: Request, authorization: Optional[str] = Header(default=None)):
+    _require_user(request, authorization, body.user_id)
     try:
         cid = Category().add(category_name=body.category_name, user_id=body.user_id)
         return {"ok": True, "category_id": int(cid)}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/daily_balances")
+def list_daily_balances(request: Request, user_id: int, authorization: Optional[str] = Header(default=None)):
+    _require_user(request, authorization, user_id)
+    df = DailyBalance().by_user(user_id)
+    if df is None or df.empty:
+        return []
+    return df.fillna("").to_dict(orient="records")

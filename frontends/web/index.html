@@ -6,30 +6,26 @@
   <title>KeeperBMA Web</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=Noto+Sans+Arabic:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700&family=Noto+Sans+Myanmar:wght@400;600;700&family=Noto+Sans+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=9" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="./styles.css?v=10" />
 </head>
 <body>
   <main class="page">
-    <div class="lang-bar">
-      <label id="langLabel" for="langSelect">Language</label>
-      <select id="langSelect">
-        <option value="en">English</option>
-        <option value="es">Espanol</option>
-        <option value="fr">Francais</option>
-        <option value="my">Myanmar</option>
-        <option value="ar">Arabic</option>
-        <option value="ja">Japanese</option>
-        <option value="zh">Chinese</option>
-      </select>
-    </div>
-
     <section id="authScreen" class="auth-shell">
-      <div class="brand-row">
-        <img class="brand-logo" src="../../assets/keeperbma-icon.png" alt="KeeperBMA" />
-        <h1>KeeperBMA</h1>
+      <div class="auth-top">
+        <div class="brand-row">
+          <img class="brand-logo" src="../../assets/keeperbma-icon.png" alt="KeeperBMA" />
+          <h1>KeeperBMA</h1>
+        </div>
+        <div class="lang-bar">
+          <label for="langSelect">Language</label>
+          <select id="langSelect">
+            <option value="en">English</option>
+          </select>
+        </div>
       </div>
-      <p id="welcomeTitle" class="welcome">Welcome</p>
+      <p class="welcome">Welcome</p>
 
       <div class="tabs">
         <button id="tabLogin" class="tab active">Login</button>
@@ -37,12 +33,10 @@
       </div>
 
       <section class="card auth-card">
-        <label id="labelName" for="loginName">Name</label>
+        <label for="loginName">Name</label>
         <input id="loginName" placeholder="Name" />
-
-        <label id="labelPassword" for="loginPass">Password</label>
+        <label for="loginPass">Password</label>
         <input id="loginPass" type="password" placeholder="Password" />
-
         <button id="authAction" class="primary full">Login</button>
         <p id="authStatus" class="muted"></p>
       </section>
@@ -50,20 +44,76 @@
 
     <section id="appScreen" class="app-shell hidden">
       <header class="top">
-        <h1>KeeperBMA</h1>
-        <div>
+        <div class="top-left">
+          <img class="top-logo" src="../../assets/keeperbma-icon.png" alt="KeeperBMA logo" />
+          <h1>KeeperBMA</h1>
+        </div>
+        <div class="top-right">
           <span id="userBadge" class="badge"></span>
           <button id="btnLogout" class="secondary">Logout</button>
         </div>
       </header>
 
+      <section class="kpi-grid">
+        <article class="kpi-card">
+          <h3>Current Net Worth</h3>
+          <p id="kpiNetWorth">$0.00</p>
+        </article>
+        <article class="kpi-card debt">
+          <h3>Total Debt</h3>
+          <p id="kpiDebt">$0.00</p>
+        </article>
+        <article class="kpi-card income">
+          <h3>Total Income</h3>
+          <p id="kpiIncome">$0.00</p>
+        </article>
+        <article class="kpi-card expense">
+          <h3>Total Expense</h3>
+          <p id="kpiExpense">$0.00</p>
+        </article>
+      </section>
+
       <section class="card app-status">
         <p id="health" class="muted"></p>
       </section>
 
+      <section class="card charts">
+        <h2>Summary Charts</h2>
+        <div class="chart-grid">
+          <div class="chart-card">
+            <h3>Income by Category</h3>
+            <canvas id="incomeChart"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3>Expense by Category</h3>
+            <canvas id="expenseChart"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3>Debt by Account</h3>
+            <canvas id="debtChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Daily Balance Summary</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Income</th>
+              <th>Expense</th>
+              <th>Net</th>
+              <th>Snapshot</th>
+            </tr>
+          </thead>
+          <tbody id="dailyRows"></tbody>
+        </table>
+      </section>
+
       <div class="grid">
         <section class="card">
-          <h2 id="accountsTitle">Accounts</h2>
+          <h2>Accounts</h2>
           <div class="row">
             <input id="accName" placeholder="Account Name" />
             <select id="accType">
@@ -77,20 +127,29 @@
             <input id="accBal" type="number" step="0.01" placeholder="Balance" value="0" />
           </div>
           <button id="btnAddAccount">Add Account</button>
-          <ul id="accounts"></ul>
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Balance</th>
+              </tr>
+            </thead>
+            <tbody id="accountsRows"></tbody>
+          </table>
         </section>
 
         <section class="card">
-          <h2 id="categoriesTitle">Categories</h2>
+          <h2>Categories</h2>
           <div class="row">
             <input id="catName" placeholder="Category Name" />
             <button id="btnAddCategory">Add Category</button>
           </div>
-          <ul id="categories"></ul>
+          <div id="categories" class="chips"></div>
         </section>
 
         <section class="card span-2">
-          <h2 id="transactionsTitle">Transactions</h2>
+          <h2>Transactions</h2>
           <div class="row">
             <select id="txType">
               <option>income</option>
@@ -105,13 +164,13 @@
           <table>
             <thead>
               <tr>
-                <th id="thId">ID</th>
-                <th id="thDate">Date</th>
-                <th id="thType">Type</th>
-                <th id="thAmount">Amount</th>
-                <th id="thAccount">Account</th>
-                <th id="thCategory">Category</th>
-                <th id="thNote">Note</th>
+                <th>ID</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Account</th>
+                <th>Category</th>
+                <th>Note</th>
               </tr>
             </thead>
             <tbody id="txRows"></tbody>
@@ -121,6 +180,6 @@
     </section>
   </main>
 
-  <script src="./web.js?v=9"></script>
+  <script src="./web.js?v=10"></script>
 </body>
 </html>

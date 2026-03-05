@@ -325,6 +325,18 @@ class User:
 
     def is_logged_in(self):
         return self.uid is not None
+
+    def get_name_by_id(self, user_id):
+        try:
+            uid = int(user_id)
+        except Exception:
+            return None
+        u = _load_users()
+        uid_col = pd.to_numeric(u["user_id"], errors="coerce")
+        hit = u[uid_col == uid]
+        if hit.empty:
+            return None
+        return str(hit.iloc[0]["name"])
     
 
 class Transaction:

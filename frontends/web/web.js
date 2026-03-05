@@ -1,122 +1,20 @@
 const $ = (id) => document.getElementById(id);
 
-const I18N = {
-  en: {
-    language: "Language",
-    welcome: "Welcome",
-    login: "Login",
-    register: "Register",
-    logout: "Logout",
-    name: "Name",
-    password: "Password",
-    accountName: "Account Name",
-    group: "Group",
-    balance: "Balance",
-    categoryName: "Category Name",
-    amount: "Amount",
-    category: "Category",
-    note: "Note",
-    accounts: "Accounts",
-    categories: "Categories",
-    transactions: "Transactions",
-    addAccount: "Add Account",
-    addCategory: "Add Category",
-    addTransaction: "Add Transaction",
-    thId: "ID",
-    thDate: "Date",
-    thType: "Type",
-    thAmount: "Amount",
-    thAccount: "Account",
-    thCategory: "Category",
-    thNote: "Note",
-    authRequired: "Name and password are required.",
-    registeredOk: "Registered. Switch to Login and sign in.",
-    authFailed: "{action} failed: {reason}",
-    invalidCredentialsHint:
-      "Invalid credentials. If this is your old local account, migrate data to Render DB or register this account on cloud first.",
-    signedIn: "Signed in: {name}",
-    apiHealthy: "API healthy: {ts}",
-    apiError: "API error: {reason}",
-    addAccountFailed: "Add account failed: {reason}",
-    addCategoryFailed: "Add category failed: {reason}",
-    addTxFailed: "Add transaction failed: {reason}",
-    networkError:
-      "Network error. The backend may be waking up on Render free tier. Please wait 20-40 seconds and try again.",
-  },
-  es: {
-    language: "Idioma",
-    welcome: "Bienvenido",
-    login: "Iniciar sesion",
-    register: "Registrarse",
-    logout: "Cerrar sesion",
-  },
-  fr: {
-    language: "Langue",
-    welcome: "Bienvenue",
-    login: "Connexion",
-    register: "Inscription",
-    logout: "Deconnexion",
-  },
-  my: {
-    language: "\u1018\u102c\u101e\u102c\u1005\u1000\u102c\u1038",
-    welcome: "\u1000\u103c\u102d\u102f\u1006\u102d\u102f\u1015\u102b\u1010\u101a\u103a",
-    login: "\u101c\u1031\u102c\u1037\u1002\u103a\u1021\u1004\u103a",
-    register: "\u1005\u102c\u101b\u1004\u103a\u1038\u101e\u103d\u1004\u103a\u1038",
-    logout: "\u1011\u103d\u1000\u103a\u1019\u100a\u103a",
-    name: "\u1021\u1019\u100a\u103a",
-    password: "\u1005\u1000\u102c\u1038\u101d\u103e\u1000\u103a",
-    networkError:
-      "\u1000\u103d\u1014\u103a\u101b\u1000\u103a \u1021\u1019\u103e\u102c\u1038\u1015\u1031\u102b\u103a\u1015\u1031\u102b\u1000\u103a\u1015\u102b\u101e\u100a\u103a\u104b Render free \u1010\u103d\u1004\u103a backend \u1014\u102d\u102f\u1038\u1011\u1014\u1031\u1019\u103e\u102f\u1000\u103c\u1031\u102c\u1004\u103a\u1037 \u1016\u103c\u1005\u103a\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u101e\u100a\u103a\u104b \u1005\u1000\u1039\u1000\u1014\u1037\u103a 20-40 \u1005\u1031\u102c\u1004\u1037\u103a\u1015\u103c\u102e\u1038 \u1011\u1015\u103a\u1019\u1036 \u1005\u1019\u103a\u1038\u1000\u103c\u100a\u1037\u103a\u1015\u102b\u104b",
-    invalidCredentialsHint:
-      "\u1021\u1019\u100a\u103a \u1014\u103e\u1004\u1037\u103a \u1005\u1000\u102c\u1038\u101d\u103e\u1000\u103a \u1019\u1000\u103c\u102f\u1004\u103a\u1038\u1010\u102d\u102f\u1000\u103a\u100a\u102e\u1015\u102b\u104b \u1021\u1031\u1000\u102c\u1004\u1037\u103a\u1021\u1000\u1031\u102c\u1004\u1037\u103a\u1000 old local data \u1016\u103c\u1005\u103a\u101c\u103e\u103b\u1004\u103a Render DB \u101e\u102d\u102f\u1037 migrate \u101c\u102f\u1015\u103a\u1015\u102b\u104b",
-    authFailed: "{action} \u1019\u1021\u1031\u102c\u1004\u103a\u1019\u103c\u1004\u103a\u1015\u102b: {reason}",
-  },
-  ar: {
-    language: "\u0627\u0644\u0644\u063a\u0629",
-    welcome: "\u0645\u0631\u062d\u0628\u0627",
-    login: "\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644",
-    register: "\u062a\u0633\u062c\u064a\u0644",
-    logout: "\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062e\u0631\u0648\u062c",
-    name: "\u0627\u0644\u0627\u0633\u0645",
-    password: "\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631",
-  },
-  ja: {
-    language: "\u8a00\u8a9e",
-    welcome: "\u3088\u3046\u3053\u305d",
-    login: "\u30ed\u30b0\u30a4\u30f3",
-    register: "\u767b\u9332",
-    logout: "\u30ed\u30b0\u30a2\u30a6\u30c8",
-    name: "\u540d\u524d",
-    password: "\u30d1\u30b9\u30ef\u30fc\u30c9",
-  },
-  zh: {
-    language: "\u8bed\u8a00",
-    welcome: "\u6b22\u8fce",
-    login: "\u767b\u5f55",
-    register: "\u6ce8\u518c",
-    logout: "\u9000\u51fa\u767b\u5f55",
-    name: "\u7528\u6237\u540d",
-    password: "\u5bc6\u7801",
-  },
-};
-
 let state = {
   apiBase: "https://keeperbma-backend.onrender.com",
   userId: 0,
   userName: "",
-  token: "",
   accounts: [],
+  categories: [],
+  tx: [],
+  daily: [],
   authMode: "login",
-  lang: localStorage.getItem("keeperbma_lang") || "en",
+  charts: { income: null, expense: null, debt: null },
 };
 
-function tr(key, vars = {}) {
-  const langPack = I18N[state.lang] || I18N.en;
-  let text = langPack[key] || I18N.en[key] || key;
-  Object.keys(vars).forEach((k) => {
-    text = text.replace(`{${k}}`, String(vars[k]));
-  });
-  return text;
+function fmtMoney(v) {
+  const n = Number(v || 0);
+  return `$${n.toFixed(2)}`;
 }
 
 function setStatus(id, msg) {
@@ -139,69 +37,42 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function applyLanguage() {
-  document.documentElement.lang = state.lang;
-  document.documentElement.dir = state.lang === "ar" ? "rtl" : "ltr";
+function setAuthMode(mode) {
+  state.authMode = mode === "register" ? "register" : "login";
+  const isLogin = state.authMode === "login";
+  $("tabLogin").classList.toggle("active", isLogin);
+  $("tabRegister").classList.toggle("active", !isLogin);
+  $("authAction").textContent = isLogin ? "Login" : "Register";
+  setStatus("authStatus", "");
+}
 
-  $("langLabel").textContent = tr("language");
-  $("welcomeTitle").textContent = tr("welcome");
-  $("tabLogin").textContent = tr("login");
-  $("tabRegister").textContent = tr("register");
-  $("labelName").textContent = tr("name");
-  $("labelPassword").textContent = tr("password");
-  $("btnLogout").textContent = tr("logout");
-  $("accountsTitle").textContent = tr("accounts");
-  $("categoriesTitle").textContent = tr("categories");
-  $("transactionsTitle").textContent = tr("transactions");
-  $("btnAddAccount").textContent = tr("addAccount");
-  $("btnAddCategory").textContent = tr("addCategory");
-  $("btnAddTx").textContent = tr("addTransaction");
-  $("thId").textContent = tr("thId");
-  $("thDate").textContent = tr("thDate");
-  $("thType").textContent = tr("thType");
-  $("thAmount").textContent = tr("thAmount");
-  $("thAccount").textContent = tr("thAccount");
-  $("thCategory").textContent = tr("thCategory");
-  $("thNote").textContent = tr("thNote");
-
-  $("loginName").placeholder = tr("name");
-  $("loginPass").placeholder = tr("password");
-  $("accName").placeholder = tr("accountName");
-  $("accGroup").placeholder = tr("group");
-  $("accBal").placeholder = tr("balance");
-  $("catName").placeholder = tr("categoryName");
-  $("txAmount").placeholder = tr("amount");
-  $("txCategory").placeholder = tr("category");
-  $("txNote").placeholder = tr("note");
-  $("authAction").textContent = state.authMode === "login" ? tr("login") : tr("register");
+function setScreen(isLoggedIn) {
+  $("authScreen").classList.toggle("hidden", isLoggedIn);
+  $("appScreen").classList.toggle("hidden", !isLoggedIn);
+  $("userBadge").textContent = isLoggedIn ? `Signed in: ${state.userName}` : "";
 }
 
 async function api(path, opts = {}) {
   let lastErr = null;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const headers = { "Content-Type": "application/json" };
-      if (state.token) {
-        headers.Authorization = `Bearer ${state.token}`;
-      }
       const res = await fetch(`${state.apiBase}${path}`, {
-        headers,
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         ...opts,
       });
       if (!res.ok) {
-        if (res.status >= 500 && attempt < 2) {
-          await sleep(1200 * (attempt + 1));
-          continue;
-        }
         const body = await res.json().catch(() => ({}));
         if (res.status === 401 || res.status === 403) {
           state.userId = 0;
           state.userName = "";
-          state.token = "";
-          state.accounts = [];
           setScreen(false);
           setAuthMode("login");
           throw new Error("Session expired. Please login again.");
+        }
+        if (res.status >= 500 && attempt < 2) {
+          await sleep(1200 * (attempt + 1));
+          continue;
         }
         throw new Error(body.detail || `HTTP ${res.status}`);
       }
@@ -213,24 +84,27 @@ async function api(path, opts = {}) {
         await sleep(1200 * (attempt + 1));
         continue;
       }
-      if (msg.includes("Failed to fetch")) {
-        throw new Error(tr("networkError"));
-      }
       throw e;
     }
   }
-  throw lastErr || new Error(tr("networkError"));
+  throw lastErr || new Error("Network error");
 }
 
-function renderAccounts() {
-  const ul = $("accounts");
+function renderAccountsTable() {
+  const tbody = $("accountsRows");
   const sel = $("txAccount");
-  ul.innerHTML = "";
+  tbody.innerHTML = "";
   sel.innerHTML = "";
-  state.accounts.forEach((a) => {
-    const li = document.createElement("li");
-    li.textContent = `${a.account_name} (${a.account_type}) - ${Number(a.balance || 0).toFixed(2)}`;
-    ul.appendChild(li);
+  const rows = [...state.accounts].sort((a, b) => String(a.account_name).localeCompare(String(b.account_name)));
+  rows.forEach((a) => {
+    const tr = document.createElement("tr");
+    const vals = [a.account_name || "", a.account_type || "", fmtMoney(a.balance)];
+    vals.forEach((v) => {
+      const td = document.createElement("td");
+      td.textContent = String(v);
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
 
     const opt = document.createElement("option");
     opt.value = a.account_id;
@@ -239,117 +113,192 @@ function renderAccounts() {
   });
 }
 
-function renderCategories(rows) {
-  const ul = $("categories");
-  ul.innerHTML = "";
-  rows.forEach((r) => {
-    const li = document.createElement("li");
-    li.textContent = r.category_name;
-    ul.appendChild(li);
+function renderCategories() {
+  const box = $("categories");
+  box.innerHTML = "";
+  state.categories.forEach((c) => {
+    const chip = document.createElement("span");
+    chip.textContent = String(c.category_name || "");
+    box.appendChild(chip);
   });
 }
 
-function renderTx(rows) {
+function renderTransactions() {
   const tbody = $("txRows");
   tbody.innerHTML = "";
-  rows.forEach((r) => {
-    const trNode = document.createElement("tr");
-    const cols = [
+  const accountNameById = new Map(state.accounts.map((a) => [Number(a.account_id), a.account_name]));
+  state.tx.forEach((r) => {
+    const tr = document.createElement("tr");
+    const vals = [
       r.txn_id ?? "",
       r.date ?? "",
       r.type ?? "",
-      Number(r.amount || 0).toFixed(2),
-      r.account_id ?? "",
+      fmtMoney(r.amount),
+      accountNameById.get(Number(r.account_id)) || r.account_id || "",
       r.category ?? "",
       r.note ?? "",
     ];
-    cols.forEach((v) => {
+    vals.forEach((v) => {
       const td = document.createElement("td");
       td.textContent = String(v);
-      trNode.appendChild(td);
+      tr.appendChild(td);
     });
-    tbody.appendChild(trNode);
+    tbody.appendChild(tr);
   });
 }
 
-function setAuthMode(mode) {
-  state.authMode = mode === "register" ? "register" : "login";
-  const isLogin = state.authMode === "login";
-  $("tabLogin").classList.toggle("active", isLogin);
-  $("tabRegister").classList.toggle("active", !isLogin);
-  $("authAction").textContent = isLogin ? tr("login") : tr("register");
-  setStatus("authStatus", "");
+function sumByKey(rows, keyFn, valueFn) {
+  const m = new Map();
+  rows.forEach((r) => {
+    const k = keyFn(r);
+    const v = Number(valueFn(r) || 0);
+    m.set(k, (m.get(k) || 0) + v);
+  });
+  return m;
 }
 
-function setScreen(isLoggedIn) {
-  $("authScreen").classList.toggle("hidden", isLoggedIn);
-  $("appScreen").classList.toggle("hidden", !isLoggedIn);
-  $("userBadge").textContent = isLoggedIn ? tr("signedIn", { name: state.userName }) : "";
+function chartColors(n) {
+  const palette = ["#1f7ae0", "#2fbf71", "#ffb02f", "#e05374", "#6f63ff", "#20b7c7", "#9b59b6", "#f39c12"];
+  const out = [];
+  for (let i = 0; i < n; i += 1) out.push(palette[i % palette.length]);
+  return out;
+}
+
+function upsertPieChart(id, chartKey, labelMap) {
+  const labels = [...labelMap.keys()];
+  const data = labels.map((k) => Number(labelMap.get(k) || 0));
+  const ctx = $(id);
+  if (!ctx) return;
+  if (state.charts[chartKey]) state.charts[chartKey].destroy();
+  state.charts[chartKey] = new Chart(ctx, {
+    type: "pie",
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: chartColors(labels.length),
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom" } },
+    },
+  });
+}
+
+function renderKpisAndCharts() {
+  const totalIncome = state.tx
+    .filter((t) => String(t.type).toLowerCase() === "income")
+    .reduce((s, t) => s + Number(t.amount || 0), 0);
+  const totalExpense = state.tx
+    .filter((t) => String(t.type).toLowerCase() === "expense")
+    .reduce((s, t) => s + Number(t.amount || 0), 0);
+  const netWorth = state.accounts.reduce((s, a) => s + Number(a.balance || 0), 0);
+  const debt = state.accounts
+    .filter((a) => ["credit", "credit_card"].includes(String(a.account_type || "").toLowerCase()))
+    .reduce((s, a) => s + Math.abs(Number(a.balance || 0)), 0);
+
+  $("kpiNetWorth").textContent = fmtMoney(netWorth);
+  $("kpiDebt").textContent = fmtMoney(debt);
+  $("kpiIncome").textContent = fmtMoney(totalIncome);
+  $("kpiExpense").textContent = fmtMoney(totalExpense);
+
+  const incomeByCat = sumByKey(
+    state.tx.filter((t) => String(t.type).toLowerCase() === "income"),
+    (r) => String(r.category || "Other"),
+    (r) => r.amount,
+  );
+  const expenseByCat = sumByKey(
+    state.tx.filter((t) => String(t.type).toLowerCase() === "expense"),
+    (r) => String(r.category || "Other"),
+    (r) => r.amount,
+  );
+  const debtByAccount = sumByKey(
+    state.accounts.filter((a) => ["credit", "credit_card"].includes(String(a.account_type || "").toLowerCase())),
+    (r) => String(r.account_name || "Credit"),
+    (r) => Math.abs(Number(r.balance || 0)),
+  );
+
+  upsertPieChart("incomeChart", "income", incomeByCat);
+  upsertPieChart("expenseChart", "expense", expenseByCat);
+  upsertPieChart("debtChart", "debt", debtByAccount);
+}
+
+function renderDailySummary() {
+  const rows = $("dailyRows");
+  rows.innerHTML = "";
+  const txByDay = new Map();
+  state.tx.forEach((t) => {
+    const dateKey = String(t.date || "").slice(0, 10);
+    if (!dateKey) return;
+    const rec = txByDay.get(dateKey) || { income: 0, expense: 0 };
+    if (String(t.type).toLowerCase() === "income") rec.income += Number(t.amount || 0);
+    if (String(t.type).toLowerCase() === "expense") rec.expense += Number(t.amount || 0);
+    txByDay.set(dateKey, rec);
+  });
+
+  const snapshotByDay = sumByKey(
+    state.daily,
+    (d) => String(d.date || "").slice(0, 10),
+    (d) => Number(d.balance || 0),
+  );
+
+  const allDates = new Set([...txByDay.keys(), ...snapshotByDay.keys()]);
+  const sorted = [...allDates].sort((a, b) => (a < b ? 1 : -1));
+  sorted.forEach((dateKey) => {
+    const rec = txByDay.get(dateKey) || { income: 0, expense: 0 };
+    const snap = Number(snapshotByDay.get(dateKey) || 0);
+    const tr = document.createElement("tr");
+    const vals = [
+      dateKey,
+      fmtMoney(rec.income),
+      fmtMoney(rec.expense),
+      fmtMoney(rec.income - rec.expense),
+      fmtMoney(snap),
+    ];
+    vals.forEach((v) => {
+      const td = document.createElement("td");
+      td.textContent = String(v);
+      tr.appendChild(td);
+    });
+    rows.appendChild(tr);
+  });
 }
 
 async function refreshAll() {
-  if (!state.userId) return;
-  const [accountsRes, categoriesRes, txRes] = await Promise.allSettled([
+  const results = await Promise.allSettled([
     api(`/accounts?user_id=${state.userId}`),
     api(`/categories?user_id=${state.userId}`),
     api(`/transactions?user_id=${state.userId}`),
+    api(`/daily_balances?user_id=${state.userId}`),
   ]);
 
-  if (accountsRes.status === "fulfilled") {
-    state.accounts = accountsRes.value || [];
-    renderAccounts();
-  } else {
-    state.accounts = [];
-    renderAccounts();
-  }
+  const [accountsRes, categoriesRes, txRes, dailyRes] = results;
+  state.accounts = accountsRes.status === "fulfilled" ? (accountsRes.value || []) : [];
+  state.categories = categoriesRes.status === "fulfilled" ? (categoriesRes.value || []) : [];
+  state.tx = txRes.status === "fulfilled" ? (txRes.value || []) : [];
+  state.daily = dailyRes.status === "fulfilled" ? (dailyRes.value || []) : [];
 
-  if (categoriesRes.status === "fulfilled") {
-    renderCategories(categoriesRes.value || []);
-  } else {
-    renderCategories([]);
-  }
+  renderAccountsTable();
+  renderCategories();
+  renderTransactions();
+  renderKpisAndCharts();
+  renderDailySummary();
 
-  if (txRes.status === "fulfilled") {
-    renderTx(txRes.value || []);
-  } else {
-    renderTx([]);
-  }
-
-  const failures = [accountsRes, categoriesRes, txRes].filter((r) => r.status === "rejected");
+  const failures = results.filter((r) => r.status === "rejected");
   if (failures.length > 0) {
-    const first = failures[0];
-    const reason = errMessage(first.reason);
-    setStatus("health", `Some data failed to load: ${reason}`);
+    setStatus("health", `Some data failed to load: ${errMessage(failures[0].reason)}`);
   } else {
-    await checkHealth();
-  }
-
-  setScreen(true);
-}
-
-async function checkHealth() {
-  try {
-    const h = await api("/health");
-    setStatus("health", tr("apiHealthy", { ts: h.ts }));
-  } catch (e) {
-    setStatus("health", tr("apiError", { reason: errMessage(e) }));
+    setStatus("health", "Loaded successfully");
   }
 }
 
 window.addEventListener("load", async () => {
-  if (!I18N[state.lang]) state.lang = "en";
-  $("langSelect").value = state.lang;
-  applyLanguage();
-
-  $("langSelect").onchange = () => {
-    state.lang = $("langSelect").value;
-    localStorage.setItem("keeperbma_lang", state.lang);
-    applyLanguage();
-    checkHealth();
-  };
-
   $("tabLogin").onclick = () => setAuthMode("login");
   $("tabRegister").onclick = () => setAuthMode("register");
+
   $("authAction").onclick = async () => {
     try {
       const payload = {
@@ -357,7 +306,7 @@ window.addEventListener("load", async () => {
         password: $("loginPass").value,
       };
       if (!payload.name || !payload.password) {
-        setStatus("authStatus", tr("authRequired"));
+        setStatus("authStatus", "Name and password are required.");
         return;
       }
       if (state.authMode === "register") {
@@ -365,36 +314,35 @@ window.addEventListener("load", async () => {
           method: "POST",
           body: JSON.stringify(payload),
         });
-        setStatus("authStatus", tr("registeredOk"));
+        setStatus("authStatus", "Registered. You can login now.");
         setAuthMode("login");
         return;
       }
+
       const out = await api("/auth/login", {
         method: "POST",
         body: JSON.stringify(payload),
       });
       state.userId = Number(out.user_id);
-      state.userName = out.name;
-      state.token = String(out.token || "");
+      state.userName = String(out.name || `user-${out.user_id}`);
       setScreen(true);
       setStatus("authStatus", "");
       await refreshAll();
     } catch (e) {
-      const reason = errMessage(e);
-      if (reason.includes("Invalid credentials")) {
-        setStatus("authStatus", tr("invalidCredentialsHint"));
-      } else {
-        const action = state.authMode === "register" ? tr("register") : tr("login");
-        setStatus("authStatus", tr("authFailed", { action, reason }));
-      }
+      setStatus("authStatus", `Login failed: ${errMessage(e)}`);
     }
   };
 
-  $("btnLogout").onclick = () => {
+  $("btnLogout").onclick = async () => {
+    try {
+      await api("/auth/logout", { method: "POST" });
+    } catch (_) {}
     state.userId = 0;
     state.userName = "";
-    state.token = "";
     state.accounts = [];
+    state.categories = [];
+    state.tx = [];
+    state.daily = [];
     setScreen(false);
     setAuthMode("login");
     setStatus("authStatus", "");
@@ -412,9 +360,11 @@ window.addEventListener("load", async () => {
           balance: Number($("accBal").value || 0),
         }),
       });
+      $("accName").value = "";
+      $("accBal").value = "0";
       await refreshAll();
     } catch (e) {
-      alert(tr("addAccountFailed", { reason: errMessage(e) }));
+      alert(`Add account failed: ${errMessage(e)}`);
     }
   };
 
@@ -427,9 +377,10 @@ window.addEventListener("load", async () => {
           category_name: $("catName").value.trim(),
         }),
       });
+      $("catName").value = "";
       await refreshAll();
     } catch (e) {
-      alert(tr("addCategoryFailed", { reason: errMessage(e) }));
+      alert(`Add category failed: ${errMessage(e)}`);
     }
   };
 
@@ -446,16 +397,26 @@ window.addEventListener("load", async () => {
           note: $("txNote").value.trim(),
         }),
       });
+      $("txAmount").value = "";
+      $("txCategory").value = "";
+      $("txNote").value = "";
       await refreshAll();
     } catch (e) {
-      alert(tr("addTxFailed", { reason: errMessage(e) }));
+      alert(`Add transaction failed: ${errMessage(e)}`);
     }
   };
 
-  await checkHealth();
-  // Never auto-login from persistent browser storage.
-  localStorage.removeItem("keeperbma_user_id");
-  localStorage.removeItem("keeperbma_user_name");
   setAuthMode("login");
   setScreen(false);
+
+  // Restore cookie session if still valid.
+  try {
+    const session = await api("/auth/session");
+    state.userId = Number(session.user_id);
+    state.userName = String(session.name || `user-${session.user_id}`);
+    setScreen(true);
+    await refreshAll();
+  } catch (_) {
+    setScreen(false);
+  }
 });
