@@ -1,10 +1,11 @@
 const $ = (id) => document.getElementById(id);
 
 let state = {
-  apiBase: localStorage.getItem("keeperbma_api_base") || "https://keeperbma-backend.onrender.com",
+  apiBase: "https://keeperbma-backend.onrender.com",
   userId: Number(localStorage.getItem("keeperbma_user_id") || 0),
   userName: localStorage.getItem("keeperbma_user_name") || "",
   accounts: [],
+  authMode: "login",
 };
 
 function setStatus(id, msg) {
@@ -69,6 +70,21 @@ function renderTx(rows) {
   });
 }
 
+function setAuthMode(mode) {
+  state.authMode = mode === "register" ? "register" : "login";
+  const isLogin = state.authMode === "login";
+  $("tabLogin").classList.toggle("active", isLogin);
+  $("tabRegister").classList.toggle("active", !isLogin);
+  $("authAction").textContent = isLogin ? "Login" : "Register";
+  setStatus("authStatus", "");
+}
+
+function setScreen(isLoggedIn) {
+  $("authScreen").classList.toggle("hidden", isLoggedIn);
+  $("appScreen").classList.toggle("hidden", !isLoggedIn);
+  $("userBadge").textContent = isLoggedIn ? `Signed in: ${state.userName}` : "";
+}
+
 async function refreshAll() {
   if (!state.userId) return;
   const [accounts, categories, tx] = await Promise.all([
@@ -80,7 +96,7 @@ async function refreshAll() {
   renderAccounts();
   renderCategories(categories);
   renderTx(tx);
-  setStatus("authStatus", `Logged in as ${state.userName} (user_id=${state.userId})`);
+  setScreen(true);
 }
 
 async function checkHealth() {
@@ -93,37 +109,30 @@ async function checkHealth() {
 }
 
 window.addEventListener("load", async () => {
-  $("apiBase").value = state.apiBase;
-
-  $("saveApi").onclick = async () => {
-    state.apiBase = $("apiBase").value.trim().replace(/\/+$/, "");
-    localStorage.setItem("keeperbma_api_base", state.apiBase);
-    await checkHealth();
-  };
-
-  $("btnRegister").onclick = async () => {
+  $("tabLogin").onclick = () => setAuthMode("login");
+  $("tabRegister").onclick = () => setAuthMode("register");
+  $("authAction").onclick = async () => {
     try {
-      await api("/auth/register", {
-        method: "POST",
-        body: JSON.stringify({
-          name: $("loginName").value.trim(),
-          password: $("loginPass").value,
-        }),
-      });
-      setStatus("authStatus", "Registered. You can login now.");
-    } catch (e) {
-      setStatus("authStatus", `Register failed: ${e.message}`);
-    }
-  };
-
-  $("btnLogin").onclick = async () => {
-    try {
+      const payload = {
+        name: $("loginName").value.trim(),
+        password: $("loginPass").value,
+      };
+      if (!payload.name || !payload.password) {
+        setStatus("authStatus", "Name and password are required.");
+        return;
+      }
+      if (state.authMode === "register") {
+        await api("/auth/register", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        setStatus("authStatus", "Registered. Switch to Login and sign in.");
+        setAuthMode("login");
+        return;
+      }
       const out = await api("/auth/login", {
         method: "POST",
-        body: JSON.stringify({
-          name: $("loginName").value.trim(),
-          password: $("loginPass").value,
-        }),
+        body: JSON.stringify(payload),
       });
       state.userId = Number(out.user_id);
       state.userName = out.name;
@@ -131,8 +140,20 @@ window.addEventListener("load", async () => {
       localStorage.setItem("keeperbma_user_name", state.userName);
       await refreshAll();
     } catch (e) {
-      setStatus("authStatus", `Login failed: ${e.message}`);
+      const action = state.authMode === "register" ? "Register" : "Login";
+      setStatus("authStatus", `${action} failed: ${e.message}`);
     }
+  };
+
+  $("btnLogout").onclick = () => {
+    state.userId = 0;
+    state.userName = "";
+    state.accounts = [];
+    localStorage.removeItem("keeperbma_user_id");
+    localStorage.removeItem("keeperbma_user_name");
+    setScreen(false);
+    setAuthMode("login");
+    setStatus("authStatus", "");
   };
 
   $("btnAddAccount").onclick = async () => {
@@ -188,7 +209,15 @@ window.addEventListener("load", async () => {
   };
 
   await checkHealth();
+  setAuthMode("login");
+  setScreen(false);
   if (state.userId) {
-    await refreshAll().catch(() => {});
+    await refreshAll().catch(() => {
+      state.userId = 0;
+      state.userName = "";
+      localStorage.removeItem("keeperbma_user_id");
+      localStorage.removeItem("keeperbma_user_name");
+      setScreen(false);
+    });
   }
 });

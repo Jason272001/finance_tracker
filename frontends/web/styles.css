@@ -5,15 +5,78 @@ body {
   background: #eef4fb;
   color: #10233f;
 }
+.page {
+  width: min(1320px, 92vw);
+  margin: 24px auto;
+}
+.hidden { display: none; }
+.auth-shell { max-width: 980px; }
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+.brand-row h1 {
+  margin: 0;
+  font-size: 2.9rem;
+}
+.welcome {
+  margin: 28px 0 14px;
+  font-size: 2rem;
+  font-weight: 700;
+}
+.tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #d7e4f6;
+}
+.tab {
+  background: transparent;
+  border-radius: 0;
+  color: #6a7e99;
+  padding: 8px 0;
+  border-bottom: 2px solid transparent;
+}
+.tab.active {
+  color: #1e3d69;
+  border-bottom-color: #1f7ae0;
+}
+.auth-card {
+  max-width: 980px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.full {
+  width: 100%;
+  margin-top: 4px;
+}
 .top {
-  padding: 20px 24px;
+  padding: 16px 20px;
   background: linear-gradient(135deg, #0f5ec9, #2da855);
   color: #fff;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
-.top h1 { margin: 0 0 6px; }
-.top p { margin: 0; opacity: 0.92; }
+.top h1 {
+  margin: 0;
+  font-size: 1.9rem;
+}
+.badge {
+  margin-right: 10px;
+  font-size: 0.95rem;
+  opacity: 0.95;
+}
+.app-status { margin: 12px 0; }
 .grid {
-  padding: 18px;
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(2, minmax(280px, 1fr));
@@ -27,6 +90,10 @@ body {
 }
 .span-2 { grid-column: span 2; }
 h2 { margin-top: 0; font-size: 1.1rem; }
+label {
+  font-weight: 600;
+  margin-top: 4px;
+}
 .row {
   display: flex;
   flex-wrap: wrap;
@@ -48,6 +115,7 @@ button {
   cursor: pointer;
 }
 button.secondary { background: #2ca85a; }
+.primary { background: #1f7ae0; }
 button:hover { filter: brightness(0.96); }
 .muted { color: #5d6f87; font-size: 0.92rem; }
 ul { margin: 8px 0 0; padding-left: 18px; max-height: 180px; overflow: auto; }
@@ -63,6 +131,10 @@ th, td {
   padding: 8px 6px;
 }
 @media (max-width: 920px) {
+  .page { width: min(1320px, 96vw); }
+  .brand-row h1 { font-size: 2.2rem; }
+  .welcome { font-size: 1.65rem; }
+  .top { flex-direction: column; align-items: flex-start; gap: 10px; }
   .grid { grid-template-columns: 1fr; }
   .span-2 { grid-column: span 1; }
 }
