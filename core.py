@@ -6,6 +6,11 @@ import tempfile
 import time
 from datetime import datetime
 from contextlib import contextmanager
+try:
+    from sqlalchemy import create_engine, inspect
+except Exception:
+    create_engine = None
+    inspect = None
 # ---------------------------
 # Paths
 # ---------------------------
@@ -16,6 +21,19 @@ T_PATH=os.path.join(DATA_DIR,"transactions.csv")
 A_PATH=os.path.join(DATA_DIR,"accounts.csv")
 D_PATH=os.path.join(DATA_DIR,"daily_balances.csv")
 C_PATH=os.path.join(DATA_DIR,"category.csv")
+DB_BACKEND = str(os.getenv("DB_BACKEND", "postgres")).strip().lower()
+DATABASE_URL = str(os.getenv("DATABASE_URL", "")).strip()
+MYSQL_HOST = os.getenv("MYSQL_HOST", "127.0.0.1")
+MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
+MYSQL_DB = os.getenv("MYSQL_DB", "finance_tracker")
+MYSQL_USER = os.getenv("MYSQL_USER", "root")
+MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
+PG_HOST = os.getenv("PGHOST", "127.0.0.1")
+PG_PORT = int(os.getenv("PGPORT", "5432"))
+PG_DB = os.getenv("PGDATABASE", "keeperbma")
+PG_USER = os.getenv("PGUSER", "postgres")
+PG_PASSWORD = os.getenv("PGPASSWORD", "")
+DB_IS_SQL = bool(DATABASE_URL) or DB_BACKEND in {"mysql", "postgres", "postgresql"}
 PW_SCHEME = "pbkdf2_sha256"
 PW_ITERATIONS = 210000
 # ---------------------------
@@ -23,12 +41,13 @@ PW_ITERATIONS = 210000
 # ---------------------------
 
 def _load_users():
-    if not os.path.exists(USERS_CSV):
-        raise FileNotFoundError(
-            "users.csv not found. Create it manually inside data/ folder."
-        )
-
-    df = pd.read_csv(USERS_CSV)
+    if DB_IS_SQL:
+        df = _read_table("users", ["user_id", "name", "password"])
+    else:
+        if not os.path.exists(USERS_CSV):
+            os.makedirs(os.path.dirname(USERS_CSV), exist_ok=True)
+            pd.DataFrame(columns=["user_id", "name", "password"]).to_csv(USERS_CSV, index=False)
+        df = pd.read_csv(USERS_CSV)
 
     required_cols = {"user_id", "name", "password"}
     if not required_cols.issubset(df.columns):
@@ -37,6 +56,58 @@ def _load_users():
         )
 
     return df
+
+
+def _save_users(df):
+    if DB_IS_SQL:
+        _write_table("users", df)
+    else:
+        _atomic_write_csv(USERS_CSV, df)
+
+
+_ENGINE = None
+
+
+def _get_engine():
+    global _ENGINE
+    if _ENGINE is not None:
+        return _ENGINE
+    if not DATABASE_URL and DB_BACKEND not in {"mysql", "postgres", "postgresql"}:
+        return None
+    if create_engine is None:
+        raise RuntimeError("Database backend requires SQLAlchemy and driver packages.")
+    if DATABASE_URL:
+        url = DATABASE_URL
+    elif DB_BACKEND == "mysql":
+        url = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}"
+    else:
+        # PostgreSQL
+        url = f"postgresql+psycopg2://{PG_USER}:{PG_PASSWORD}@{PG_HOST}:{PG_PORT}/{PG_DB}"
+    _ENGINE = create_engine(url, pool_pre_ping=True)
+    return _ENGINE
+
+
+def _read_table(table_name, cols):
+    engine = _get_engine()
+    if engine is None:
+        return pd.DataFrame(columns=cols)
+    if inspect is None:
+        raise RuntimeError("SQLAlchemy inspect is unavailable. Install SQLAlchemy.")
+    insp = inspect(engine)
+    if not insp.has_table(table_name):
+        return pd.DataFrame(columns=cols)
+    df = pd.read_sql_table(table_name, con=engine)
+    for c in cols:
+        if c not in df.columns:
+            df[c] = ""
+    return df[cols]
+
+
+def _write_table(table_name, df):
+    engine = _get_engine()
+    if engine is None:
+        raise RuntimeError("MySQL engine is not configured.")
+    df.to_sql(table_name, con=engine, if_exists="replace", index=False)
 
 
 def _atomic_write_csv(path, df):
@@ -177,7 +248,7 @@ class User:
 
             if needs_upgrade:
                 # Opportunistically migrate plaintext passwords on successful login.
-                with _file_lock(USERS_CSV):
+                if DB_IS_SQL:
                     u2 = _load_users()
                     hit = u2.index[
                         (pd.to_numeric(u2["user_id"], errors="coerce") == int(self.uid))
@@ -185,7 +256,17 @@ class User:
                     ]
                     if len(hit) > 0:
                         u2.at[hit[0], "password"] = _hash_password(pw)
-                        _atomic_write_csv(USERS_CSV, u2)
+                        _save_users(u2)
+                else:
+                    with _file_lock(USERS_CSV):
+                        u2 = _load_users()
+                        hit = u2.index[
+                            (pd.to_numeric(u2["user_id"], errors="coerce") == int(self.uid))
+                            & (u2["name"].astype(str) == self.name)
+                        ]
+                        if len(hit) > 0:
+                            u2.at[hit[0], "password"] = _hash_password(pw)
+                            _save_users(u2)
 
             return True
 
@@ -203,7 +284,7 @@ class User:
         if len(pw_s) < 10 or not any(ch.isalpha() for ch in pw_s) or not any(ch.isdigit() for ch in pw_s):
             raise ValueError("Password must be 10+ chars and include letters and numbers.")
 
-        with _file_lock(USERS_CSV):
+        if DB_IS_SQL:
             u = _load_users()
             existing = u["name"].astype(str).str.strip().str.lower()
             if (existing == name_s.lower()).any():
@@ -217,8 +298,25 @@ class User:
                 "password": _hash_password(pw_s),
             }
             u = pd.concat([u, pd.DataFrame([new_row])], ignore_index=True)
-            _atomic_write_csv(USERS_CSV, u)
+            _save_users(u)
             return int(next_uid)
+        else:
+            with _file_lock(USERS_CSV):
+                u = _load_users()
+                existing = u["name"].astype(str).str.strip().str.lower()
+                if (existing == name_s.lower()).any():
+                    raise ValueError("User name already exists.")
+
+                uid_col = pd.to_numeric(u["user_id"], errors="coerce").dropna()
+                next_uid = 1 if uid_col.empty else int(uid_col.max()) + 1
+                new_row = {
+                    "user_id": int(next_uid),
+                    "name": name_s,
+                    "password": _hash_password(pw_s),
+                }
+                u = pd.concat([u, pd.DataFrame([new_row])], ignore_index=True)
+                _save_users(u)
+                return int(next_uid)
 
     def logout(self):
         self.uid = None
@@ -233,12 +331,17 @@ class Transaction:
 
     def __init__(self, path=T_PATH):
         self.path = path
-        os.makedirs(os.path.dirname(self.path), exist_ok=True)
-        if not os.path.exists(self.path):
-            pd.DataFrame(columns=self.cols).to_csv(self.path, index=False)
+        self.table = "transactions"
+        if not DB_IS_SQL:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            if not os.path.exists(self.path):
+                pd.DataFrame(columns=self.cols).to_csv(self.path, index=False)
 
     def _load(self):
-        df = pd.read_csv(self.path)
+        if DB_IS_SQL:
+            df = _read_table(self.table, self.cols)
+        else:
+            df = pd.read_csv(self.path)
         # Keep schema stable.
         if "data" in df.columns and "date" not in df.columns:
             df = df.rename(columns={"data": "date"})
@@ -249,7 +352,10 @@ class Transaction:
         return df[self.cols]
 
     def _save(self, df):
-        _atomic_write_csv(self.path, df)
+        if DB_IS_SQL:
+            _write_table(self.table, df)
+        else:
+            _atomic_write_csv(self.path, df)
 
     def _normalize(self, df):
         df = df.copy()
@@ -504,19 +610,27 @@ class Account:
 
     def __init__(self, path=A_PATH):
         self.path = path
-        os.makedirs(os.path.dirname(self.path), exist_ok=True)
-        if not os.path.exists(self.path):
-            pd.DataFrame(columns=self.cols).to_csv(self.path, index=False)
+        self.table = "accounts"
+        if not DB_IS_SQL:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            if not os.path.exists(self.path):
+                pd.DataFrame(columns=self.cols).to_csv(self.path, index=False)
 
     def _load(self):
-        df = pd.read_csv(self.path)
+        if DB_IS_SQL:
+            df = _read_table(self.table, self.cols)
+        else:
+            df = pd.read_csv(self.path)
         for c in self.cols:
             if c not in df.columns:
                 df[c] = ""
         return df[self.cols]
 
     def _save(self, df):
-        _atomic_write_csv(self.path, df)
+        if DB_IS_SQL:
+            _write_table(self.table, df)
+        else:
+            _atomic_write_csv(self.path, df)
 
     def _normalize(self, df):
         df = df.copy()
@@ -698,19 +812,27 @@ class Category:
 
     def __init__(self, path=C_PATH):
         self.path = path
-        os.makedirs(os.path.dirname(self.path), exist_ok=True)
-        if not os.path.exists(self.path):
-            pd.DataFrame(columns=self.cols).to_csv(self.path, index=False)
+        self.table = "categories"
+        if not DB_IS_SQL:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            if not os.path.exists(self.path):
+                pd.DataFrame(columns=self.cols).to_csv(self.path, index=False)
 
     def _load(self):
-        df = pd.read_csv(self.path)
+        if DB_IS_SQL:
+            df = _read_table(self.table, self.cols)
+        else:
+            df = pd.read_csv(self.path)
         for c in self.cols:
             if c not in df.columns:
                 df[c] = ""
         return df[self.cols]
 
     def _save(self, df):
-        _atomic_write_csv(self.path, df)
+        if DB_IS_SQL:
+            _write_table(self.table, df)
+        else:
+            _atomic_write_csv(self.path, df)
 
     def _normalize(self, df):
         out = df.copy()
@@ -922,19 +1044,27 @@ class DailyBalance:
 
     def __init__(self, path=D_PATH):
         self.path = path
-        os.makedirs(os.path.dirname(self.path), exist_ok=True)
-        if not os.path.exists(self.path):
-            pd.DataFrame(columns=self.cols).to_csv(self.path, index=False)
+        self.table = "daily_balances"
+        if not DB_IS_SQL:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            if not os.path.exists(self.path):
+                pd.DataFrame(columns=self.cols).to_csv(self.path, index=False)
 
     def _load(self):
-        df = pd.read_csv(self.path)
+        if DB_IS_SQL:
+            df = _read_table(self.table, self.cols)
+        else:
+            df = pd.read_csv(self.path)
         for c in self.cols:
             if c not in df.columns:
                 df[c] = ""
         return df[self.cols]
 
     def _save(self, df):
-        _atomic_write_csv(self.path, df)
+        if DB_IS_SQL:
+            _write_table(self.table, df)
+        else:
+            _atomic_write_csv(self.path, df)
 
     def _normalize(self, df):
         df = df.copy()

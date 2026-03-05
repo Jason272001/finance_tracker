@@ -3,6 +3,7 @@ import pandas as pd
 import io
 import core as core_module
 from datetime import timedelta
+from pathlib import Path
 
 try:
     import matplotlib.pyplot as plt
@@ -21,7 +22,17 @@ if Category is None:
     st.error("Category class is missing in core.py. Please restart Streamlit.")
     st.stop()
 
-st.set_page_config(page_title="keeperbmo", page_icon=":bar_chart:", layout="wide")
+APP_NAME = "KeeperBMA"
+ROOT_DIR = Path(__file__).resolve().parent
+ASSETS_DIR = ROOT_DIR / "assets"
+LOGO_PNG = ASSETS_DIR / "keeperbma-logo.png"
+ICON_PNG = ASSETS_DIR / "keeperbma-icon.png"
+
+st.set_page_config(
+    page_title=APP_NAME,
+    page_icon=str(ICON_PNG) if ICON_PNG.exists() else ":bar_chart:",
+    layout="wide",
+)
 
 if "theme_mode" not in st.session_state:
     st.session_state["theme_mode"] = "Light"
@@ -36,6 +47,8 @@ if st.session_state["theme_mode"] == "Light":
     theme_css = """
     <style>
     .block-container {padding-top: 1.2rem; padding-bottom: 1.2rem;}
+    header[data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"], .stDeployButton {display: none !important;}
+    #MainMenu, footer {visibility: hidden;}
     div[data-testid="stMetricValue"] {font-size: 1.35rem;}
     @keyframes fadeUp {
         from {opacity: 0; transform: translateY(10px);}
@@ -101,6 +114,8 @@ else:
     theme_css = """
     <style>
     .block-container {padding-top: 1.2rem; padding-bottom: 1.2rem;}
+    header[data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"], .stDeployButton {display: none !important;}
+    #MainMenu, footer {visibility: hidden;}
     div[data-testid="stMetricValue"] {font-size: 1.35rem;}
     @keyframes fadeUp {
         from {opacity: 0; transform: translateY(10px);}
@@ -176,7 +191,9 @@ else:
     """
 
 st.markdown(theme_css, unsafe_allow_html=True)
-st.title("keeperbmo")
+if LOGO_PNG.exists():
+    st.image(str(LOGO_PNG), width=340)
+st.title(APP_NAME)
 
 
 def _build_summary_pdf(
@@ -193,7 +210,7 @@ def _build_summary_pdf(
         # Page 1: title + 3 pie charts
         fig = plt.figure(figsize=(11.69, 8.27))
         fig.suptitle(
-            f"keeperbmo Summary ({period_label})\n{start_date} to {end_date}",
+            f"{APP_NAME} Summary ({period_label})\n{start_date} to {end_date}",
             fontsize=14,
             fontweight="bold",
         )

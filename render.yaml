@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: keeperbma-backend
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DB_BACKEND
+        value: postgres
+      - key: DATABASE_URL
+        fromDatabase:
+          name: keeperbma-db
+          property: connectionString
+
+databases:
+  - name: keeperbma-db
+    plan: free
+    databaseName: keeperbma
+    user: keeperbma

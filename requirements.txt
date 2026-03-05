@@ -1,3 +1,8 @@
 streamlit==1.54.0
 pandas==2.3.3
 matplotlib==3.10.8
+SQLAlchemy==2.0.48
+psycopg2-binary==2.9.11
+pywebview==6.1
+fastapi==0.116.1
+uvicorn==0.35.0

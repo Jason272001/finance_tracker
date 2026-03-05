@@ -1,9 +1,0 @@
-account_id,account_name,account_type,group,user_id
-1,Chase Checking,asset,bank,1
-2,Uber Checking,asset,bank,1
-3,Roth IRA,saving,investment,1
-4,BOA Checcking,saving,bank,1
-5,Chase Credit Card,Credit,bank,1
-6,Capital One Credit Card,Credit,bank,1
-7,Credit One Credit Card,Credit,bank,1
-8,Montery,Credit,lone,1
