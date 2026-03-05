@@ -102,8 +102,9 @@ const I18N = {
 
 let state = {
   apiBase: "https://keeperbma-backend.onrender.com",
-  userId: Number(localStorage.getItem("keeperbma_user_id") || 0),
-  userName: localStorage.getItem("keeperbma_user_name") || "",
+  userId: 0,
+  userName: "",
+  token: "",
   accounts: [],
   authMode: "login",
   lang: localStorage.getItem("keeperbma_lang") || "en",
@@ -179,8 +180,12 @@ async function api(path, opts = {}) {
   let lastErr = null;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
+      const headers = { "Content-Type": "application/json" };
+      if (state.token) {
+        headers.Authorization = `Bearer ${state.token}`;
+      }
       const res = await fetch(`${state.apiBase}${path}`, {
-        headers: { "Content-Type": "application/json" },
+        headers,
         ...opts,
       });
       if (!res.ok) {
@@ -356,8 +361,7 @@ window.addEventListener("load", async () => {
       });
       state.userId = Number(out.user_id);
       state.userName = out.name;
-      localStorage.setItem("keeperbma_user_id", String(state.userId));
-      localStorage.setItem("keeperbma_user_name", state.userName);
+      state.token = String(out.token || "");
       setScreen(true);
       setStatus("authStatus", "");
       await refreshAll();
@@ -375,9 +379,8 @@ window.addEventListener("load", async () => {
   $("btnLogout").onclick = () => {
     state.userId = 0;
     state.userName = "";
+    state.token = "";
     state.accounts = [];
-    localStorage.removeItem("keeperbma_user_id");
-    localStorage.removeItem("keeperbma_user_name");
     setScreen(false);
     setAuthMode("login");
     setStatus("authStatus", "");
@@ -436,15 +439,9 @@ window.addEventListener("load", async () => {
   };
 
   await checkHealth();
+  // Never auto-login from persistent browser storage.
+  localStorage.removeItem("keeperbma_user_id");
+  localStorage.removeItem("keeperbma_user_name");
   setAuthMode("login");
   setScreen(false);
-  if (state.userId) {
-    await refreshAll().catch(() => {
-      state.userId = 0;
-      state.userName = "";
-      localStorage.removeItem("keeperbma_user_id");
-      localStorage.removeItem("keeperbma_user_name");
-      setScreen(false);
-    });
-  }
 });
