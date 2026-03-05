@@ -1,9 +1,15 @@
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Noto Sans", "Noto Sans Myanmar", "Noto Sans Arabic", "Noto Sans JP", "Noto Sans SC", "Segoe UI", Tahoma, sans-serif;
   background: #eef4fb;
   color: #10233f;
+}
+html[dir="rtl"] body {
+  text-align: right;
+}
+html[dir="rtl"] .lang-bar {
+  justify-content: flex-start;
 }
 .page {
   width: min(1320px, 92vw);

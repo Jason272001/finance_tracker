@@ -221,14 +221,17 @@ class User:
 
     def login(self, name, pw):
         name_s = str(name)
-        key = name_s.strip().lower()
+        normalized_name = name_s.strip()
+        key = normalized_name.lower()
         now_ts = time.time()
         rec = self._login_attempts.get(key, {"count": 0, "until": 0.0})
         if now_ts < rec["until"]:
             return False
 
         u = _load_users()
-        candidates = u[u["name"].astype(str) == name_s]
+        candidates = u[
+            u["name"].astype(str).str.strip().str.lower() == normalized_name.lower()
+        ]
 
         if candidates.empty:
             rec["count"] += 1
