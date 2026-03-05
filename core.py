@@ -140,6 +140,9 @@ def _atomic_write_csv(path, df):
 @contextmanager
 def _file_lock(path, timeout=5.0):
     lock_path = f"{path}.lock"
+    lock_dir = os.path.dirname(lock_path)
+    if lock_dir:
+        os.makedirs(lock_dir, exist_ok=True)
     start = time.time()
     fd = None
     while True:

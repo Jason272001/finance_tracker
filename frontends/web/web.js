@@ -225,7 +225,11 @@ async function deleteAccount(acc) {
         method: "POST",
       });
     }
-    await refreshAll();
+    try {
+      await refreshAll();
+    } catch (e) {
+      setStatus("health", `Deleted account, but refresh failed: ${errMessage(e)}`);
+    }
   } catch (e) {
     alert(`Delete account failed: ${errMessage(e)}`);
   }
@@ -284,7 +288,11 @@ async function deleteTransaction(tx) {
         method: "POST",
       });
     }
-    await refreshAll();
+    try {
+      await refreshAll();
+    } catch (e) {
+      setStatus("health", `Deleted transaction, but refresh failed: ${errMessage(e)}`);
+    }
   } catch (e) {
     alert(`Delete transaction failed: ${errMessage(e)}`);
   }
