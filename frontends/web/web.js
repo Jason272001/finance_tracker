@@ -40,6 +40,8 @@ const I18N = {
     addAccountFailed: "Add account failed: {reason}",
     addCategoryFailed: "Add category failed: {reason}",
     addTxFailed: "Add transaction failed: {reason}",
+    networkError:
+      "Network error. The backend may be waking up on Render free tier. Please wait 20-40 seconds and try again.",
   },
   es: {
     language: "Idioma",
@@ -63,6 +65,8 @@ const I18N = {
     logout: "\u1011\u103d\u1000\u103a\u1019\u100a\u103a",
     name: "\u1021\u1019\u100a\u103a",
     password: "\u1005\u1000\u102c\u1038\u101d\u103e\u1000\u103a",
+    networkError:
+      "\u1000\u103d\u1014\u103a\u101b\u1000\u103a \u1021\u1019\u103e\u102c\u1038\u1015\u1031\u102b\u103a\u1015\u1031\u102b\u1000\u103a\u1015\u102b\u101e\u100a\u103a\u104b Render free \u1010\u103d\u1004\u103a backend \u1014\u102d\u102f\u1038\u1011\u1014\u1031\u1019\u103e\u102f\u1000\u103c\u1031\u102c\u1004\u103a\u1037 \u1016\u103c\u1005\u103a\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u101e\u100a\u103a\u104b \u1005\u1000\u1039\u1000\u1014\u1037\u103a 20-40 \u1005\u1031\u102c\u1004\u1037\u103a\u1015\u103c\u102e\u1038 \u1011\u1015\u103a\u1019\u1036 \u1005\u1019\u103a\u1038\u1000\u103c\u100a\u1037\u103a\u1015\u102b\u104b",
   },
   ar: {
     language: "\u0627\u0644\u0644\u063a\u0629",
@@ -115,6 +119,10 @@ function setStatus(id, msg) {
   $(id).textContent = msg;
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function applyLanguage() {
   document.documentElement.lang = state.lang;
   document.documentElement.dir = state.lang === "ar" ? "rtl" : "ltr";
@@ -153,15 +161,36 @@ function applyLanguage() {
 }
 
 async function api(path, opts = {}) {
-  const res = await fetch(`${state.apiBase}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...opts,
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || `HTTP ${res.status}`);
+  let lastErr = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const res = await fetch(`${state.apiBase}${path}`, {
+        headers: { "Content-Type": "application/json" },
+        ...opts,
+      });
+      if (!res.ok) {
+        if (res.status >= 500 && attempt < 2) {
+          await sleep(1200 * (attempt + 1));
+          continue;
+        }
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || `HTTP ${res.status}`);
+      }
+      return res.json();
+    } catch (e) {
+      lastErr = e;
+      const msg = String(e && e.message ? e.message : e);
+      if (msg.includes("Failed to fetch") && attempt < 2) {
+        await sleep(1200 * (attempt + 1));
+        continue;
+      }
+      if (msg.includes("Failed to fetch")) {
+        throw new Error(tr("networkError"));
+      }
+      throw e;
+    }
   }
-  return res.json();
+  throw lastErr || new Error(tr("networkError"));
 }
 
 function renderAccounts() {
