@@ -67,6 +67,9 @@ const I18N = {
     password: "\u1005\u1000\u102c\u1038\u101d\u103e\u1000\u103a",
     networkError:
       "\u1000\u103d\u1014\u103a\u101b\u1000\u103a \u1021\u1019\u103e\u102c\u1038\u1015\u1031\u102b\u103a\u1015\u1031\u102b\u1000\u103a\u1015\u102b\u101e\u100a\u103a\u104b Render free \u1010\u103d\u1004\u103a backend \u1014\u102d\u102f\u1038\u1011\u1014\u1031\u1019\u103e\u102f\u1000\u103c\u1031\u102c\u1004\u103a\u1037 \u1016\u103c\u1005\u103a\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u101e\u100a\u103a\u104b \u1005\u1000\u1039\u1000\u1014\u1037\u103a 20-40 \u1005\u1031\u102c\u1004\u1037\u103a\u1015\u103c\u102e\u1038 \u1011\u1015\u103a\u1019\u1036 \u1005\u1019\u103a\u1038\u1000\u103c\u100a\u1037\u103a\u1015\u102b\u104b",
+    invalidCredentialsHint:
+      "\u1021\u1019\u100a\u103a \u1014\u103e\u1004\u1037\u103a \u1005\u1000\u102c\u1038\u101d\u103e\u1000\u103a \u1019\u1000\u103c\u102f\u1004\u103a\u1038\u1010\u102d\u102f\u1000\u103a\u100a\u102e\u1015\u102b\u104b \u1021\u1031\u1000\u102c\u1004\u1037\u103a\u1021\u1000\u1031\u102c\u1004\u1037\u103a\u1000 old local data \u1016\u103c\u1005\u103a\u101c\u103e\u103b\u1004\u103a Render DB \u101e\u102d\u102f\u1037 migrate \u101c\u102f\u1015\u103a\u1015\u102b\u104b",
+    authFailed: "{action} \u1019\u1021\u1031\u102c\u1004\u103a\u1019\u103c\u1004\u103a\u1015\u102b: {reason}",
   },
   ar: {
     language: "\u0627\u0644\u0644\u063a\u0629",
@@ -117,6 +120,18 @@ function tr(key, vars = {}) {
 
 function setStatus(id, msg) {
   $(id).textContent = msg;
+}
+
+function errMessage(e) {
+  if (!e) return "Unknown error";
+  if (typeof e === "string") return e;
+  if (e instanceof Error) return e.message || String(e);
+  if (typeof e.message === "string") return e.message;
+  try {
+    return JSON.stringify(e);
+  } catch (_) {
+    return String(e);
+  }
 }
 
 function sleep(ms) {
@@ -179,7 +194,7 @@ async function api(path, opts = {}) {
       return res.json();
     } catch (e) {
       lastErr = e;
-      const msg = String(e && e.message ? e.message : e);
+      const msg = errMessage(e);
       if (msg.includes("Failed to fetch") && attempt < 2) {
         await sleep(1200 * (attempt + 1));
         continue;
@@ -272,7 +287,7 @@ async function checkHealth() {
     const h = await api("/health");
     setStatus("health", tr("apiHealthy", { ts: h.ts }));
   } catch (e) {
-    setStatus("health", tr("apiError", { reason: e.message }));
+    setStatus("health", tr("apiError", { reason: errMessage(e) }));
   }
 }
 
@@ -319,11 +334,12 @@ window.addEventListener("load", async () => {
       localStorage.setItem("keeperbma_user_name", state.userName);
       await refreshAll();
     } catch (e) {
-      if (String(e.message).includes("Invalid credentials")) {
+      const reason = errMessage(e);
+      if (reason.includes("Invalid credentials")) {
         setStatus("authStatus", tr("invalidCredentialsHint"));
       } else {
         const action = state.authMode === "register" ? tr("register") : tr("login");
-        setStatus("authStatus", tr("authFailed", { action, reason: e.message }));
+        setStatus("authStatus", tr("authFailed", { action, reason }));
       }
     }
   };
@@ -353,7 +369,7 @@ window.addEventListener("load", async () => {
       });
       await refreshAll();
     } catch (e) {
-      alert(tr("addAccountFailed", { reason: e.message }));
+      alert(tr("addAccountFailed", { reason: errMessage(e) }));
     }
   };
 
@@ -368,7 +384,7 @@ window.addEventListener("load", async () => {
       });
       await refreshAll();
     } catch (e) {
-      alert(tr("addCategoryFailed", { reason: e.message }));
+      alert(tr("addCategoryFailed", { reason: errMessage(e) }));
     }
   };
 
@@ -387,7 +403,7 @@ window.addEventListener("load", async () => {
       });
       await refreshAll();
     } catch (e) {
-      alert(tr("addTxFailed", { reason: e.message }));
+      alert(tr("addTxFailed", { reason: errMessage(e) }));
     }
   };
 
