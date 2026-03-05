@@ -10,6 +10,8 @@ let state = {
   daily: [],
   filteredTx: [],
   authMode: "login",
+  editingAccountId: 0,
+  editingTxId: 0,
   charts: { income: null, expense: null, debt: null },
 };
 
@@ -20,6 +22,10 @@ function fmtMoney(v) {
 
 function setStatus(id, msg) {
   $(id).textContent = msg;
+}
+
+function notify(msg) {
+  setStatus("health", msg);
 }
 
 function errMessage(e) {
@@ -115,7 +121,7 @@ function renderAccountsTable() {
     const editBtn = document.createElement("button");
     editBtn.className = "secondary";
     editBtn.textContent = "Edit";
-    editBtn.onclick = () => editAccount(a);
+    editBtn.onclick = () => beginEditAccount(a);
     const delBtn = document.createElement("button");
     delBtn.className = "danger";
     delBtn.textContent = "Delete";
@@ -168,7 +174,7 @@ function renderTransactions() {
     const editBtn = document.createElement("button");
     editBtn.className = "secondary";
     editBtn.textContent = "Edit";
-    editBtn.onclick = () => editTransaction(r, accountNameById);
+    editBtn.onclick = () => beginEditTransaction(r);
     const delBtn = document.createElement("button");
     delBtn.className = "danger";
     delBtn.textContent = "Delete";
@@ -181,40 +187,27 @@ function renderTransactions() {
   });
 }
 
-async function editAccount(acc) {
-  const account_name = prompt("Account name:", String(acc.account_name || ""));
-  if (account_name === null) return;
-  const account_type = prompt("Account type (checking, credit_card, saving, cash, asset):", String(acc.account_type || ""));
-  if (account_type === null) return;
-  const group_name = prompt("Group name:", String(acc.group || "bank"));
-  if (group_name === null) return;
-  const balInput = prompt("Balance:", String(acc.balance ?? 0));
-  if (balInput === null) return;
-  const balance = Number(balInput);
-  if (Number.isNaN(balance)) {
-    alert("Balance must be a number.");
-    return;
-  }
-  try {
-    await api(`/accounts/${acc.account_id}`, {
-      method: "PUT",
-      body: JSON.stringify({
-        user_id: state.userId,
-        account_name: account_name.trim(),
-        account_type: account_type.trim(),
-        group_name: group_name.trim() || "bank",
-        balance,
-      }),
-    });
-    await refreshAll();
-  } catch (e) {
-    alert(`Update account failed: ${errMessage(e)}`);
-  }
+function beginEditAccount(acc) {
+  state.editingAccountId = Number(acc.account_id || 0);
+  $("accName").value = String(acc.account_name || "");
+  $("accType").value = String(acc.account_type || "checking");
+  $("accGroup").value = String(acc.group || "bank");
+  $("accBal").value = String(Number(acc.balance || 0));
+  $("btnAddAccount").textContent = "Update Account";
+  $("btnCancelAccount").classList.remove("hidden");
+}
+
+function resetAccountForm() {
+  state.editingAccountId = 0;
+  $("accName").value = "";
+  $("accType").value = "checking";
+  $("accGroup").value = "bank";
+  $("accBal").value = "0";
+  $("btnAddAccount").textContent = "Add Account";
+  $("btnCancelAccount").classList.add("hidden");
 }
 
 async function deleteAccount(acc) {
-  const ok = confirm(`Delete account "${acc.account_name}"?`);
-  if (!ok) return;
   try {
     try {
       await api(`/accounts/${acc.account_id}?user_id=${state.userId}`, {
@@ -231,53 +224,32 @@ async function deleteAccount(acc) {
       setStatus("health", `Deleted account, but refresh failed: ${errMessage(e)}`);
     }
   } catch (e) {
-    alert(`Delete account failed: ${errMessage(e)}`);
+    notify(`Delete account failed: ${errMessage(e)}`);
   }
 }
 
-async function editTransaction(tx, accountNameById) {
-  const tx_type = prompt("Type (income or expense):", String(tx.type || "expense"));
-  if (tx_type === null) return;
-  const amountInput = prompt("Amount:", String(tx.amount ?? 0));
-  if (amountInput === null) return;
-  const amount = Number(amountInput);
-  if (Number.isNaN(amount) || amount < 0) {
-    alert("Amount must be 0 or greater.");
-    return;
-  }
-  const currentAccountName = accountNameById.get(Number(tx.account_id)) || String(tx.account_id || "");
-  const accountInput = prompt("Account ID:", String(tx.account_id || ""));
-  if (accountInput === null) return;
-  const account_id = Number(accountInput);
-  if (Number.isNaN(account_id) || account_id <= 0) {
-    alert(`Account ID must be a positive number. Current account: ${currentAccountName}`);
-    return;
-  }
-  const category = prompt("Category:", String(tx.category || ""));
-  if (category === null) return;
-  const note = prompt("Note:", String(tx.note || ""));
-  if (note === null) return;
-  try {
-    await api(`/transactions/${tx.txn_id}`, {
-      method: "PUT",
-      body: JSON.stringify({
-        user_id: state.userId,
-        tx_type: tx_type.trim().toLowerCase(),
-        amount,
-        account_id,
-        category: category.trim(),
-        note: note.trim(),
-      }),
-    });
-    await refreshAll();
-  } catch (e) {
-    alert(`Update transaction failed: ${errMessage(e)}`);
-  }
+function beginEditTransaction(tx) {
+  state.editingTxId = Number(tx.txn_id || 0);
+  $("txType").value = String(tx.type || "expense");
+  $("txAmount").value = String(Number(tx.amount || 0));
+  $("txAccount").value = String(tx.account_id || "");
+  $("txCategory").value = String(tx.category || "");
+  $("txNote").value = String(tx.note || "");
+  $("btnAddTx").textContent = "Update Transaction";
+  $("btnCancelTx").classList.remove("hidden");
+}
+
+function resetTxForm() {
+  state.editingTxId = 0;
+  $("txType").value = "income";
+  $("txAmount").value = "";
+  $("txCategory").value = "";
+  $("txNote").value = "";
+  $("btnAddTx").textContent = "Add Transaction";
+  $("btnCancelTx").classList.add("hidden");
 }
 
 async function deleteTransaction(tx) {
-  const ok = confirm(`Delete transaction #${tx.txn_id}?`);
-  if (!ok) return;
   try {
     try {
       await api(`/transactions/${tx.txn_id}?user_id=${state.userId}`, {
@@ -294,7 +266,7 @@ async function deleteTransaction(tx) {
       setStatus("health", `Deleted transaction, but refresh failed: ${errMessage(e)}`);
     }
   } catch (e) {
-    alert(`Delete transaction failed: ${errMessage(e)}`);
+    notify(`Delete transaction failed: ${errMessage(e)}`);
   }
 }
 
@@ -363,7 +335,11 @@ function renderKpisAndCharts() {
   const totalExpense = txForSummary
     .filter((t) => String(t.type).toLowerCase() === "expense")
     .reduce((s, t) => s + Number(t.amount || 0), 0);
-  const netWorth = state.accounts.reduce((s, a) => s + Number(a.balance || 0), 0);
+  const netWorth = state.accounts.reduce((s, a) => {
+    const bal = Number(a.balance || 0);
+    const t = String(a.account_type || "").toLowerCase();
+    return ["credit", "credit_card"].includes(t) ? s - Math.abs(bal) : s + bal;
+  }, 0);
   const debt = state.accounts
     .filter((a) => ["credit", "credit_card"].includes(String(a.account_type || "").toLowerCase()))
     .reduce((s, a) => s + Math.abs(Number(a.balance || 0)), 0);
@@ -440,7 +416,7 @@ function renderDailySummary() {
 
 async function downloadSummaryPdf() {
   if (!window.jspdf || !window.jspdf.jsPDF) {
-    alert("PDF library failed to load.");
+    notify("PDF library failed to load.");
     return;
   }
   const jsPDF = window.jspdf.jsPDF;
@@ -454,7 +430,11 @@ async function downloadSummaryPdf() {
   const totalExpense = txForSummary
     .filter((t) => String(t.type).toLowerCase() === "expense")
     .reduce((s, t) => s + Number(t.amount || 0), 0);
-  const netWorth = state.accounts.reduce((s, a) => s + Number(a.balance || 0), 0);
+  const netWorth = state.accounts.reduce((s, a) => {
+    const bal = Number(a.balance || 0);
+    const t = String(a.account_type || "").toLowerCase();
+    return ["credit", "credit_card"].includes(t) ? s - Math.abs(bal) : s + bal;
+  }, 0);
   const debt = state.accounts
     .filter((a) => ["credit", "credit_card"].includes(String(a.account_type || "").toLowerCase()))
     .reduce((s, a) => s + Math.abs(Number(a.balance || 0)), 0);
@@ -594,23 +574,31 @@ window.addEventListener("load", async () => {
 
   $("btnAddAccount").onclick = async () => {
     try {
-      await api("/accounts", {
-        method: "POST",
-        body: JSON.stringify({
-          user_id: state.userId,
-          account_name: $("accName").value.trim(),
-          account_type: $("accType").value,
-          group_name: $("accGroup").value.trim() || "bank",
-          balance: Number($("accBal").value || 0),
-        }),
-      });
-      $("accName").value = "";
-      $("accBal").value = "0";
+      const payload = {
+        user_id: state.userId,
+        account_name: $("accName").value.trim(),
+        account_type: $("accType").value,
+        group_name: $("accGroup").value.trim() || "bank",
+        balance: Number($("accBal").value || 0),
+      };
+      if (state.editingAccountId > 0) {
+        await api(`/accounts/${state.editingAccountId}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await api("/accounts", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      }
+      resetAccountForm();
       await refreshAll();
     } catch (e) {
-      alert(`Add account failed: ${errMessage(e)}`);
+      notify(`Save account failed: ${errMessage(e)}`);
     }
   };
+  $("btnCancelAccount").onclick = resetAccountForm;
 
   $("btnAddCategory").onclick = async () => {
     try {
@@ -624,31 +612,38 @@ window.addEventListener("load", async () => {
       $("catName").value = "";
       await refreshAll();
     } catch (e) {
-      alert(`Add category failed: ${errMessage(e)}`);
+      notify(`Add category failed: ${errMessage(e)}`);
     }
   };
 
   $("btnAddTx").onclick = async () => {
     try {
-      await api("/transactions", {
-        method: "POST",
-        body: JSON.stringify({
-          user_id: state.userId,
-          tx_type: $("txType").value,
-          amount: Number($("txAmount").value || 0),
-          account_id: Number($("txAccount").value),
-          category: $("txCategory").value.trim(),
-          note: $("txNote").value.trim(),
-        }),
-      });
-      $("txAmount").value = "";
-      $("txCategory").value = "";
-      $("txNote").value = "";
+      const payload = {
+        user_id: state.userId,
+        tx_type: $("txType").value,
+        amount: Number($("txAmount").value || 0),
+        account_id: Number($("txAccount").value),
+        category: $("txCategory").value.trim(),
+        note: $("txNote").value.trim(),
+      };
+      if (state.editingTxId > 0) {
+        await api(`/transactions/${state.editingTxId}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await api("/transactions", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      }
+      resetTxForm();
       await refreshAll();
     } catch (e) {
-      alert(`Add transaction failed: ${errMessage(e)}`);
+      notify(`Save transaction failed: ${errMessage(e)}`);
     }
   };
+  $("btnCancelTx").onclick = resetTxForm;
 
   $("btnApplySummary").onclick = () => {
     applyTxRange();

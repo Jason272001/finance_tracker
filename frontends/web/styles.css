@@ -109,6 +109,7 @@ input, select {
   border-radius: 10px;
   padding: 10px 12px;
   min-width: 120px;
+  width: 100%;
 }
 button {
   border: 0;
@@ -122,6 +123,7 @@ button {
 button.secondary { background: #20a55f; }
 button.danger { background: #d64545; }
 .row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+.row > * { flex: 1 1 180px; min-width: 0; }
 
 table { width: 100%; border-collapse: collapse; }
 th, td {
@@ -162,6 +164,8 @@ th { color: #3e5471; font-weight: 700; }
   .kpi-card p { font-size: 1.35rem; }
   .row > * { flex: 1 1 100%; min-width: 0; }
   button { width: 100%; }
+  td button { width: auto; }
+  .top-right button { width: auto; }
   table {
     display: block;
     overflow-x: auto;

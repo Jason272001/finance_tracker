@@ -428,13 +428,17 @@ def delete_transaction_post(
 @app.get("/categories")
 def list_categories(request: Request, user_id: int, authorization: Optional[str] = Header(default=None)):
     _require_user(request, authorization, user_id)
-    cat = Category()
-    cat.ensure_default_categories(user_id)
-    cat.sync_auto_from_accounts(user_id)
-    df = cat.by_user(user_id)
-    if df is None or df.empty:
+    try:
+        cat = Category()
+        cat.ensure_default_categories(user_id)
+        cat.sync_auto_from_accounts(user_id)
+        df = cat.by_user(user_id)
+        if df is None or df.empty:
+            return []
+        return df.fillna("").to_dict(orient="records")
+    except Exception:
+        logger.exception("Category load failed for user_id=%s", user_id)
         return []
-    return df.fillna("").to_dict(orient="records")
 
 
 @app.post("/categories")
