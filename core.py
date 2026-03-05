@@ -225,8 +225,6 @@ class User:
         key = normalized_name.lower()
         now_ts = time.time()
         rec = self._login_attempts.get(key, {"count": 0, "until": 0.0})
-        if now_ts < rec["until"]:
-            return False
 
         u = _load_users()
         candidates = u[

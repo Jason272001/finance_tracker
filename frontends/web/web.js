@@ -32,6 +32,8 @@ const I18N = {
     authRequired: "Name and password are required.",
     registeredOk: "Registered. Switch to Login and sign in.",
     authFailed: "{action} failed: {reason}",
+    invalidCredentialsHint:
+      "Invalid credentials. If this is your old local account, migrate data to Render DB or register this account on cloud first.",
     signedIn: "Signed in: {name}",
     apiHealthy: "API healthy: {ts}",
     apiError: "API error: {reason}",
@@ -45,37 +47,6 @@ const I18N = {
     login: "Iniciar sesion",
     register: "Registrarse",
     logout: "Cerrar sesion",
-    name: "Nombre",
-    password: "Contrasena",
-    accountName: "Nombre de cuenta",
-    group: "Grupo",
-    balance: "Saldo",
-    categoryName: "Nombre de categoria",
-    amount: "Monto",
-    category: "Categoria",
-    note: "Nota",
-    accounts: "Cuentas",
-    categories: "Categorias",
-    transactions: "Transacciones",
-    addAccount: "Agregar cuenta",
-    addCategory: "Agregar categoria",
-    addTransaction: "Agregar transaccion",
-    thId: "ID",
-    thDate: "Fecha",
-    thType: "Tipo",
-    thAmount: "Monto",
-    thAccount: "Cuenta",
-    thCategory: "Categoria",
-    thNote: "Nota",
-    authRequired: "Nombre y contrasena son obligatorios.",
-    registeredOk: "Registro completado. Cambia a Iniciar sesion.",
-    authFailed: "{action} error: {reason}",
-    signedIn: "Sesion iniciada: {name}",
-    apiHealthy: "API activa: {ts}",
-    apiError: "Error API: {reason}",
-    addAccountFailed: "Error al agregar cuenta: {reason}",
-    addCategoryFailed: "Error al agregar categoria: {reason}",
-    addTxFailed: "Error al agregar transaccion: {reason}",
   },
   fr: {
     language: "Langue",
@@ -83,189 +54,42 @@ const I18N = {
     login: "Connexion",
     register: "Inscription",
     logout: "Deconnexion",
-    name: "Nom",
-    password: "Mot de passe",
-    accountName: "Nom du compte",
-    group: "Groupe",
-    balance: "Solde",
-    categoryName: "Nom de categorie",
-    amount: "Montant",
-    category: "Categorie",
-    note: "Note",
-    accounts: "Comptes",
-    categories: "Categories",
-    transactions: "Transactions",
-    addAccount: "Ajouter compte",
-    addCategory: "Ajouter categorie",
-    addTransaction: "Ajouter transaction",
-    thId: "ID",
-    thDate: "Date",
-    thType: "Type",
-    thAmount: "Montant",
-    thAccount: "Compte",
-    thCategory: "Categorie",
-    thNote: "Note",
-    authRequired: "Nom et mot de passe requis.",
-    registeredOk: "Inscription reussie. Passez a Connexion.",
-    authFailed: "{action} echec: {reason}",
-    signedIn: "Connecte: {name}",
-    apiHealthy: "API active: {ts}",
-    apiError: "Erreur API: {reason}",
-    addAccountFailed: "Echec ajout compte: {reason}",
-    addCategoryFailed: "Echec ajout categorie: {reason}",
-    addTxFailed: "Echec ajout transaction: {reason}",
   },
   my: {
-    language: "ဘာသာစကား",
-    welcome: "ႀကိဳဆိုပါတယ္",
-    login: "လော့ဂ်အင်",
-    register: "စာရင္းသြင္းမည္",
-    logout: "ထြက္မည္",
-    name: "အမည္",
-    password: "စကားဝွက္",
-    accountName: "အေကာင့္အမည္",
-    group: "အုပ္စု",
-    balance: "လက္က်န္",
-    categoryName: "အမ်ိဳးအစားအမည္",
-    amount: "ပမာဏ",
-    category: "အမ်ိဳးအစား",
-    note: "မွတ္ခ်က္",
-    accounts: "အေကာင့္မ်ား",
-    categories: "အမ်ိဳးအစားမ်ား",
-    transactions: "ေငြလႊဲမွတ္တမ္းမ်ား",
-    addAccount: "အေကာင့္ထည့္မည္",
-    addCategory: "အမ်ိဳးအစားထည့္မည္",
-    addTransaction: "ေငြလႊဲမွတ္တမ္းထည့္မည္",
-    thId: "ID",
-    thDate: "ရက္စြဲ",
-    thType: "အမ်ိဳးအစား",
-    thAmount: "ပမာဏ",
-    thAccount: "အေကာင့္",
-    thCategory: "က႑",
-    thNote: "မွတ္ခ်က္",
-    authRequired: "အမည္ႏွင့္ စကားဝွက္ လိုအပ္ပါသည္။",
-    registeredOk: "စာရင္းသြင္းၿပီးပါၿပီ။ လော့ဂ်အင္လုပ္ပါ။",
-    authFailed: "{action} မေအာင္ျမင္ပါ: {reason}",
-    signedIn: "အသံုးျပဳသူ: {name}",
-    apiHealthy: "API အဆင္ေျပသည္: {ts}",
-    apiError: "API အမွား: {reason}",
-    addAccountFailed: "အေကာင့္ထည့္မရပါ: {reason}",
-    addCategoryFailed: "အမ်ိဳးအစားထည့္မရပါ: {reason}",
-    addTxFailed: "ေငြလႊဲမွတ္တမ္းထည့္မရပါ: {reason}",
+    language: "\u1018\u102c\u101e\u102c\u1005\u1000\u102c\u1038",
+    welcome: "\u1000\u103c\u102d\u102f\u1006\u102d\u102f\u1015\u102b\u1010\u101a\u103a",
+    login: "\u101c\u1031\u102c\u1037\u1002\u103a\u1021\u1004\u103a",
+    register: "\u1005\u102c\u101b\u1004\u103a\u1038\u101e\u103d\u1004\u103a\u1038",
+    logout: "\u1011\u103d\u1000\u103a\u1019\u100a\u103a",
+    name: "\u1021\u1019\u100a\u103a",
+    password: "\u1005\u1000\u102c\u1038\u101d\u103e\u1000\u103a",
   },
   ar: {
-    language: "اللغة",
-    welcome: "مرحبا",
-    login: "تسجيل الدخول",
-    register: "تسجيل",
-    logout: "تسجيل الخروج",
-    name: "الاسم",
-    password: "كلمة المرور",
-    accountName: "اسم الحساب",
-    group: "المجموعة",
-    balance: "الرصيد",
-    categoryName: "اسم الفئة",
-    amount: "المبلغ",
-    category: "الفئة",
-    note: "ملاحظة",
-    accounts: "الحسابات",
-    categories: "الفئات",
-    transactions: "المعاملات",
-    addAccount: "إضافة حساب",
-    addCategory: "إضافة فئة",
-    addTransaction: "إضافة معاملة",
-    thId: "المعرف",
-    thDate: "التاريخ",
-    thType: "النوع",
-    thAmount: "المبلغ",
-    thAccount: "الحساب",
-    thCategory: "الفئة",
-    thNote: "ملاحظة",
-    authRequired: "الاسم وكلمة المرور مطلوبان.",
-    registeredOk: "تم التسجيل. قم بتسجيل الدخول.",
-    authFailed: "فشل {action}: {reason}",
-    signedIn: "تم تسجيل الدخول: {name}",
-    apiHealthy: "الواجهة تعمل: {ts}",
-    apiError: "خطأ في الواجهة: {reason}",
-    addAccountFailed: "فشل إضافة الحساب: {reason}",
-    addCategoryFailed: "فشل إضافة الفئة: {reason}",
-    addTxFailed: "فشل إضافة المعاملة: {reason}",
+    language: "\u0627\u0644\u0644\u063a\u0629",
+    welcome: "\u0645\u0631\u062d\u0628\u0627",
+    login: "\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644",
+    register: "\u062a\u0633\u062c\u064a\u0644",
+    logout: "\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062e\u0631\u0648\u062c",
+    name: "\u0627\u0644\u0627\u0633\u0645",
+    password: "\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631",
   },
   ja: {
-    language: "言語",
-    welcome: "ようこそ",
-    login: "ログイン",
-    register: "登録",
-    logout: "ログアウト",
-    name: "名前",
-    password: "パスワード",
-    accountName: "口座名",
-    group: "グループ",
-    balance: "残高",
-    categoryName: "カテゴリ名",
-    amount: "金額",
-    category: "カテゴリ",
-    note: "メモ",
-    accounts: "口座",
-    categories: "カテゴリ",
-    transactions: "取引",
-    addAccount: "口座を追加",
-    addCategory: "カテゴリを追加",
-    addTransaction: "取引を追加",
-    thId: "ID",
-    thDate: "日付",
-    thType: "種類",
-    thAmount: "金額",
-    thAccount: "口座",
-    thCategory: "カテゴリ",
-    thNote: "メモ",
-    authRequired: "名前とパスワードは必須です。",
-    registeredOk: "登録完了。ログインしてください。",
-    authFailed: "{action} 失敗: {reason}",
-    signedIn: "ログイン中: {name}",
-    apiHealthy: "API正常: {ts}",
-    apiError: "APIエラー: {reason}",
-    addAccountFailed: "口座追加エラー: {reason}",
-    addCategoryFailed: "カテゴリ追加エラー: {reason}",
-    addTxFailed: "取引追加エラー: {reason}",
+    language: "\u8a00\u8a9e",
+    welcome: "\u3088\u3046\u3053\u305d",
+    login: "\u30ed\u30b0\u30a4\u30f3",
+    register: "\u767b\u9332",
+    logout: "\u30ed\u30b0\u30a2\u30a6\u30c8",
+    name: "\u540d\u524d",
+    password: "\u30d1\u30b9\u30ef\u30fc\u30c9",
   },
   zh: {
-    language: "语言",
-    welcome: "欢迎",
-    login: "登录",
-    register: "注册",
-    logout: "退出登录",
-    name: "用户名",
-    password: "密码",
-    accountName: "账户名称",
-    group: "分组",
-    balance: "余额",
-    categoryName: "分类名称",
-    amount: "金额",
-    category: "分类",
-    note: "备注",
-    accounts: "账户",
-    categories: "分类",
-    transactions: "交易",
-    addAccount: "添加账户",
-    addCategory: "添加分类",
-    addTransaction: "添加交易",
-    thId: "编号",
-    thDate: "日期",
-    thType: "类型",
-    thAmount: "金额",
-    thAccount: "账户",
-    thCategory: "分类",
-    thNote: "备注",
-    authRequired: "用户名和密码不能为空。",
-    registeredOk: "注册成功，请登录。",
-    authFailed: "{action} 失败: {reason}",
-    signedIn: "已登录: {name}",
-    apiHealthy: "API正常: {ts}",
-    apiError: "API错误: {reason}",
-    addAccountFailed: "添加账户失败: {reason}",
-    addCategoryFailed: "添加分类失败: {reason}",
-    addTxFailed: "添加交易失败: {reason}",
+    language: "\u8bed\u8a00",
+    welcome: "\u6b22\u8fce",
+    login: "\u767b\u5f55",
+    register: "\u6ce8\u518c",
+    logout: "\u9000\u51fa\u767b\u5f55",
+    name: "\u7528\u6237\u540d",
+    password: "\u5bc6\u7801",
   },
 };
 
@@ -280,8 +104,7 @@ let state = {
 
 function tr(key, vars = {}) {
   const langPack = I18N[state.lang] || I18N.en;
-  const fallback = I18N.en[key] || key;
-  let text = langPack[key] || fallback;
+  let text = langPack[key] || I18N.en[key] || key;
   Object.keys(vars).forEach((k) => {
     text = text.replace(`{${k}}`, String(vars[k]));
   });
@@ -295,6 +118,7 @@ function setStatus(id, msg) {
 function applyLanguage() {
   document.documentElement.lang = state.lang;
   document.documentElement.dir = state.lang === "ar" ? "rtl" : "ltr";
+
   $("langLabel").textContent = tr("language");
   $("welcomeTitle").textContent = tr("welcome");
   $("tabLogin").textContent = tr("login");
@@ -325,16 +149,11 @@ function applyLanguage() {
   $("txAmount").placeholder = tr("amount");
   $("txCategory").placeholder = tr("category");
   $("txNote").placeholder = tr("note");
-
   $("authAction").textContent = state.authMode === "login" ? tr("login") : tr("register");
-  if (state.userId) {
-    $("userBadge").textContent = tr("signedIn", { name: state.userName });
-  }
 }
 
 async function api(path, opts = {}) {
-  const url = `${state.apiBase}${path}`;
-  const res = await fetch(url, {
+  const res = await fetch(`${state.apiBase}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...opts,
   });
@@ -429,9 +248,7 @@ async function checkHealth() {
 }
 
 window.addEventListener("load", async () => {
-  if (!I18N[state.lang]) {
-    state.lang = "en";
-  }
+  if (!I18N[state.lang]) state.lang = "en";
   $("langSelect").value = state.lang;
   applyLanguage();
 
@@ -472,10 +289,13 @@ window.addEventListener("load", async () => {
       localStorage.setItem("keeperbma_user_id", String(state.userId));
       localStorage.setItem("keeperbma_user_name", state.userName);
       await refreshAll();
-      applyLanguage();
     } catch (e) {
-      const action = state.authMode === "register" ? tr("register") : tr("login");
-      setStatus("authStatus", tr("authFailed", { action, reason: e.message }));
+      if (String(e.message).includes("Invalid credentials")) {
+        setStatus("authStatus", tr("invalidCredentialsHint"));
+      } else {
+        const action = state.authMode === "register" ? tr("register") : tr("login");
+        setStatus("authStatus", tr("authFailed", { action, reason: e.message }));
+      }
     }
   };
 
