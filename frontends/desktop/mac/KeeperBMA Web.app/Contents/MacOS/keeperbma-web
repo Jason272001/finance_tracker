@@ -1,0 +1,9 @@
+#!/bin/bash
+URL="https://keeperbma-backend.onrender.com/docs"
+if [ -d "/Applications/Google Chrome.app" ]; then
+  open -na "/Applications/Google Chrome.app" --args --app="$URL" --new-window
+elif [ -d "/Applications/Microsoft Edge.app" ]; then
+  open -na "/Applications/Microsoft Edge.app" --args --app="$URL" --new-window
+else
+  open "$URL"
+fi
