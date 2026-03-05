@@ -57,9 +57,14 @@ async function api(path, opts = {}) {
   let lastErr = null;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
+      const headers = { ...(opts.headers || {}) };
+      const hasBody = opts.body !== undefined && opts.body !== null;
+      if (hasBody && !Object.keys(headers).some((k) => String(k).toLowerCase() === "content-type")) {
+        headers["Content-Type"] = "application/json";
+      }
       const res = await fetch(`${state.apiBase}${path}`, {
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers,
         ...opts,
       });
       if (!res.ok) {
