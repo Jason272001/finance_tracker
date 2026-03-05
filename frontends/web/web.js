@@ -194,6 +194,15 @@ async function api(path, opts = {}) {
           continue;
         }
         const body = await res.json().catch(() => ({}));
+        if (res.status === 401 || res.status === 403) {
+          state.userId = 0;
+          state.userName = "";
+          state.token = "";
+          state.accounts = [];
+          setScreen(false);
+          setAuthMode("login");
+          throw new Error("Session expired. Please login again.");
+        }
         throw new Error(body.detail || `HTTP ${res.status}`);
       }
       return res.json();
@@ -245,15 +254,20 @@ function renderTx(rows) {
   tbody.innerHTML = "";
   rows.forEach((r) => {
     const trNode = document.createElement("tr");
-    trNode.innerHTML = `
-      <td>${r.txn_id ?? ""}</td>
-      <td>${r.date ?? ""}</td>
-      <td>${r.type ?? ""}</td>
-      <td>${Number(r.amount || 0).toFixed(2)}</td>
-      <td>${r.account_id ?? ""}</td>
-      <td>${r.category ?? ""}</td>
-      <td>${r.note ?? ""}</td>
-    `;
+    const cols = [
+      r.txn_id ?? "",
+      r.date ?? "",
+      r.type ?? "",
+      Number(r.amount || 0).toFixed(2),
+      r.account_id ?? "",
+      r.category ?? "",
+      r.note ?? "",
+    ];
+    cols.forEach((v) => {
+      const td = document.createElement("td");
+      td.textContent = String(v);
+      trNode.appendChild(td);
+    });
     tbody.appendChild(trNode);
   });
 }

@@ -1,13 +1,15 @@
 import hmac
 import hashlib
+import logging
 import os
 import time
 from datetime import datetime
 from typing import Optional
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 from core import Account, Category, Transaction, User
 
@@ -15,47 +17,81 @@ from core import Account, Category, Transaction, User
 app = FastAPI(title="KeeperBMA Backend", version="1.0.0")
 TOKEN_SECRET = os.getenv("API_TOKEN_SECRET", "change-me-in-render")
 TOKEN_TTL_SECONDS = int(os.getenv("API_TOKEN_TTL_SECONDS", "43200"))
+STRICT_TOKEN_SECRET = str(os.getenv("STRICT_TOKEN_SECRET", "1")).strip().lower() in {"1", "true", "yes"}
+logger = logging.getLogger("keeperbma.api")
+
+_cors_raw = str(
+    os.getenv(
+        "CORS_ALLOW_ORIGINS",
+        "https://jason272001.github.io,http://localhost:8501,http://127.0.0.1:8501,http://localhost:3000,http://127.0.0.1:3000",
+    )
+).strip()
+CORS_ALLOW_ORIGINS = [o.strip() for o in _cors_raw.split(",") if o.strip()]
+if not CORS_ALLOW_ORIGINS:
+    CORS_ALLOW_ORIGINS = ["https://jason272001.github.io"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=CORS_ALLOW_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
 class RegisterBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
     name: str = Field(min_length=1, max_length=80)
     password: str = Field(min_length=10, max_length=200)
 
 
 class LoginBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
     name: str
     password: str
 
 
 class AccountCreateBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
     user_id: int
-    account_name: str
-    account_type: str
-    group_name: str
+    account_name: str = Field(min_length=1, max_length=120)
+    account_type: str = Field(min_length=1, max_length=40)
+    group_name: str = Field(min_length=1, max_length=40)
     balance: float = 0.0
+
+    @field_validator("account_type")
+    @classmethod
+    def validate_account_type(cls, v: str) -> str:
+        allowed = {"checking", "credit_card", "credit", "saving", "savings", "cash", "asset"}
+        key = str(v).strip().lower()
+        if key not in allowed:
+            raise ValueError("Invalid account_type")
+        return key
 
 
 class TxCreateBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
     user_id: int
-    tx_type: str
-    amount: float
+    tx_type: str = Field(min_length=1, max_length=20)
+    amount: float = Field(ge=0.0, le=10_000_000.0)
     account_id: int
-    category: str
-    note: Optional[str] = ""
+    category: str = Field(min_length=1, max_length=120)
+    note: Optional[str] = Field(default="", max_length=500)
     date: Optional[str] = None
+
+    @field_validator("tx_type")
+    @classmethod
+    def validate_tx_type(cls, v: str) -> str:
+        key = str(v).strip().lower()
+        if key not in {"income", "expense"}:
+            raise ValueError("Invalid tx_type")
+        return key
 
 
 class CategoryCreateBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
     user_id: int
-    category_name: str
+    category_name: str = Field(min_length=1, max_length=120)
 
 
 def _issue_token(user_id: int, ttl_seconds: int = TOKEN_TTL_SECONDS) -> str:
@@ -101,6 +137,34 @@ def _require_user(authorization: Optional[str], expected_user_id: int) -> None:
         raise HTTPException(status_code=403, detail="Forbidden user scope")
 
 
+@app.on_event("startup")
+def _startup_checks() -> None:
+    if TOKEN_SECRET == "change-me-in-render":
+        msg = "API_TOKEN_SECRET is using default value; set a strong secret in environment."
+        if STRICT_TOKEN_SECRET:
+            raise RuntimeError(msg)
+        logger.warning(msg)
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "same-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    response.headers["Cache-Control"] = "no-store"
+    # HSTS is safe when served behind HTTPS (Render).
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+    return response
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+
 @app.get("/health")
 def health():
     return {"ok": True, "ts": datetime.utcnow().isoformat() + "Z"}
@@ -111,7 +175,7 @@ def register(body: RegisterBody):
     try:
         uid = User().register(body.name, body.password)
         return {"ok": True, "user_id": uid, "name": body.name}
-    except Exception as e:
+    except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -146,7 +210,7 @@ def create_account(body: AccountCreateBody, authorization: Optional[str] = Heade
             user_id=body.user_id,
         )
         return {"ok": True, "account_id": int(aid)}
-    except Exception as e:
+    except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -174,7 +238,7 @@ def create_transaction(body: TxCreateBody, authorization: Optional[str] = Header
             user_id=body.user_id,
         )
         return {"ok": True, "txn_id": int(txn_id)}
-    except Exception as e:
+    except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -196,5 +260,5 @@ def create_category(body: CategoryCreateBody, authorization: Optional[str] = Hea
     try:
         cid = Category().add(category_name=body.category_name, user_id=body.user_id)
         return {"ok": True, "category_id": int(cid)}
-    except Exception as e:
+    except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
