@@ -242,7 +242,13 @@ def login(body: LoginBody, response: Response):
         samesite="none",
         path="/",
     )
-    return {"ok": True, "user_id": int(u.uid), "name": u.name, "session_minutes": TOKEN_TTL_SECONDS // 60}
+    return {
+        "ok": True,
+        "user_id": int(u.uid),
+        "name": u.name,
+        "session_minutes": TOKEN_TTL_SECONDS // 60,
+        "token": token,
+    }
 
 
 @app.post("/auth/logout")

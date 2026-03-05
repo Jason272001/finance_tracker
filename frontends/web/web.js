@@ -2,6 +2,7 @@ const $ = (id) => document.getElementById(id);
 
 let state = {
   apiBase: "https://keeperbma-backend.onrender.com",
+  authToken: "",
   userId: 0,
   userName: "",
   accounts: [],
@@ -393,6 +394,12 @@ async function api(path, opts = {}) {
       if (hasBody && !Object.keys(headers).some((k) => String(k).toLowerCase() === "content-type")) {
         headers["Content-Type"] = "application/json";
       }
+      if (
+        state.authToken &&
+        !Object.keys(headers).some((k) => String(k).toLowerCase() === "authorization")
+      ) {
+        headers.Authorization = `Bearer ${state.authToken}`;
+      }
       const res = await fetch(`${state.apiBase}${path}`, {
         credentials: "include",
         headers,
@@ -401,6 +408,8 @@ async function api(path, opts = {}) {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         if (res.status === 401 || res.status === 403) {
+          state.authToken = "";
+          localStorage.removeItem("keeperbma_token");
           state.userId = 0;
           state.userName = "";
           setScreen(false);
@@ -881,6 +890,10 @@ window.addEventListener("load", async () => {
         method: "POST",
         body: JSON.stringify(payload),
       });
+      state.authToken = String(out.token || "");
+      if (state.authToken) {
+        localStorage.setItem("keeperbma_token", state.authToken);
+      }
       state.userId = Number(out.user_id);
       state.userName = String(out.name || `user-${out.user_id}`);
       setScreen(true);
@@ -895,6 +908,8 @@ window.addEventListener("load", async () => {
     try {
       await api("/auth/logout", { method: "POST" });
     } catch (_) {}
+    state.authToken = "";
+    localStorage.removeItem("keeperbma_token");
     state.userId = 0;
     state.userName = "";
     state.accounts = [];
@@ -995,6 +1010,7 @@ window.addEventListener("load", async () => {
 
   setAuthMode("login");
   setScreen(false);
+  state.authToken = String(localStorage.getItem("keeperbma_token") || "");
 
   // Restore cookie session if still valid.
   try {
