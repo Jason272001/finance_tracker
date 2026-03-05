@@ -127,7 +127,7 @@ def create_transaction(body: TxCreateBody):
 @app.get("/categories")
 def list_categories(user_id: int):
     cat = Category()
-    cat.seed_defaults_for_user(user_id)
+    cat.ensure_default_categories(user_id)
     cat.sync_auto_from_accounts(user_id)
     df = cat.by_user(user_id)
     if df is None or df.empty:

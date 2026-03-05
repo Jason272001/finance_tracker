@@ -1039,6 +1039,10 @@ class Category:
                 df = pd.concat([df, pd.DataFrame(rows)], ignore_index=True)
                 self._save(df)
 
+    # Backward-compatibility alias for older callers.
+    def seed_defaults_for_user(self, user_id):
+        self.ensure_default_categories(user_id)
+
 
 class DailyBalance:
     cols = ["dailyB_id", "date", "account_id", "balance", "type", "user_id"]

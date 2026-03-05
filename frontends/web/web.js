@@ -270,15 +270,41 @@ function setScreen(isLoggedIn) {
 
 async function refreshAll() {
   if (!state.userId) return;
-  const [accounts, categories, tx] = await Promise.all([
+  const [accountsRes, categoriesRes, txRes] = await Promise.allSettled([
     api(`/accounts?user_id=${state.userId}`),
     api(`/categories?user_id=${state.userId}`),
     api(`/transactions?user_id=${state.userId}`),
   ]);
-  state.accounts = accounts;
-  renderAccounts();
-  renderCategories(categories);
-  renderTx(tx);
+
+  if (accountsRes.status === "fulfilled") {
+    state.accounts = accountsRes.value || [];
+    renderAccounts();
+  } else {
+    state.accounts = [];
+    renderAccounts();
+  }
+
+  if (categoriesRes.status === "fulfilled") {
+    renderCategories(categoriesRes.value || []);
+  } else {
+    renderCategories([]);
+  }
+
+  if (txRes.status === "fulfilled") {
+    renderTx(txRes.value || []);
+  } else {
+    renderTx([]);
+  }
+
+  const failures = [accountsRes, categoriesRes, txRes].filter((r) => r.status === "rejected");
+  if (failures.length > 0) {
+    const first = failures[0];
+    const reason = errMessage(first.reason);
+    setStatus("health", `Some data failed to load: ${reason}`);
+  } else {
+    await checkHealth();
+  }
+
   setScreen(true);
 }
 
@@ -332,6 +358,8 @@ window.addEventListener("load", async () => {
       state.userName = out.name;
       localStorage.setItem("keeperbma_user_id", String(state.userId));
       localStorage.setItem("keeperbma_user_name", state.userName);
+      setScreen(true);
+      setStatus("authStatus", "");
       await refreshAll();
     } catch (e) {
       const reason = errMessage(e);
