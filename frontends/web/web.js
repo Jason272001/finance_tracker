@@ -105,6 +105,20 @@ function renderAccountsTable() {
       td.textContent = String(v);
       tr.appendChild(td);
     });
+
+    const actionTd = document.createElement("td");
+    const editBtn = document.createElement("button");
+    editBtn.className = "secondary";
+    editBtn.textContent = "Edit";
+    editBtn.onclick = () => editAccount(a);
+    const delBtn = document.createElement("button");
+    delBtn.className = "danger";
+    delBtn.textContent = "Delete";
+    delBtn.onclick = () => deleteAccount(a);
+    actionTd.appendChild(editBtn);
+    actionTd.appendChild(document.createTextNode(" "));
+    actionTd.appendChild(delBtn);
+    tr.appendChild(actionTd);
     tbody.appendChild(tr);
 
     const opt = document.createElement("option");
@@ -144,8 +158,119 @@ function renderTransactions() {
       td.textContent = String(v);
       tr.appendChild(td);
     });
+
+    const actionTd = document.createElement("td");
+    const editBtn = document.createElement("button");
+    editBtn.className = "secondary";
+    editBtn.textContent = "Edit";
+    editBtn.onclick = () => editTransaction(r, accountNameById);
+    const delBtn = document.createElement("button");
+    delBtn.className = "danger";
+    delBtn.textContent = "Delete";
+    delBtn.onclick = () => deleteTransaction(r);
+    actionTd.appendChild(editBtn);
+    actionTd.appendChild(document.createTextNode(" "));
+    actionTd.appendChild(delBtn);
+    tr.appendChild(actionTd);
     tbody.appendChild(tr);
   });
+}
+
+async function editAccount(acc) {
+  const account_name = prompt("Account name:", String(acc.account_name || ""));
+  if (account_name === null) return;
+  const account_type = prompt("Account type (checking, credit_card, saving, cash, asset):", String(acc.account_type || ""));
+  if (account_type === null) return;
+  const group_name = prompt("Group name:", String(acc.group || "bank"));
+  if (group_name === null) return;
+  const balInput = prompt("Balance:", String(acc.balance ?? 0));
+  if (balInput === null) return;
+  const balance = Number(balInput);
+  if (Number.isNaN(balance)) {
+    alert("Balance must be a number.");
+    return;
+  }
+  try {
+    await api(`/accounts/${acc.account_id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        user_id: state.userId,
+        account_name: account_name.trim(),
+        account_type: account_type.trim(),
+        group_name: group_name.trim() || "bank",
+        balance,
+      }),
+    });
+    await refreshAll();
+  } catch (e) {
+    alert(`Update account failed: ${errMessage(e)}`);
+  }
+}
+
+async function deleteAccount(acc) {
+  const ok = confirm(`Delete account "${acc.account_name}"?`);
+  if (!ok) return;
+  try {
+    await api(`/accounts/${acc.account_id}?user_id=${state.userId}`, {
+      method: "DELETE",
+    });
+    await refreshAll();
+  } catch (e) {
+    alert(`Delete account failed: ${errMessage(e)}`);
+  }
+}
+
+async function editTransaction(tx, accountNameById) {
+  const tx_type = prompt("Type (income or expense):", String(tx.type || "expense"));
+  if (tx_type === null) return;
+  const amountInput = prompt("Amount:", String(tx.amount ?? 0));
+  if (amountInput === null) return;
+  const amount = Number(amountInput);
+  if (Number.isNaN(amount) || amount < 0) {
+    alert("Amount must be 0 or greater.");
+    return;
+  }
+  const currentAccountName = accountNameById.get(Number(tx.account_id)) || String(tx.account_id || "");
+  const accountInput = prompt("Account ID:", String(tx.account_id || ""));
+  if (accountInput === null) return;
+  const account_id = Number(accountInput);
+  if (Number.isNaN(account_id) || account_id <= 0) {
+    alert(`Account ID must be a positive number. Current account: ${currentAccountName}`);
+    return;
+  }
+  const category = prompt("Category:", String(tx.category || ""));
+  if (category === null) return;
+  const note = prompt("Note:", String(tx.note || ""));
+  if (note === null) return;
+  try {
+    await api(`/transactions/${tx.txn_id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        user_id: state.userId,
+        tx_type: tx_type.trim().toLowerCase(),
+        amount,
+        account_id,
+        category: category.trim(),
+        note: note.trim(),
+      }),
+    });
+    await refreshAll();
+  } catch (e) {
+    alert(`Update transaction failed: ${errMessage(e)}`);
+  }
+}
+
+async function deleteTransaction(tx) {
+  const ok = confirm(`Delete transaction #${tx.txn_id}?`);
+  if (!ok) return;
+  try {
+    await api(`/transactions/${tx.txn_id}?user_id=${state.userId}`, {
+      method: "DELETE",
+    });
+    await refreshAll();
+  } catch (e) {
+    alert(`Delete transaction failed: ${errMessage(e)}`);
+  }
 }
 
 function sumByKey(rows, keyFn, valueFn) {

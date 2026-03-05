@@ -120,6 +120,7 @@ button {
   font-weight: 600;
 }
 button.secondary { background: #20a55f; }
+button.danger { background: #d64545; }
 .row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
 
 table { width: 100%; border-collapse: collapse; }

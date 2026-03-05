@@ -35,7 +35,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ALLOW_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -93,6 +93,46 @@ class CategoryCreateBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     user_id: int
     category_name: str = Field(min_length=1, max_length=120)
+
+
+class AccountUpdateBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    user_id: int
+    account_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    account_type: Optional[str] = Field(default=None, min_length=1, max_length=40)
+    group_name: Optional[str] = Field(default=None, min_length=1, max_length=40)
+    balance: Optional[float] = None
+
+    @field_validator("account_type")
+    @classmethod
+    def validate_account_type(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        allowed = {"checking", "credit_card", "credit", "saving", "savings", "cash", "asset"}
+        key = str(v).strip().lower()
+        if key not in allowed:
+            raise ValueError("Invalid account_type")
+        return key
+
+
+class TxUpdateBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    user_id: int
+    tx_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
+    amount: Optional[float] = Field(default=None, ge=0.0, le=10_000_000.0)
+    account_id: Optional[int] = None
+    category: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    note: Optional[str] = Field(default=None, max_length=500)
+
+    @field_validator("tx_type")
+    @classmethod
+    def validate_tx_type(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        key = str(v).strip().lower()
+        if key not in {"income", "expense"}:
+            raise ValueError("Invalid tx_type")
+        return key
 
 
 def _issue_token(user_id: int, ttl_seconds: int = TOKEN_TTL_SECONDS) -> str:
@@ -249,6 +289,45 @@ def create_account(body: AccountCreateBody, request: Request, authorization: Opt
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.put("/accounts/{account_id}")
+def update_account(
+    account_id: int,
+    body: AccountUpdateBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_user(request, authorization, body.user_id)
+    changes = {}
+    if body.account_name is not None:
+        changes["account_name"] = body.account_name
+    if body.account_type is not None:
+        changes["account_type"] = body.account_type
+    if body.group_name is not None:
+        changes["group"] = body.group_name
+    if body.balance is not None:
+        changes["balance"] = body.balance
+    if not changes:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    ok = Account().update(account_id=account_id, user_id=body.user_id, **changes)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Account not found")
+    return {"ok": True}
+
+
+@app.delete("/accounts/{account_id}")
+def delete_account(
+    account_id: int,
+    request: Request,
+    user_id: int,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_user(request, authorization, user_id)
+    ok = Account().delete(account_id=account_id, user_id=user_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Account not found")
+    return {"ok": True}
+
+
 @app.get("/transactions")
 def list_transactions(request: Request, user_id: int, authorization: Optional[str] = Header(default=None)):
     _require_user(request, authorization, user_id)
@@ -275,6 +354,47 @@ def create_transaction(body: TxCreateBody, request: Request, authorization: Opti
         return {"ok": True, "txn_id": int(txn_id)}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.put("/transactions/{txn_id}")
+def update_transaction(
+    txn_id: int,
+    body: TxUpdateBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_user(request, authorization, body.user_id)
+    changes = {}
+    if body.tx_type is not None:
+        changes["type"] = body.tx_type
+    if body.amount is not None:
+        changes["amount"] = body.amount
+    if body.account_id is not None:
+        changes["account_id"] = body.account_id
+    if body.category is not None:
+        changes["category"] = body.category
+    if body.note is not None:
+        changes["note"] = body.note
+    if not changes:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    ok = Transaction().update(txn_id=txn_id, user_id=body.user_id, **changes)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    return {"ok": True}
+
+
+@app.delete("/transactions/{txn_id}")
+def delete_transaction(
+    txn_id: int,
+    request: Request,
+    user_id: int,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_user(request, authorization, user_id)
+    ok = Transaction().delete(txn_id=txn_id, user_id=user_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    return {"ok": True}
 
 
 @app.get("/categories")
