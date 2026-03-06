@@ -1,7 +1,7 @@
 const $ = (id) => document.getElementById(id);
 
 let state = {
-  apiBase: "https://keeperbma-backend.onrender.com",
+  apiBase: "https://api.keeperbma.com",
   authToken: "",
   userId: 0,
   userName: "",
@@ -279,6 +279,36 @@ const I18N = {
     cancel_edit: "取消编辑",
     edit: "编辑",
     delete: "删除",
+  },
+  es: {
+    language: "Idioma",
+    welcome: "Bienvenido",
+    login: "Iniciar sesion",
+    register: "Registrarse",
+    name: "Nombre de usuario",
+    password: "Contrasena",
+    signed_in: "Sesion iniciada",
+    logout: "Cerrar sesion",
+  },
+  fr: {
+    language: "Langue",
+    welcome: "Bienvenue",
+    login: "Se connecter",
+    register: "S inscrire",
+    name: "Nom utilisateur",
+    password: "Mot de passe",
+    signed_in: "Connecte",
+    logout: "Se deconnecter",
+  },
+  de: {
+    language: "Sprache",
+    welcome: "Willkommen",
+    login: "Anmelden",
+    register: "Registrieren",
+    name: "Benutzername",
+    password: "Passwort",
+    signed_in: "Angemeldet",
+    logout: "Abmelden",
   },
 };
 
@@ -1042,3 +1072,8 @@ window.addEventListener("load", async () => {
     }
   }
 });
+
+
+
+
+

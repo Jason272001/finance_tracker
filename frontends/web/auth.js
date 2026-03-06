@@ -3,7 +3,34 @@ const $ = (id) => document.getElementById(id);
 const state = {
   apiBase: "https://api.keeperbma.com",
   mode: "signin",
+  lang: "en",
 };
+
+const AUTH_I18N = {
+  en: { signin: "Sign In", signup: "Sign Up", recover: "Recover", username: "Username", password: "Password", new_password: "New Password", confirm_password: "Confirm Password", forgot: "Forgot Password?", send_code: "Send Recovery Code", reset_password: "Reset Password", recovery_sent: "Recovery code sent. Check your email.", signup_ok: "Sign up successful. Redirecting..." },
+  es: { signin: "Iniciar sesion", signup: "Registrarse", recover: "Recuperar", username: "Nombre de usuario", password: "Contrasena", new_password: "Nueva contrasena", confirm_password: "Confirmar contrasena", forgot: "Olvido su contrasena?", send_code: "Enviar codigo", reset_password: "Restablecer", recovery_sent: "Codigo enviado. Revise su correo.", signup_ok: "Registro exitoso. Redirigiendo..." },
+  fr: { signin: "Se connecter", signup: "S'inscrire", recover: "Recuperer", username: "Nom d'utilisateur", password: "Mot de passe", new_password: "Nouveau mot de passe", confirm_password: "Confirmer le mot de passe", forgot: "Mot de passe oublie ?", send_code: "Envoyer le code", reset_password: "Reinitialiser", recovery_sent: "Code envoye. Verifiez votre email.", signup_ok: "Inscription reussie. Redirection..." },
+  de: { signin: "Anmelden", signup: "Registrieren", recover: "Wiederherstellen", username: "Benutzername", password: "Passwort", new_password: "Neues Passwort", confirm_password: "Passwort bestaetigen", forgot: "Passwort vergessen?", send_code: "Code senden", reset_password: "Zuruecksetzen", recovery_sent: "Code gesendet. Bitte E-Mail pruefen.", signup_ok: "Registrierung erfolgreich. Weiterleitung..." },
+};
+
+function authT(key) {
+  const pack = AUTH_I18N[state.lang] || AUTH_I18N.en;
+  return pack[key] || AUTH_I18N.en[key] || key;
+}
+
+function applyAuthLanguage(lang) {
+  state.lang = AUTH_I18N[lang] ? lang : "en";
+  localStorage.setItem("keeperbma_lang", state.lang);
+  if ($("authLangSelect")) $("authLangSelect").value = state.lang;
+  if ($("tabSignin")) $("tabSignin").textContent = authT("signin");
+  if ($("tabSignup")) $("tabSignup").textContent = authT("signup");
+  if ($("tabRecover")) $("tabRecover").textContent = authT("recover");
+  if ($("labelName")) $("labelName").textContent = authT("username");
+  if ($("labelPassword")) $("labelPassword").textContent = state.mode === "recover" ? authT("new_password") : authT("password");
+  if ($("labelConfirmPassword")) $("labelConfirmPassword").textContent = authT("confirm_password");
+  if ($("btnForgot")) $("btnForgot").textContent = authT("forgot");
+  if ($("btnSendCode")) $("btnSendCode").textContent = authT("send_code");
+}
 
 function setStatus(msg) {
   $("authStatus").textContent = msg || "";
@@ -24,10 +51,11 @@ function setMode(mode) {
   $("btnForgot").classList.toggle("hidden", !isSignin);
   $("labelName").classList.toggle("hidden", isRecover);
   $("authName").classList.toggle("hidden", isRecover);
-  $("labelPassword").textContent = isRecover ? "New Password" : "Password";
-  $("authPass").placeholder = isRecover ? "New Password" : "Password";
-  $("authSubmit").textContent = isSignin ? "Sign In" : (isSignup ? "Sign Up" : "Reset Password");
+  $("labelPassword").textContent = isRecover ? authT("new_password") : authT("password");
+  $("authPass").placeholder = isRecover ? authT("new_password") : authT("password");
+  $("authSubmit").textContent = isSignin ? authT("signin") : (isSignup ? authT("signup") : authT("reset_password"));
   document.title = isSignin ? "KeeperBMA - Sign In" : (isSignup ? "KeeperBMA - Sign Up" : "KeeperBMA - Recover Password");
+  applyAuthLanguage(state.lang);
   setStatus("");
 }
 
@@ -36,6 +64,12 @@ function errMessage(e) {
   if (typeof e === "string") return e;
   if (e instanceof Error) return e.message || String(e);
   if (typeof e.message === "string") return e.message;
+  if (e && typeof e.detail === "string") return e.detail;
+  if (Array.isArray(e?.detail)) {
+    return e.detail
+      .map((d) => (typeof d?.msg === "string" ? d.msg : JSON.stringify(d)))
+      .join("; ");
+  }
   try {
     return JSON.stringify(e);
   } catch (_) {
@@ -60,14 +94,28 @@ async function api(path, opts = {}) {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || `HTTP ${res.status}`);
+    if (typeof body?.detail === "string") throw new Error(body.detail);
+    if (Array.isArray(body?.detail)) {
+      const msg = body.detail
+        .map((d) => (typeof d?.msg === "string" ? d.msg : JSON.stringify(d)))
+        .join("; ");
+      throw new Error(msg || `HTTP ${res.status}`);
+    }
+    throw new Error(`HTTP ${res.status}`);
   }
   return res.json();
 }
 
 window.addEventListener("load", async () => {
   const q = new URLSearchParams(window.location.search);
+  const savedLang = String(localStorage.getItem("keeperbma_lang") || "en");
+  state.lang = AUTH_I18N[savedLang] ? savedLang : "en";
   setMode(q.get("mode") || "signin");
+  if ($("authLangSelect")) {
+    $("authLangSelect").value = state.lang;
+    $("authLangSelect").onchange = (e) => applyAuthLanguage(String(e.target.value || "en"));
+  }
+  applyAuthLanguage(state.lang);
 
   $("tabSignin").onclick = () => setMode("signin");
   $("tabSignup").onclick = () => setMode("signup");
@@ -84,7 +132,7 @@ window.addEventListener("load", async () => {
         method: "POST",
         body: JSON.stringify({ email }),
       });
-      setStatus("Recovery code sent. Check your email.");
+      setStatus(authT("recovery_sent"));
     } catch (e) {
       setStatus(errMessage(e));
     }
@@ -131,11 +179,14 @@ window.addEventListener("load", async () => {
           method: "POST",
           body: JSON.stringify(payload),
         });
-        setStatus("Sign up successful. Please sign in.");
-        setMode("signin");
-        $("authName").value = payload.name;
-        $("authPass").value = "";
-        $("authPassConfirm").value = "";
+        const out = await api("/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ name: payload.name, password }),
+        });
+        const token = String(out.token || "");
+        if (token) localStorage.setItem("keeperbma_token", token);
+        setStatus(authT("signup_ok"));
+        window.location.href = "./index.html?app=1";
         return;
       }
 
