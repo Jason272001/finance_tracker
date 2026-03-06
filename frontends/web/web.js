@@ -293,7 +293,8 @@ function fmtMoney(v) {
 }
 
 function setStatus(id, msg) {
-  $(id).textContent = msg;
+  const el = $(id);
+  if (el) el.textContent = msg;
 }
 
 function notify(msg) {
@@ -313,7 +314,6 @@ function applyLanguage(lang) {
   if ($("langSelect")) $("langSelect").value = state.currentLang;
   if ($("appLangSelect")) $("appLangSelect").value = state.currentLang;
 
-  setText("langLabelAuth", "language");
   setText("langLabelApp", "language");
   setText("navHome", "nav_home");
   setText("navFeatures", "nav_features");
@@ -337,9 +337,6 @@ function applyLanguage(lang) {
   setText("pricingTitle", "pricing_plans");
   setText("aboutTitle", "about_title");
   setText("aboutDesc", "about_desc");
-  setText("welcomeTitle", "welcome");
-  setText("labelLoginName", "name");
-  setText("labelLoginPass", "password");
   setText("btnLogout", "logout");
   setText("kpiLabelAvailable", "available_balance");
   setText("kpiLabelDebt", "total_debt");
@@ -376,8 +373,6 @@ function applyLanguage(lang) {
   setText("txColNote", "note");
   setText("txColActions", "actions");
 
-  if ($("loginName")) $("loginName").placeholder = t("name");
-  if ($("loginPass")) $("loginPass").placeholder = t("password");
   if ($("accName")) $("accName").placeholder = t("account_name");
   if ($("accGroup")) $("accGroup").placeholder = t("group");
   if ($("accBal")) $("accBal").placeholder = t("balance");
@@ -387,12 +382,9 @@ function applyLanguage(lang) {
   if ($("txNote")) $("txNote").placeholder = t("note");
 
   const isAppVisible = !$("appScreen").classList.contains("hidden");
-  const isAuthVisible = !$("authScreen").classList.contains("hidden");
   setAuthMode(state.authMode);
   if (isAppVisible || state.userId > 0) {
     setScreen(true);
-  } else if (isAuthVisible) {
-    showAuth(state.authMode);
   } else {
     showLanding();
   }
@@ -421,17 +413,16 @@ function sleep(ms) {
 function setAuthMode(mode) {
   state.authMode = mode === "register" ? "register" : "login";
   const isLogin = state.authMode === "login";
-  $("tabLogin").classList.toggle("active", isLogin);
-  $("tabRegister").classList.toggle("active", !isLogin);
-  $("tabLogin").textContent = t("login");
-  $("tabRegister").textContent = t("register");
-  $("authAction").textContent = isLogin ? t("login") : t("register");
+  if ($("tabLogin")) $("tabLogin").classList.toggle("active", isLogin);
+  if ($("tabRegister")) $("tabRegister").classList.toggle("active", !isLogin);
+  if ($("tabLogin")) $("tabLogin").textContent = t("login");
+  if ($("tabRegister")) $("tabRegister").textContent = t("register");
+  if ($("authAction")) $("authAction").textContent = isLogin ? t("login") : t("register");
   setStatus("authStatus", "");
 }
 
 function setScreen(isLoggedIn) {
   $("landingScreen").classList.toggle("hidden", isLoggedIn);
-  $("authScreen").classList.toggle("hidden", true);
   $("appScreen").classList.toggle("hidden", !isLoggedIn);
   $("userBadge").textContent = isLoggedIn ? `${t("signed_in")}: ${state.userName}` : "";
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -439,7 +430,6 @@ function setScreen(isLoggedIn) {
 
 function showLanding() {
   $("landingScreen").classList.remove("hidden");
-  $("authScreen").classList.add("hidden");
   $("appScreen").classList.add("hidden");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -930,47 +920,6 @@ window.addEventListener("load", async () => {
   $("btnNavRegister").onclick = () => showAuth("register");
   $("btnHeroLogin").onclick = () => showAuth("login");
   $("btnHeroRegister").onclick = () => showAuth("register");
-
-  $("tabLogin").onclick = () => setAuthMode("login");
-  $("tabRegister").onclick = () => setAuthMode("register");
-
-  $("authAction").onclick = async () => {
-    try {
-      const payload = {
-        name: $("loginName").value.trim(),
-        password: $("loginPass").value,
-      };
-      if (!payload.name || !payload.password) {
-        setStatus("authStatus", "Name and password are required.");
-        return;
-      }
-      if (state.authMode === "register") {
-        await api("/auth/register", {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-        setStatus("authStatus", "Registered. You can login now.");
-        setAuthMode("login");
-        return;
-      }
-
-      const out = await api("/auth/login", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-      state.authToken = String(out.token || "");
-      if (state.authToken) {
-        localStorage.setItem("keeperbma_token", state.authToken);
-      }
-      state.userId = Number(out.user_id);
-      state.userName = String(out.name || `user-${out.user_id}`);
-      setScreen(true);
-      setStatus("authStatus", "");
-      await refreshAll();
-    } catch (e) {
-      setStatus("authStatus", `Login failed: ${errMessage(e)}`);
-    }
-  };
 
   $("btnLogout").onclick = async () => {
     try {
