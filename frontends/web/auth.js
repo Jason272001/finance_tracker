@@ -87,7 +87,7 @@ window.addEventListener("load", async () => {
       });
       const token = String(out.token || "");
       if (token) localStorage.setItem("keeperbma_token", token);
-      window.location.href = "./index.html";
+      window.location.href = "./index.html?app=1";
     } catch (e) {
       setStatus(errMessage(e));
     }
@@ -96,6 +96,6 @@ window.addEventListener("load", async () => {
   // If already signed in, skip this page.
   try {
     await api("/auth/session");
-    window.location.href = "./index.html";
+    window.location.href = "./index.html?app=1";
   } catch (_) {}
 });

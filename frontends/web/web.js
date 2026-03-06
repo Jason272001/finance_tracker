@@ -466,12 +466,7 @@ async function api(path, opts = {}) {
           localStorage.removeItem("keeperbma_token");
           state.userId = 0;
           state.userName = "";
-          const appVisible = $("appScreen") && !$("appScreen").classList.contains("hidden");
-          if (appVisible) {
-            showAuth("login");
-          } else {
-            showLanding();
-          }
+          showLanding();
           throw new Error("Session expired. Please login again.");
         }
         if (res.status >= 500 && attempt < 2) {
@@ -1032,14 +1027,18 @@ window.addEventListener("load", async () => {
   showLanding();
   state.authToken = String(localStorage.getItem("keeperbma_token") || "");
 
-  // Restore cookie session if still valid.
-  try {
-    const session = await api("/auth/session");
-    state.userId = Number(session.user_id);
-    state.userName = String(session.name || `user-${session.user_id}`);
-    setScreen(true);
-    await refreshAll();
-  } catch (_) {
-    showLanding();
+  // Open app only when redirected from successful sign-in/up.
+  const q = new URLSearchParams(window.location.search);
+  if (q.get("app") === "1") {
+    try {
+      const session = await api("/auth/session");
+      state.userId = Number(session.user_id);
+      state.userName = String(session.name || `user-${session.user_id}`);
+      setScreen(true);
+      await refreshAll();
+      window.history.replaceState({}, "", window.location.pathname);
+    } catch (_) {
+      showLanding();
+    }
   }
 });
