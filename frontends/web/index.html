@@ -10,10 +10,63 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <link rel="stylesheet" href="./styles.css?v=21" />
+  <link rel="stylesheet" href="./styles.css?v=22" />
 </head>
 <body>
   <main class="page">
+    <section id="landingScreen" class="landing-shell">
+      <header class="landing-nav">
+        <div class="brand-row">
+          <img class="brand-logo small" src="../../assets/keeperbma-icon.png" alt="KeeperBMA" />
+          <h1>KeeperBMA</h1>
+        </div>
+        <nav class="landing-links">
+          <a id="navHome" href="#home">Home</a>
+          <a id="navFeatures" href="#features">Features</a>
+          <a id="navPricing" href="#pricing">Pricing</a>
+          <a id="navAbout" href="#about">About</a>
+          <button id="btnNavLogin" class="secondary">Login</button>
+          <button id="btnNavRegister">Register</button>
+        </nav>
+      </header>
+
+      <section id="home" class="landing-hero card">
+        <h2 id="landingTitle">All-in-One Finance Platform for Personal and Business Growth</h2>
+        <p id="landingSubtitle">
+          KeeperBMA helps you track money, manage subscriptions, run business operations, and scale across web, mobile, and desktop with one secure backend.
+        </p>
+        <div class="landing-cta">
+          <button id="btnHeroRegister">Get Started</button>
+          <button id="btnHeroLogin" class="secondary">I Already Have an Account</button>
+        </div>
+      </section>
+
+      <section id="features" class="card">
+        <h2 id="featuresTitle">Features Overview</h2>
+        <div class="feature-grid">
+          <article class="feature-item"><h3 id="featManualTitle">Manual Tracking</h3><p id="featManualDesc">Add income, expenses, accounts, and notes manually with full control.</p></article>
+          <article class="feature-item"><h3 id="featAutoTitle">Auto Sync</h3><p id="featAutoDesc">Connect bank accounts for automatic transaction sync and smart categorization.</p></article>
+          <article class="feature-item"><h3 id="featPosTitle">POS & Inventory</h3><p id="featPosDesc">Business users get POS, inventory, sales records, and product analytics.</p></article>
+          <article class="feature-item"><h3 id="featAiTitle">AI Insights</h3><p id="featAiDesc">Get forecasting, spending patterns, and category-level performance insights.</p></article>
+        </div>
+      </section>
+
+      <section id="pricing" class="card">
+        <h2 id="pricingTitle">Pricing Plans</h2>
+        <div class="price-grid">
+          <article class="price-item"><h3>Basic</h3><p>$2 / month</p></article>
+          <article class="price-item"><h3>Regular</h3><p>$5 / month</p></article>
+          <article class="price-item"><h3>Business</h3><p>$25 / month</p></article>
+          <article class="price-item"><h3>Premium Plus</h3><p>$50-$70 / month</p></article>
+        </div>
+      </section>
+
+      <section id="about" class="card">
+        <h2 id="aboutTitle">About KeeperBMA</h2>
+        <p id="aboutDesc">KeeperBMA is designed for individuals, families, and business owners who need one scalable platform to manage finances securely across all devices.</p>
+      </section>
+    </section>
+
     <section id="authScreen" class="auth-shell">
       <div class="auth-top">
         <div class="brand-row">
@@ -209,6 +262,6 @@
     </section>
   </main>
 
-  <script src="./web.js?v=21"></script>
+  <script src="./web.js?v=22"></script>
 </body>
 </html>

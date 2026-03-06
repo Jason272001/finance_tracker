@@ -19,6 +19,26 @@ let state = {
 
 const I18N = {
   en: {
+    nav_home: "Home",
+    nav_features: "Features",
+    nav_pricing: "Pricing",
+    nav_about: "About",
+    landing_title: "All-in-One Finance Platform for Personal and Business Growth",
+    landing_subtitle: "KeeperBMA helps you track money, manage subscriptions, run business operations, and scale across web, mobile, and desktop with one secure backend.",
+    get_started: "Get Started",
+    already_account: "I Already Have an Account",
+    features_overview: "Features Overview",
+    feat_manual_title: "Manual Tracking",
+    feat_manual_desc: "Add income, expenses, accounts, and notes manually with full control.",
+    feat_auto_title: "Auto Sync",
+    feat_auto_desc: "Connect bank accounts for automatic transaction sync and smart categorization.",
+    feat_pos_title: "POS & Inventory",
+    feat_pos_desc: "Business users get POS, inventory, sales records, and product analytics.",
+    feat_ai_title: "AI Insights",
+    feat_ai_desc: "Get forecasting, spending patterns, and category-level performance insights.",
+    pricing_plans: "Pricing Plans",
+    about_title: "About KeeperBMA",
+    about_desc: "KeeperBMA is designed for individuals, families, and business owners who need one scalable platform to manage finances securely across all devices.",
     language: "Language",
     welcome: "Welcome",
     login: "Login",
@@ -295,6 +315,28 @@ function applyLanguage(lang) {
 
   setText("langLabelAuth", "language");
   setText("langLabelApp", "language");
+  setText("navHome", "nav_home");
+  setText("navFeatures", "nav_features");
+  setText("navPricing", "nav_pricing");
+  setText("navAbout", "nav_about");
+  setText("btnNavLogin", "login");
+  setText("btnNavRegister", "register");
+  setText("landingTitle", "landing_title");
+  setText("landingSubtitle", "landing_subtitle");
+  setText("btnHeroRegister", "get_started");
+  setText("btnHeroLogin", "already_account");
+  setText("featuresTitle", "features_overview");
+  setText("featManualTitle", "feat_manual_title");
+  setText("featManualDesc", "feat_manual_desc");
+  setText("featAutoTitle", "feat_auto_title");
+  setText("featAutoDesc", "feat_auto_desc");
+  setText("featPosTitle", "feat_pos_title");
+  setText("featPosDesc", "feat_pos_desc");
+  setText("featAiTitle", "feat_ai_title");
+  setText("featAiDesc", "feat_ai_desc");
+  setText("pricingTitle", "pricing_plans");
+  setText("aboutTitle", "about_title");
+  setText("aboutDesc", "about_desc");
   setText("welcomeTitle", "welcome");
   setText("labelLoginName", "name");
   setText("labelLoginPass", "password");
@@ -344,8 +386,16 @@ function applyLanguage(lang) {
   if ($("txCategory")) $("txCategory").placeholder = t("category");
   if ($("txNote")) $("txNote").placeholder = t("note");
 
+  const isAppVisible = !$("appScreen").classList.contains("hidden");
+  const isAuthVisible = !$("authScreen").classList.contains("hidden");
   setAuthMode(state.authMode);
-  setScreen(state.userId > 0);
+  if (isAppVisible || state.userId > 0) {
+    setScreen(true);
+  } else if (isAuthVisible) {
+    showAuth(state.authMode);
+  } else {
+    showLanding();
+  }
   resetAccountForm();
   resetTxForm();
   renderAccountsTable();
@@ -380,9 +430,23 @@ function setAuthMode(mode) {
 }
 
 function setScreen(isLoggedIn) {
-  $("authScreen").classList.toggle("hidden", isLoggedIn);
+  $("landingScreen").classList.toggle("hidden", isLoggedIn);
+  $("authScreen").classList.toggle("hidden", true);
   $("appScreen").classList.toggle("hidden", !isLoggedIn);
   $("userBadge").textContent = isLoggedIn ? `${t("signed_in")}: ${state.userName}` : "";
+}
+
+function showLanding() {
+  $("landingScreen").classList.remove("hidden");
+  $("authScreen").classList.add("hidden");
+  $("appScreen").classList.add("hidden");
+}
+
+function showAuth(mode = "login") {
+  setAuthMode(mode);
+  $("landingScreen").classList.add("hidden");
+  $("authScreen").classList.remove("hidden");
+  $("appScreen").classList.add("hidden");
 }
 
 async function api(path, opts = {}) {
@@ -412,8 +476,7 @@ async function api(path, opts = {}) {
           localStorage.removeItem("keeperbma_token");
           state.userId = 0;
           state.userName = "";
-          setScreen(false);
-          setAuthMode("login");
+          showAuth("login");
           throw new Error("Session expired. Please login again.");
         }
         if (res.status >= 500 && attempt < 2) {
@@ -863,6 +926,11 @@ window.addEventListener("load", async () => {
   }
   applyLanguage(savedLang);
 
+  $("btnNavLogin").onclick = () => showAuth("login");
+  $("btnNavRegister").onclick = () => showAuth("register");
+  $("btnHeroLogin").onclick = () => showAuth("login");
+  $("btnHeroRegister").onclick = () => showAuth("register");
+
   $("tabLogin").onclick = () => setAuthMode("login");
   $("tabRegister").onclick = () => setAuthMode("register");
 
@@ -916,8 +984,7 @@ window.addEventListener("load", async () => {
     state.categories = [];
     state.tx = [];
     state.daily = [];
-    setScreen(false);
-    setAuthMode("login");
+    showLanding();
     setStatus("authStatus", "");
   };
 
@@ -1008,8 +1075,7 @@ window.addEventListener("load", async () => {
   };
   $("btnDownloadPdf").onclick = downloadSummaryPdf;
 
-  setAuthMode("login");
-  setScreen(false);
+  showLanding();
   state.authToken = String(localStorage.getItem("keeperbma_token") || "");
 
   // Restore cookie session if still valid.
@@ -1020,6 +1086,6 @@ window.addEventListener("load", async () => {
     setScreen(true);
     await refreshAll();
   } catch (_) {
-    setScreen(false);
+    showLanding();
   }
 });
