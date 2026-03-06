@@ -15,6 +15,9 @@ function setMode(mode) {
   $("tabSignin").classList.toggle("active", isSignin);
   $("tabSignup").classList.toggle("active", !isSignin);
   $("authSubmit").textContent = isSignin ? "Sign In" : "Sign Up";
+  $("labelIdentifier").textContent = isSignin ? "Email or Phone" : "Display Name (Optional)";
+  $("authIdentifier").placeholder = isSignin ? "Email or Phone" : "Display name (optional)";
+  $("signupFields").classList.toggle("hidden", isSignin);
   document.title = isSignin ? "KeeperBMA - Sign In" : "KeeperBMA - Sign Up";
   setStatus("");
 }
@@ -62,25 +65,43 @@ window.addEventListener("load", async () => {
 
   $("authSubmit").onclick = async () => {
     try {
-      const payload = {
-        name: $("authName").value.trim(),
-        password: $("authPass").value,
-      };
-      if (!payload.name || !payload.password) {
-        setStatus("Name and password are required.");
+      const password = $("authPass").value;
+      if (!password) {
+        setStatus("Password is required.");
         return;
       }
 
       if (state.mode === "signup") {
+        const payload = {
+          name: $("authIdentifier").value.trim(),
+          email: $("authEmail").value.trim(),
+          phone: $("authPhone").value.trim(),
+          coupon_code: $("authCoupon").value.trim(),
+          password,
+        };
+        if (!payload.email || !payload.phone || !payload.password) {
+          setStatus("Email, phone, and password are required.");
+          return;
+        }
         await api("/auth/register", {
           method: "POST",
           body: JSON.stringify(payload),
         });
         setStatus("Sign up successful. Please sign in.");
         setMode("signin");
+        $("authIdentifier").value = payload.email;
+        $("authPass").value = "";
         return;
       }
 
+      const payload = {
+        identifier: $("authIdentifier").value.trim(),
+        password,
+      };
+      if (!payload.identifier) {
+        setStatus("Email or phone is required.");
+        return;
+      }
       const out = await api("/auth/login", {
         method: "POST",
         body: JSON.stringify(payload),

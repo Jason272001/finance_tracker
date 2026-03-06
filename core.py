@@ -2,6 +2,7 @@ import os
 import hmac
 import hashlib
 import math
+import re
 import pandas as pd
 import tempfile
 import time
@@ -37,33 +38,77 @@ PG_PASSWORD = os.getenv("PGPASSWORD", "")
 DB_IS_SQL = bool(DATABASE_URL) or DB_BACKEND in {"mysql", "postgres", "postgresql"}
 PW_SCHEME = "pbkdf2_sha256"
 PW_ITERATIONS = 210000
+SPECIAL_COUPON_CODE = "KMAK1957/1965"
 # ---------------------------
 # Internal loader (STRICT)
 # ---------------------------
 
 def _load_users():
+    user_cols = [
+        "user_id",
+        "name",
+        "email",
+        "phone",
+        "password",
+        "is_lifetime",
+        "coupon_code",
+        "created_at",
+    ]
     if DB_IS_SQL:
-        df = _read_table("users", ["user_id", "name", "password"])
+        df = _read_table("users", user_cols)
     else:
         if not os.path.exists(USERS_CSV):
             os.makedirs(os.path.dirname(USERS_CSV), exist_ok=True)
-            pd.DataFrame(columns=["user_id", "name", "password"]).to_csv(USERS_CSV, index=False)
+            pd.DataFrame(columns=user_cols).to_csv(USERS_CSV, index=False)
         df = pd.read_csv(USERS_CSV)
 
-    required_cols = {"user_id", "name", "password"}
-    if not required_cols.issubset(df.columns):
-        raise ValueError(
-            "users.csv must contain columns: user_id, name, password"
-        )
-
-    return df
+    for c in user_cols:
+        if c not in df.columns:
+            if c == "is_lifetime":
+                df[c] = False
+            else:
+                df[c] = ""
+    df["user_id"] = pd.to_numeric(df["user_id"], errors="coerce")
+    df["name"] = df["name"].fillna("").astype(str)
+    df["email"] = df["email"].fillna("").astype(str)
+    df["phone"] = df["phone"].fillna("").astype(str)
+    df["password"] = df["password"].fillna("").astype(str)
+    df["coupon_code"] = df["coupon_code"].fillna("").astype(str)
+    df["created_at"] = df["created_at"].fillna("").astype(str)
+    df["is_lifetime"] = (
+        df["is_lifetime"]
+        .fillna(False)
+        .astype(str)
+        .str.strip()
+        .str.lower()
+        .isin({"1", "true", "yes", "y"})
+    )
+    return df[user_cols]
 
 
 def _save_users(df):
+    user_cols = [
+        "user_id",
+        "name",
+        "email",
+        "phone",
+        "password",
+        "is_lifetime",
+        "coupon_code",
+        "created_at",
+    ]
+    out = df.copy()
+    for c in user_cols:
+        if c not in out.columns:
+            if c == "is_lifetime":
+                out[c] = False
+            else:
+                out[c] = ""
+    out = out[user_cols]
     if DB_IS_SQL:
-        _write_table("users", df)
+        _write_table("users", out)
     else:
-        _atomic_write_csv(USERS_CSV, df)
+        _atomic_write_csv(USERS_CSV, out)
 
 
 _ENGINE = None
@@ -223,16 +268,43 @@ class User:
         self.uid = None
         self.name = None
 
-    def login(self, name, pw):
-        name_s = str(name)
-        normalized_name = name_s.strip()
-        key = normalized_name.lower()
+    def _normalize_email(self, email):
+        return str(email or "").strip().lower()
+
+    def _normalize_phone(self, phone):
+        return re.sub(r"\D+", "", str(phone or ""))
+
+    def _validate_email(self, email):
+        e = self._normalize_email(email)
+        if not e:
+            raise ValueError("Email is required.")
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", e):
+            raise ValueError("Email format is invalid.")
+        return e
+
+    def _validate_phone(self, phone):
+        p = self._normalize_phone(phone)
+        if not p:
+            raise ValueError("Phone is required.")
+        if len(p) < 7 or len(p) > 20:
+            raise ValueError("Phone format is invalid.")
+        return p
+
+    def login(self, identifier, pw):
+        ident_s = str(identifier or "")
+        normalized_ident = ident_s.strip()
+        key = normalized_ident.lower()
         now_ts = time.time()
         rec = self._login_attempts.get(key, {"count": 0, "until": 0.0})
 
         u = _load_users()
+        ident_email = self._normalize_email(normalized_ident)
+        ident_phone = self._normalize_phone(normalized_ident)
+        ident_name = normalized_ident.lower()
         candidates = u[
-            u["name"].astype(str).str.strip().str.lower() == normalized_name.lower()
+            (u["email"].astype(str).str.strip().str.lower() == ident_email)
+            | (u["phone"].astype(str).apply(self._normalize_phone) == ident_phone)
+            | (u["name"].astype(str).str.strip().str.lower() == ident_name)
         ]
 
         if candidates.empty:
@@ -248,7 +320,10 @@ class User:
                 continue
 
             self.uid = int(row["user_id"])
-            self.name = str(row["name"])
+            display_name = str(row.get("name", "")).strip()
+            if not display_name:
+                display_name = str(row.get("email", "")).strip() or f"user-{self.uid}"
+            self.name = display_name
             self._login_attempts.pop(key, None)
 
             if needs_upgrade:
@@ -257,7 +332,6 @@ class User:
                     u2 = _load_users()
                     hit = u2.index[
                         (pd.to_numeric(u2["user_id"], errors="coerce") == int(self.uid))
-                        & (u2["name"].astype(str) == self.name)
                     ]
                     if len(hit) > 0:
                         u2.at[hit[0], "password"] = _hash_password(pw)
@@ -267,7 +341,6 @@ class User:
                         u2 = _load_users()
                         hit = u2.index[
                             (pd.to_numeric(u2["user_id"], errors="coerce") == int(self.uid))
-                            & (u2["name"].astype(str) == self.name)
                         ]
                         if len(hit) > 0:
                             u2.at[hit[0], "password"] = _hash_password(pw)
@@ -281,47 +354,71 @@ class User:
         self._login_attempts[key] = rec
         return False
 
-    def register(self, name, pw):
-        name_s = str(name).strip()
+    def register(self, name=None, pw=None, email=None, phone=None, coupon_code=""):
+        # Backward compatible: legacy caller passes (name, pw).
+        if pw is None:
+            pw = ""
         pw_s = str(pw)
-        if not name_s:
-            raise ValueError("Name is required.")
         if len(pw_s) < 10 or not any(ch.isalpha() for ch in pw_s) or not any(ch.isdigit() for ch in pw_s):
             raise ValueError("Password must be 10+ chars and include letters and numbers.")
 
-        if DB_IS_SQL:
-            u = _load_users()
-            existing = u["name"].astype(str).str.strip().str.lower()
-            if (existing == name_s.lower()).any():
-                raise ValueError("User name already exists.")
+        modern_mode = bool(email is not None or phone is not None)
+        if modern_mode:
+            email_s = self._validate_email(email)
+            phone_s = self._validate_phone(phone)
+            name_s = str(name or "").strip()
+            if not name_s:
+                name_s = email_s.split("@", 1)[0]
+            coupon_s = str(coupon_code or "").strip()
+            is_lifetime = coupon_s == SPECIAL_COUPON_CODE
+        else:
+            name_s = str(name or "").strip()
+            if not name_s:
+                raise ValueError("Name is required.")
+            email_s = ""
+            phone_s = ""
+            coupon_s = ""
+            is_lifetime = False
+
+        def _create_user_row(u):
+            if modern_mode:
+                existing_email = u["email"].astype(str).str.strip().str.lower()
+                existing_phone = u["phone"].astype(str).apply(self._normalize_phone)
+                if (existing_email == email_s).any():
+                    raise ValueError("Email already exists.")
+                if (existing_phone == phone_s).any():
+                    raise ValueError("Phone already exists.")
+            else:
+                existing = u["name"].astype(str).str.strip().str.lower()
+                if (existing == name_s.lower()).any():
+                    raise ValueError("User name already exists.")
 
             uid_col = pd.to_numeric(u["user_id"], errors="coerce").dropna()
             next_uid = 1 if uid_col.empty else int(uid_col.max()) + 1
             new_row = {
                 "user_id": int(next_uid),
                 "name": name_s,
+                "email": email_s,
+                "phone": phone_s,
                 "password": _hash_password(pw_s),
+                "is_lifetime": bool(is_lifetime),
+                "coupon_code": coupon_s,
+                "created_at": datetime.utcnow().isoformat() + "Z",
             }
+            return next_uid, new_row
+
+        if DB_IS_SQL:
+            u = _load_users()
+            next_uid, new_row = _create_user_row(u)
             u = pd.concat([u, pd.DataFrame([new_row])], ignore_index=True)
             _save_users(u)
             return int(next_uid)
-        else:
-            with _file_lock(USERS_CSV):
-                u = _load_users()
-                existing = u["name"].astype(str).str.strip().str.lower()
-                if (existing == name_s.lower()).any():
-                    raise ValueError("User name already exists.")
-
-                uid_col = pd.to_numeric(u["user_id"], errors="coerce").dropna()
-                next_uid = 1 if uid_col.empty else int(uid_col.max()) + 1
-                new_row = {
-                    "user_id": int(next_uid),
-                    "name": name_s,
-                    "password": _hash_password(pw_s),
-                }
-                u = pd.concat([u, pd.DataFrame([new_row])], ignore_index=True)
-                _save_users(u)
-                return int(next_uid)
+        with _file_lock(USERS_CSV):
+            u = _load_users()
+            next_uid, new_row = _create_user_row(u)
+            u = pd.concat([u, pd.DataFrame([new_row])], ignore_index=True)
+            _save_users(u)
+            return int(next_uid)
 
     def logout(self):
         self.uid = None
@@ -331,6 +428,18 @@ class User:
         return self.uid is not None
 
     def get_name_by_id(self, user_id):
+        profile = self.get_user_by_id(user_id)
+        if not profile:
+            return None
+        name = str(profile.get("name", "")).strip()
+        if name:
+            return name
+        email = str(profile.get("email", "")).strip()
+        if email:
+            return email
+        return None
+
+    def get_user_by_id(self, user_id):
         try:
             uid = int(user_id)
         except Exception:
@@ -340,7 +449,20 @@ class User:
         hit = u[uid_col == uid]
         if hit.empty:
             return None
-        return str(hit.iloc[0]["name"])
+        row = hit.iloc[0]
+        return {
+            "user_id": int(row["user_id"]),
+            "name": str(row.get("name", "")).strip(),
+            "email": str(row.get("email", "")).strip(),
+            "phone": str(row.get("phone", "")).strip(),
+            "is_lifetime": bool(
+                str(row.get("is_lifetime", ""))
+                .strip()
+                .lower() in {"1", "true", "yes", "y"}
+            ),
+            "coupon_code": str(row.get("coupon_code", "")).strip(),
+            "created_at": str(row.get("created_at", "")).strip(),
+        }
     
 
 class Transaction:

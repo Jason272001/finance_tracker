@@ -29,8 +29,16 @@
       </div>
 
       <section class="card auth-card">
-        <label for="authName">Name</label>
-        <input id="authName" placeholder="Name" />
+        <label for="authIdentifier" id="labelIdentifier">Email or Phone</label>
+        <input id="authIdentifier" placeholder="Email or Phone" />
+        <div id="signupFields" class="hidden">
+          <label for="authEmail">Email</label>
+          <input id="authEmail" type="email" placeholder="name@example.com" />
+          <label for="authPhone">Phone</label>
+          <input id="authPhone" placeholder="+1 555 123 4567" />
+          <label for="authCoupon">Coupon Code (Optional)</label>
+          <input id="authCoupon" placeholder="Enter coupon code" />
+        </div>
         <label for="authPass">Password</label>
         <input id="authPass" type="password" placeholder="Password" />
         <button id="authSubmit" class="primary full">Sign In</button>
@@ -39,6 +47,6 @@
     </section>
   </main>
 
-  <script src="./auth.js?v=1"></script>
+  <script src="./auth.js?v=2"></script>
 </body>
 </html>

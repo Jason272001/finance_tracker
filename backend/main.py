@@ -42,13 +42,17 @@ app.add_middleware(
 
 class RegisterBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
-    name: str = Field(min_length=1, max_length=80)
+    email: str = Field(min_length=3, max_length=200)
+    phone: str = Field(min_length=7, max_length=40)
     password: str = Field(min_length=10, max_length=200)
+    coupon_code: Optional[str] = Field(default="", max_length=64)
+    name: Optional[str] = Field(default="", max_length=80)
 
 
 class LoginBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
-    name: str
+    identifier: Optional[str] = None
+    name: Optional[str] = None
     password: str
 
 
@@ -220,8 +224,22 @@ def health():
 @app.post("/auth/register")
 def register(body: RegisterBody):
     try:
-        uid = User().register(body.name, body.password)
-        return {"ok": True, "user_id": uid, "name": body.name}
+        uid = User().register(
+            name=body.name,
+            pw=body.password,
+            email=body.email,
+            phone=body.phone,
+            coupon_code=body.coupon_code or "",
+        )
+        profile = User().get_user_by_id(uid) or {}
+        return {
+            "ok": True,
+            "user_id": uid,
+            "name": profile.get("name") or body.email,
+            "email": profile.get("email") or body.email,
+            "phone": profile.get("phone") or body.phone,
+            "lifetime_access": bool(profile.get("is_lifetime", False)),
+        }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -229,9 +247,13 @@ def register(body: RegisterBody):
 @app.post("/auth/login")
 def login(body: LoginBody, response: Response):
     u = User()
-    ok = u.login(body.name, body.password)
+    principal = str(body.identifier or body.name or "").strip()
+    if not principal:
+        raise HTTPException(status_code=400, detail="Identifier is required")
+    ok = u.login(principal, body.password)
     if not ok:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    profile = User().get_user_by_id(int(u.uid)) or {}
     token = _issue_token(int(u.uid))
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
@@ -245,7 +267,10 @@ def login(body: LoginBody, response: Response):
     return {
         "ok": True,
         "user_id": int(u.uid),
-        "name": u.name,
+        "name": profile.get("name") or u.name,
+        "email": profile.get("email", ""),
+        "phone": profile.get("phone", ""),
+        "lifetime_access": bool(profile.get("is_lifetime", False)),
         "session_minutes": TOKEN_TTL_SECONDS // 60,
         "token": token,
     }
@@ -266,8 +291,16 @@ def logout(response: Response):
 def auth_session(request: Request, authorization: Optional[str] = Header(default=None)):
     token = _extract_token(request, authorization)
     uid = _verify_token(token)
-    name = User().get_name_by_id(uid) or f"user-{uid}"
-    return {"ok": True, "user_id": int(uid), "name": name}
+    profile = User().get_user_by_id(uid) or {}
+    name = profile.get("name") or profile.get("email") or f"user-{uid}"
+    return {
+        "ok": True,
+        "user_id": int(uid),
+        "name": name,
+        "email": profile.get("email", ""),
+        "phone": profile.get("phone", ""),
+        "lifetime_access": bool(profile.get("is_lifetime", False)),
+    }
 
 
 @app.get("/accounts")
