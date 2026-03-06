@@ -466,7 +466,12 @@ async function api(path, opts = {}) {
           localStorage.removeItem("keeperbma_token");
           state.userId = 0;
           state.userName = "";
-          showAuth("login");
+          const appVisible = $("appScreen") && !$("appScreen").classList.contains("hidden");
+          if (appVisible) {
+            showAuth("login");
+          } else {
+            showLanding();
+          }
           throw new Error("Session expired. Please login again.");
         }
         if (res.status >= 500 && attempt < 2) {
