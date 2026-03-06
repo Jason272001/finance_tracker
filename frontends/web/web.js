@@ -41,8 +41,8 @@ const I18N = {
     about_desc: "KeeperBMA is designed for individuals, families, and business owners who need one scalable platform to manage finances securely across all devices.",
     language: "Language",
     welcome: "Welcome",
-    login: "Login",
-    register: "Register",
+    login: "Sign In",
+    register: "Sign Up",
     name: "Name",
     password: "Password",
     signed_in: "Signed in",
@@ -445,11 +445,8 @@ function showLanding() {
 }
 
 function showAuth(mode = "login") {
-  setAuthMode(mode);
-  $("landingScreen").classList.add("hidden");
-  $("authScreen").classList.remove("hidden");
-  $("appScreen").classList.add("hidden");
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  const route = mode === "register" ? "signup" : "signin";
+  window.location.href = `./auth.html?mode=${route}`;
 }
 
 async function api(path, opts = {}) {

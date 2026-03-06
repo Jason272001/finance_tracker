@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KeeperBMA - Sign In</title>
+  <link rel="icon" type="image/png" href="../../assets/keeperbma-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css?v=24" />
+</head>
+<body>
+  <main class="page">
+    <header class="landing-nav">
+      <div class="brand-row">
+        <img class="brand-logo small" src="../../assets/keeperbma-icon.png" alt="KeeperBMA" />
+        <h1>KeeperBMA</h1>
+      </div>
+      <div class="landing-links">
+        <a href="./index.html">Home</a>
+      </div>
+    </header>
+
+    <section class="auth-shell">
+      <div class="tabs">
+        <button id="tabSignin" class="tab active">Sign In</button>
+        <button id="tabSignup" class="tab">Sign Up</button>
+      </div>
+
+      <section class="card auth-card">
+        <label for="authName">Name</label>
+        <input id="authName" placeholder="Name" />
+        <label for="authPass">Password</label>
+        <input id="authPass" type="password" placeholder="Password" />
+        <button id="authSubmit" class="primary full">Sign In</button>
+        <p id="authStatus" class="muted"></p>
+      </section>
+    </section>
+  </main>
+
+  <script src="./auth.js?v=1"></script>
+</body>
+</html>
