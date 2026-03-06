@@ -2,9 +2,12 @@ import hmac
 import hashlib
 import logging
 import os
+import secrets
+import smtplib
 import time
 from datetime import datetime
 from typing import Optional
+from email.message import EmailMessage
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,6 +23,15 @@ TOKEN_TTL_SECONDS = int(os.getenv("API_TOKEN_TTL_SECONDS", "1800"))  # 30 minute
 STRICT_TOKEN_SECRET = str(os.getenv("STRICT_TOKEN_SECRET", "1")).strip().lower() in {"1", "true", "yes"}
 SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "keeperbma_session")
 logger = logging.getLogger("keeperbma.api")
+SMTP_HOST = str(os.getenv("SMTP_HOST", "")).strip()
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = str(os.getenv("SMTP_USER", "")).strip()
+SMTP_PASSWORD = str(os.getenv("SMTP_PASSWORD", "")).strip()
+SMTP_FROM = str(os.getenv("SMTP_FROM", SMTP_USER)).strip()
+SMTP_USE_TLS = str(os.getenv("SMTP_USE_TLS", "1")).strip().lower() in {"1", "true", "yes"}
+RECOVERY_CODE_TTL_SECONDS = int(os.getenv("RECOVERY_CODE_TTL_SECONDS", "600"))  # 10 min
+RECOVERY_MIN_RESEND_SECONDS = int(os.getenv("RECOVERY_MIN_RESEND_SECONDS", "60"))
+RECOVERY_STATE = {}
 
 _cors_raw = str(
     os.getenv(
@@ -42,18 +54,29 @@ app.add_middleware(
 
 class RegisterBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
+    name: str = Field(min_length=1, max_length=80)
     email: str = Field(min_length=3, max_length=200)
     phone: str = Field(min_length=7, max_length=40)
     password: str = Field(min_length=10, max_length=200)
     coupon_code: Optional[str] = Field(default="", max_length=64)
-    name: Optional[str] = Field(default="", max_length=80)
 
 
 class LoginBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
-    identifier: Optional[str] = None
-    name: Optional[str] = None
+    name: str = Field(min_length=1, max_length=80)
     password: str
+
+
+class RecoveryRequestBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    email: str = Field(min_length=3, max_length=200)
+
+
+class RecoveryConfirmBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    email: str = Field(min_length=3, max_length=200)
+    code: str = Field(min_length=4, max_length=20)
+    new_password: str = Field(min_length=10, max_length=200)
 
 
 class AccountCreateBody(BaseModel):
@@ -148,6 +171,42 @@ def _issue_token(user_id: int, ttl_seconds: int = TOKEN_TTL_SECONDS) -> str:
         hashlib.sha256,
     ).hexdigest()
     return f"{payload}.{sig}"
+
+
+def _hash_recovery_code(email: str, code: str) -> str:
+    payload = f"{str(email).strip().lower()}::{str(code).strip()}"
+    return hmac.new(
+        TOKEN_SECRET.encode("utf-8"),
+        payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def _cleanup_recovery_state(now_ts: Optional[float] = None) -> None:
+    if now_ts is None:
+        now_ts = time.time()
+    stale = [k for k, v in RECOVERY_STATE.items() if float(v.get("expires_at", 0)) < now_ts]
+    for k in stale:
+        RECOVERY_STATE.pop(k, None)
+
+
+def _send_recovery_email(to_email: str, code: str) -> None:
+    if not (SMTP_HOST and SMTP_FROM):
+        raise ValueError("Email recovery is not configured on server.")
+    msg = EmailMessage()
+    msg["Subject"] = "KeeperBMA Password Recovery Code"
+    msg["From"] = SMTP_FROM
+    msg["To"] = to_email
+    msg.set_content(
+        "Your KeeperBMA password recovery code is: "
+        f"{code}\n\nThis code expires in {RECOVERY_CODE_TTL_SECONDS // 60} minutes."
+    )
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
+        if SMTP_USE_TLS:
+            server.starttls()
+        if SMTP_USER:
+            server.login(SMTP_USER, SMTP_PASSWORD)
+        server.send_message(msg)
 
 
 def _verify_token(token: str) -> int:
@@ -247,10 +306,7 @@ def register(body: RegisterBody):
 @app.post("/auth/login")
 def login(body: LoginBody, response: Response):
     u = User()
-    principal = str(body.identifier or body.name or "").strip()
-    if not principal:
-        raise HTTPException(status_code=400, detail="Identifier is required")
-    ok = u.login(principal, body.password)
+    ok = u.login(body.name, body.password)
     if not ok:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     profile = User().get_user_by_id(int(u.uid)) or {}
@@ -274,6 +330,79 @@ def login(body: LoginBody, response: Response):
         "session_minutes": TOKEN_TTL_SECONDS // 60,
         "token": token,
     }
+
+
+@app.post("/auth/recover/request")
+def recover_request(body: RecoveryRequestBody):
+    email = str(body.email).strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
+    user = User().get_user_by_email(email)
+    if not user:
+        # Prevent user enumeration.
+        return {"ok": True, "sent": True}
+
+    now_ts = time.time()
+    _cleanup_recovery_state(now_ts)
+    state = RECOVERY_STATE.get(email)
+    if state:
+        last_sent = float(state.get("last_sent_at", 0))
+        if (now_ts - last_sent) < RECOVERY_MIN_RESEND_SECONDS:
+            raise HTTPException(status_code=429, detail="Please wait before requesting another code.")
+
+    code = f"{secrets.randbelow(1000000):06d}"
+    try:
+        _send_recovery_email(email, code)
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception:
+        logger.exception("Failed to send recovery email")
+        raise HTTPException(status_code=503, detail="Failed to send recovery email")
+
+    RECOVERY_STATE[email] = {
+        "user_id": int(user["user_id"]),
+        "code_hash": _hash_recovery_code(email, code),
+        "expires_at": now_ts + RECOVERY_CODE_TTL_SECONDS,
+        "attempts": 0,
+        "last_sent_at": now_ts,
+    }
+    return {"ok": True, "sent": True, "expires_minutes": RECOVERY_CODE_TTL_SECONDS // 60}
+
+
+@app.post("/auth/recover/confirm")
+def recover_confirm(body: RecoveryConfirmBody):
+    email = str(body.email).strip().lower()
+    code = str(body.code).strip()
+    if not email or not code:
+        raise HTTPException(status_code=400, detail="Email and code are required")
+
+    now_ts = time.time()
+    _cleanup_recovery_state(now_ts)
+    state = RECOVERY_STATE.get(email)
+    if not state:
+        raise HTTPException(status_code=400, detail="Recovery code expired or invalid.")
+    if float(state.get("expires_at", 0)) < now_ts:
+        RECOVERY_STATE.pop(email, None)
+        raise HTTPException(status_code=400, detail="Recovery code expired or invalid.")
+    if int(state.get("attempts", 0)) >= 5:
+        RECOVERY_STATE.pop(email, None)
+        raise HTTPException(status_code=400, detail="Too many attempts. Request a new code.")
+
+    expected = str(state.get("code_hash", ""))
+    got = _hash_recovery_code(email, code)
+    if not hmac.compare_digest(expected, got):
+        state["attempts"] = int(state.get("attempts", 0)) + 1
+        RECOVERY_STATE[email] = state
+        raise HTTPException(status_code=400, detail="Recovery code expired or invalid.")
+
+    try:
+        User().set_password_by_user_id(state["user_id"], body.new_password)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        RECOVERY_STATE.pop(email, None)
+    return {"ok": True}
 
 
 @app.post("/auth/logout")

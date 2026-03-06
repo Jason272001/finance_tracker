@@ -1,7 +1,7 @@
 const $ = (id) => document.getElementById(id);
 
 const state = {
-  apiBase: "https://keeperbma-backend.onrender.com",
+  apiBase: "https://api.keeperbma.com",
   mode: "signin",
 };
 
@@ -10,15 +10,24 @@ function setStatus(msg) {
 }
 
 function setMode(mode) {
-  state.mode = mode === "signup" ? "signup" : "signin";
+  if (mode === "signup" || mode === "recover") state.mode = mode;
+  else state.mode = "signin";
   const isSignin = state.mode === "signin";
+  const isSignup = state.mode === "signup";
+  const isRecover = state.mode === "recover";
   $("tabSignin").classList.toggle("active", isSignin);
-  $("tabSignup").classList.toggle("active", !isSignin);
-  $("authSubmit").textContent = isSignin ? "Sign In" : "Sign Up";
-  $("labelIdentifier").textContent = isSignin ? "Email or Phone" : "Display Name (Optional)";
-  $("authIdentifier").placeholder = isSignin ? "Email or Phone" : "Display name (optional)";
-  $("signupFields").classList.toggle("hidden", isSignin);
-  document.title = isSignin ? "KeeperBMA - Sign In" : "KeeperBMA - Sign Up";
+  $("tabSignup").classList.toggle("active", isSignup);
+  $("tabRecover").classList.toggle("active", isRecover);
+  $("signupFields").classList.toggle("hidden", !isSignup);
+  $("recoverFields").classList.toggle("hidden", !isRecover);
+  $("confirmWrap").classList.toggle("hidden", !(isSignup || isRecover));
+  $("btnForgot").classList.toggle("hidden", !isSignin);
+  $("labelName").classList.toggle("hidden", isRecover);
+  $("authName").classList.toggle("hidden", isRecover);
+  $("labelPassword").textContent = isRecover ? "New Password" : "Password";
+  $("authPass").placeholder = isRecover ? "New Password" : "Password";
+  $("authSubmit").textContent = isSignin ? "Sign In" : (isSignup ? "Sign Up" : "Reset Password");
+  document.title = isSignin ? "KeeperBMA - Sign In" : (isSignup ? "KeeperBMA - Sign Up" : "KeeperBMA - Recover Password");
   setStatus("");
 }
 
@@ -62,25 +71,53 @@ window.addEventListener("load", async () => {
 
   $("tabSignin").onclick = () => setMode("signin");
   $("tabSignup").onclick = () => setMode("signup");
+  $("tabRecover").onclick = () => setMode("recover");
+  $("btnForgot").onclick = () => setMode("recover");
+  $("btnSendCode").onclick = async () => {
+    try {
+      const email = $("recoverEmail").value.trim();
+      if (!email) {
+        setStatus("Email is required.");
+        return;
+      }
+      await api("/auth/recover/request", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+      setStatus("Recovery code sent. Check your email.");
+    } catch (e) {
+      setStatus(errMessage(e));
+    }
+  };
 
   $("authSubmit").onclick = async () => {
     try {
+      const name = $("authName").value.trim();
       const password = $("authPass").value;
+      const password2 = $("authPassConfirm").value;
+      if (state.mode !== "recover" && !name) {
+        setStatus("Username is required.");
+        return;
+      }
       if (!password) {
-        setStatus("Password is required.");
+        setStatus(state.mode === "recover" ? "New password is required." : "Password is required.");
         return;
       }
 
       if (state.mode === "signup") {
         const payload = {
-          name: $("authIdentifier").value.trim(),
+          name,
           email: $("authEmail").value.trim(),
           phone: $("authPhone").value.trim(),
           coupon_code: $("authCoupon").value.trim(),
           password,
         };
+        if (password !== password2) {
+          setStatus("Confirm password does not match.");
+          return;
+        }
         if (!payload.email || !payload.phone || !payload.password) {
-          setStatus("Email, phone, and password are required.");
+          setStatus("Username, email, phone, and password are required.");
           return;
         }
         await api("/auth/register", {
@@ -89,19 +126,41 @@ window.addEventListener("load", async () => {
         });
         setStatus("Sign up successful. Please sign in.");
         setMode("signin");
-        $("authIdentifier").value = payload.email;
+        $("authName").value = payload.name;
         $("authPass").value = "";
+        $("authPassConfirm").value = "";
+        return;
+      }
+
+      if (state.mode === "recover") {
+        if (password !== password2) {
+          setStatus("Confirm password does not match.");
+          return;
+        }
+        const payload = {
+          email: $("recoverEmail").value.trim(),
+          code: $("recoverCode").value.trim(),
+          new_password: password,
+        };
+        if (!payload.email || !payload.code || !payload.new_password) {
+          setStatus("Email, recovery code, and new password are required.");
+          return;
+        }
+        await api("/auth/recover/confirm", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        setStatus("Password reset successful. Please sign in.");
+        setMode("signin");
+        $("authPass").value = "";
+        $("authPassConfirm").value = "";
         return;
       }
 
       const payload = {
-        identifier: $("authIdentifier").value.trim(),
+        name,
         password,
       };
-      if (!payload.identifier) {
-        setStatus("Email or phone is required.");
-        return;
-      }
       const out = await api("/auth/login", {
         method: "POST",
         body: JSON.stringify(payload),

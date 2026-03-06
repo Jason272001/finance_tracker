@@ -26,11 +26,12 @@
       <div class="tabs">
         <button id="tabSignin" class="tab active">Sign In</button>
         <button id="tabSignup" class="tab">Sign Up</button>
+        <button id="tabRecover" class="tab">Recover</button>
       </div>
 
       <section class="card auth-card">
-        <label for="authIdentifier" id="labelIdentifier">Email or Phone</label>
-        <input id="authIdentifier" placeholder="Email or Phone" />
+        <label for="authName" id="labelName">Username</label>
+        <input id="authName" placeholder="Username" />
         <div id="signupFields" class="hidden">
           <label for="authEmail">Email</label>
           <input id="authEmail" type="email" placeholder="name@example.com" />
@@ -39,14 +40,26 @@
           <label for="authCoupon">Coupon Code (Optional)</label>
           <input id="authCoupon" placeholder="Enter coupon code" />
         </div>
-        <label for="authPass">Password</label>
+        <div id="recoverFields" class="hidden">
+          <label for="recoverEmail">Email</label>
+          <input id="recoverEmail" type="email" placeholder="name@example.com" />
+          <button id="btnSendCode" class="secondary full">Send Recovery Code</button>
+          <label for="recoverCode">Recovery Code</label>
+          <input id="recoverCode" placeholder="6-digit code from email" />
+        </div>
+        <label for="authPass" id="labelPassword">Password</label>
         <input id="authPass" type="password" placeholder="Password" />
+        <div id="confirmWrap" class="hidden">
+          <label for="authPassConfirm" id="labelConfirmPassword">Confirm Password</label>
+          <input id="authPassConfirm" type="password" placeholder="Confirm Password" />
+        </div>
+        <button id="btnForgot" class="secondary full">Forgot Password?</button>
         <button id="authSubmit" class="primary full">Sign In</button>
         <p id="authStatus" class="muted"></p>
       </section>
     </section>
   </main>
 
-  <script src="./auth.js?v=2"></script>
+  <script src="./auth.js?v=4"></script>
 </body>
 </html>

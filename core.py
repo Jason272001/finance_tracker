@@ -368,7 +368,7 @@ class User:
             phone_s = self._validate_phone(phone)
             name_s = str(name or "").strip()
             if not name_s:
-                name_s = email_s.split("@", 1)[0]
+                raise ValueError("Name is required.")
             coupon_s = str(coupon_code or "").strip()
             is_lifetime = coupon_s == SPECIAL_COUPON_CODE
         else:
@@ -381,6 +381,9 @@ class User:
             is_lifetime = False
 
         def _create_user_row(u):
+            existing_name = u["name"].astype(str).str.strip().str.lower()
+            if (existing_name == name_s.lower()).any():
+                raise ValueError("User name already exists.")
             if modern_mode:
                 existing_email = u["email"].astype(str).str.strip().str.lower()
                 existing_phone = u["phone"].astype(str).apply(self._normalize_phone)
@@ -388,10 +391,6 @@ class User:
                     raise ValueError("Email already exists.")
                 if (existing_phone == phone_s).any():
                     raise ValueError("Phone already exists.")
-            else:
-                existing = u["name"].astype(str).str.strip().str.lower()
-                if (existing == name_s.lower()).any():
-                    raise ValueError("User name already exists.")
 
             uid_col = pd.to_numeric(u["user_id"], errors="coerce").dropna()
             next_uid = 1 if uid_col.empty else int(uid_col.max()) + 1
@@ -419,6 +418,91 @@ class User:
             u = pd.concat([u, pd.DataFrame([new_row])], ignore_index=True)
             _save_users(u)
             return int(next_uid)
+
+    def recover_password(self, name, email, phone, new_password):
+        name_s = str(name or "").strip()
+        if not name_s:
+            raise ValueError("Name is required.")
+        email_s = self._validate_email(email)
+        phone_s = self._validate_phone(phone)
+        pw_s = str(new_password or "")
+        if len(pw_s) < 10 or not any(ch.isalpha() for ch in pw_s) or not any(ch.isdigit() for ch in pw_s):
+            raise ValueError("Password must be 10+ chars and include letters and numbers.")
+
+        def _do_recover(df):
+            name_col = df["name"].astype(str).str.strip().str.lower()
+            email_col = df["email"].astype(str).str.strip().str.lower()
+            phone_col = df["phone"].astype(str).apply(self._normalize_phone)
+            idx = df.index[
+                (name_col == name_s.lower()) &
+                (email_col == email_s) &
+                (phone_col == phone_s)
+            ]
+            if len(idx) == 0:
+                raise ValueError("Recovery verification failed.")
+            df.at[idx[0], "password"] = _hash_password(pw_s)
+            return int(df.at[idx[0], "user_id"]), df
+
+        if DB_IS_SQL:
+            u = _load_users()
+            uid, out = _do_recover(u)
+            _save_users(out)
+            return uid
+        with _file_lock(USERS_CSV):
+            u = _load_users()
+            uid, out = _do_recover(u)
+            _save_users(out)
+            return uid
+
+    def get_user_by_email(self, email):
+        email_s = self._normalize_email(email)
+        if not email_s:
+            return None
+        u = _load_users()
+        email_col = u["email"].astype(str).str.strip().str.lower()
+        hit = u[email_col == email_s]
+        if hit.empty:
+            return None
+        row = hit.iloc[0]
+        return {
+            "user_id": int(row["user_id"]),
+            "name": str(row.get("name", "")).strip(),
+            "email": str(row.get("email", "")).strip(),
+            "phone": str(row.get("phone", "")).strip(),
+            "is_lifetime": bool(
+                str(row.get("is_lifetime", ""))
+                .strip()
+                .lower() in {"1", "true", "yes", "y"}
+            ),
+        }
+
+    def set_password_by_user_id(self, user_id, new_password):
+        pw_s = str(new_password or "")
+        if len(pw_s) < 10 or not any(ch.isalpha() for ch in pw_s) or not any(ch.isdigit() for ch in pw_s):
+            raise ValueError("Password must be 10+ chars and include letters and numbers.")
+        try:
+            uid = int(user_id)
+        except Exception:
+            raise ValueError("Invalid user id.")
+
+        def _set(df):
+            uid_col = pd.to_numeric(df["user_id"], errors="coerce")
+            idx = df.index[uid_col == uid]
+            if len(idx) == 0:
+                raise ValueError("User not found.")
+            df.at[idx[0], "password"] = _hash_password(pw_s)
+            return True, df
+
+        if DB_IS_SQL:
+            u = _load_users()
+            ok, out = _set(u)
+            _save_users(out)
+            return ok
+        with _file_lock(USERS_CSV):
+            u = _load_users()
+            ok, out = _set(u)
+            _save_users(out)
+            return ok
 
     def logout(self):
         self.uid = None
