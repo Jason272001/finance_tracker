@@ -35,8 +35,20 @@
         <div id="signupFields" class="hidden">
           <label for="authEmail">Email</label>
           <input id="authEmail" type="email" placeholder="name@example.com" />
-          <label for="authPhone">Phone</label>
-          <input id="authPhone" placeholder="+1 555 123 4567" />
+          <label>Phone</label>
+          <div class="row phone-row">
+            <select id="authCountryCode">
+              <option value="+1">+1 (US)</option>
+              <option value="+95">+95 (MM)</option>
+              <option value="+81">+81 (JP)</option>
+              <option value="+86">+86 (CN)</option>
+              <option value="+44">+44 (UK)</option>
+              <option value="+61">+61 (AU)</option>
+              <option value="+65">+65 (SG)</option>
+              <option value="+91">+91 (IN)</option>
+            </select>
+            <input id="authPhoneLocal" placeholder="Phone number" />
+          </div>
           <label for="authCoupon">Coupon Code (Optional)</label>
           <input id="authCoupon" placeholder="Enter coupon code" />
         </div>
@@ -60,6 +72,6 @@
     </section>
   </main>
 
-  <script src="./auth.js?v=4"></script>
+  <script src="./auth.js?v=5"></script>
 </body>
 </html>

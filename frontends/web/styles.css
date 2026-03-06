@@ -164,6 +164,8 @@ button.secondary { background: #20a55f; }
 button.danger { background: #d64545; }
 .row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
 .row > * { flex: 1 1 180px; min-width: 0; }
+.phone-row > #authCountryCode { flex: 0 0 150px; }
+.phone-row > #authPhoneLocal { flex: 1 1 220px; }
 
 table { width: 100%; border-collapse: collapse; }
 th, td {

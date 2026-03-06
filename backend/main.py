@@ -36,12 +36,14 @@ RECOVERY_STATE = {}
 _cors_raw = str(
     os.getenv(
         "CORS_ALLOW_ORIGINS",
-        "https://jason272001.github.io,http://localhost:8501,http://127.0.0.1:8501,http://localhost:3000,http://127.0.0.1:3000",
+        "https://keeperbma.com,https://www.keeperbma.com,https://jason272001.github.io,http://localhost:8501,http://127.0.0.1:8501,http://localhost:3000,http://127.0.0.1:3000",
     )
 ).strip()
 CORS_ALLOW_ORIGINS = [o.strip() for o in _cors_raw.split(",") if o.strip()]
-if not CORS_ALLOW_ORIGINS:
-    CORS_ALLOW_ORIGINS = ["https://jason272001.github.io"]
+_required_cors = ["https://keeperbma.com", "https://www.keeperbma.com", "https://jason272001.github.io"]
+for _origin in _required_cors:
+    if _origin not in CORS_ALLOW_ORIGINS:
+        CORS_ALLOW_ORIGINS.append(_origin)
 
 app.add_middleware(
     CORSMiddleware,

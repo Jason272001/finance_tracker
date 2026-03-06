@@ -105,10 +105,13 @@ window.addEventListener("load", async () => {
       }
 
       if (state.mode === "signup") {
+        const countryCode = $("authCountryCode").value.trim();
+        const localPhone = $("authPhoneLocal").value.trim();
+        const normalizedLocalPhone = localPhone.replace(/[^\d]/g, "");
         const payload = {
           name,
           email: $("authEmail").value.trim(),
-          phone: $("authPhone").value.trim(),
+          phone: `${countryCode} ${normalizedLocalPhone}`.trim(),
           coupon_code: $("authCoupon").value.trim(),
           password,
         };
@@ -116,8 +119,12 @@ window.addEventListener("load", async () => {
           setStatus("Confirm password does not match.");
           return;
         }
-        if (!payload.email || !payload.phone || !payload.password) {
+        if (!payload.email || !countryCode || !normalizedLocalPhone || !payload.password) {
           setStatus("Username, email, phone, and password are required.");
+          return;
+        }
+        if (normalizedLocalPhone.length < 6) {
+          setStatus("Phone number is too short.");
           return;
         }
         await api("/auth/register", {
