@@ -434,12 +434,14 @@ function setScreen(isLoggedIn) {
   $("authScreen").classList.toggle("hidden", true);
   $("appScreen").classList.toggle("hidden", !isLoggedIn);
   $("userBadge").textContent = isLoggedIn ? `${t("signed_in")}: ${state.userName}` : "";
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function showLanding() {
   $("landingScreen").classList.remove("hidden");
   $("authScreen").classList.add("hidden");
   $("appScreen").classList.add("hidden");
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function showAuth(mode = "login") {
@@ -447,6 +449,7 @@ function showAuth(mode = "login") {
   $("landingScreen").classList.add("hidden");
   $("authScreen").classList.remove("hidden");
   $("appScreen").classList.add("hidden");
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 async function api(path, opts = {}) {
