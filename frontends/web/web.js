@@ -14,6 +14,7 @@ let state = {
   editingAccountId: 0,
   editingTxId: 0,
   currentLang: "en",
+  subscription: {},
   charts: { income: null, expense: null, debt: null },
 };
 
@@ -87,6 +88,18 @@ const I18N = {
     cancel_edit: "Cancel Edit",
     edit: "Edit",
     delete: "Delete",
+    subscription_title: "Subscription",
+    current_plan: "Current Plan",
+    plan_status: "Status",
+    trial_ends: "Trial Ends",
+    trial_days_left: "Trial Days Left",
+    change_plan: "Change Plan",
+    plan_basic: "Basic",
+    plan_regular: "Regular",
+    plan_business: "Business",
+    plan_premium_plus: "Premium Plus",
+    plan_lifetime: "Lifetime",
+    plan_updated: "Plan updated successfully.",
   },
   my: {
     language: "ဘာသာစကား",
@@ -372,6 +385,16 @@ function applyLanguage(lang) {
   setText("kpiLabelDebt", "total_debt");
   setText("kpiLabelIncome", "total_income");
   setText("kpiLabelExpense", "total_expense");
+  setText("subscriptionTitle", "subscription_title");
+  setText("currentPlanLabel", "current_plan");
+  setText("planStatusLabel", "plan_status");
+  setText("trialEndsLabel", "trial_ends");
+  setText("trialDaysLabel", "trial_days_left");
+  setText("changePlanLabel", "change_plan");
+  setText("planBtnBasic", "plan_basic");
+  setText("planBtnRegular", "plan_regular");
+  setText("planBtnBusiness", "plan_business");
+  setText("planBtnPremium", "plan_premium_plus");
   setText("summaryExportTitle", "summary_export");
   setText("btnApplySummary", "apply_range");
   setText("btnResetSummary", "reset");
@@ -422,6 +445,7 @@ function applyLanguage(lang) {
   resetTxForm();
   renderAccountsTable();
   renderTransactions();
+  renderSubscription();
 }
 
 function errMessage(e) {
@@ -526,6 +550,39 @@ async function api(path, opts = {}) {
     }
   }
   throw lastErr || new Error("Network error");
+}
+
+function planLabel(planCode) {
+  const key = String(planCode || "").trim().toLowerCase();
+  const labels = {
+    basic: t("plan_basic"),
+    regular: t("plan_regular"),
+    business: t("plan_business"),
+    premium_plus: t("plan_premium_plus"),
+    lifetime: t("plan_lifetime"),
+  };
+  return labels[key] || key || t("plan_basic");
+}
+
+function renderSubscription() {
+  const sub = state.subscription || {};
+  const planCode = String(sub.plan_code || "basic").toLowerCase();
+  const status = String(sub.subscription_status || "active");
+  const trialEnds = String(sub.trial_ends_at || "");
+  const trialDays = Number(sub.trial_days_remaining || 0);
+  const isLifetime = Boolean(sub.is_lifetime);
+
+  if ($("planCodeValue")) $("planCodeValue").textContent = planLabel(planCode);
+  if ($("planStatusValue")) $("planStatusValue").textContent = status;
+  if ($("trialEndsValue")) $("trialEndsValue").textContent = trialEnds ? trialEnds.slice(0, 10) : "-";
+  if ($("trialDaysValue")) $("trialDaysValue").textContent = String(Math.max(0, trialDays));
+  if ($("planStatusMsg")) $("planStatusMsg").textContent = "";
+
+  document.querySelectorAll(".plan-btn").forEach((btn) => {
+    const btnPlan = String(btn.getAttribute("data-plan") || "").toLowerCase();
+    btn.classList.toggle("active", btnPlan === planCode);
+    btn.disabled = isLifetime;
+  });
 }
 
 function renderAccountsTable() {
@@ -922,15 +979,18 @@ async function refreshAll() {
     api(`/categories?user_id=${state.userId}`),
     api(`/transactions?user_id=${state.userId}`),
     api(`/daily_balances?user_id=${state.userId}`),
+    api(`/billing/subscription?user_id=${state.userId}`),
   ]);
 
-  const [accountsRes, categoriesRes, txRes, dailyRes] = results;
+  const [accountsRes, categoriesRes, txRes, dailyRes, subscriptionRes] = results;
   state.accounts = accountsRes.status === "fulfilled" ? (accountsRes.value || []) : [];
   state.categories = categoriesRes.status === "fulfilled" ? (categoriesRes.value || []) : [];
   state.tx = txRes.status === "fulfilled" ? (txRes.value || []) : [];
   state.daily = dailyRes.status === "fulfilled" ? (dailyRes.value || []) : [];
+  state.subscription = subscriptionRes.status === "fulfilled" ? (subscriptionRes.value || {}) : (state.subscription || {});
   applyTxRange();
 
+  renderSubscription();
   renderAccountsTable();
   renderCategories();
   renderTransactions();
@@ -959,6 +1019,23 @@ window.addEventListener("load", async () => {
   $("btnNavRegister").onclick = () => showAuth("register");
   $("btnHeroLogin").onclick = () => showAuth("login");
   $("btnHeroRegister").onclick = () => showAuth("register");
+  document.querySelectorAll(".plan-btn").forEach((btn) => {
+    btn.onclick = async () => {
+      const planCode = String(btn.getAttribute("data-plan") || "").toLowerCase();
+      if (!state.userId || !planCode) return;
+      try {
+        const out = await api("/billing/subscription", {
+          method: "PUT",
+          body: JSON.stringify({ user_id: state.userId, plan_code: planCode }),
+        });
+        state.subscription = out || {};
+        renderSubscription();
+        setStatus("planStatusMsg", t("plan_updated"));
+      } catch (e) {
+        setStatus("planStatusMsg", errMessage(e));
+      }
+    };
+  });
 
   $("btnLogout").onclick = async () => {
     try {
@@ -972,6 +1049,7 @@ window.addEventListener("load", async () => {
     state.categories = [];
     state.tx = [];
     state.daily = [];
+    state.subscription = {};
     showLanding();
     setStatus("authStatus", "");
   };
@@ -1074,6 +1152,13 @@ window.addEventListener("load", async () => {
     const session = await api("/auth/session");
     state.userId = Number(session.user_id);
     state.userName = String(session.name || `user-${session.user_id}`);
+    state.subscription = {
+      plan_code: String(session.plan_code || ""),
+      subscription_status: String(session.subscription_status || ""),
+      trial_ends_at: String(session.trial_ends_at || ""),
+      trial_days_remaining: Number(session.trial_days_remaining || 0),
+      is_lifetime: Boolean(session.is_lifetime || false),
+    };
     setScreen(true);
     await refreshAll();
     if (window.location.search) {

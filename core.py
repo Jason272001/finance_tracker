@@ -6,7 +6,7 @@ import re
 import pandas as pd
 import tempfile
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from contextlib import contextmanager
 try:
     from sqlalchemy import create_engine, inspect
@@ -39,6 +39,7 @@ DB_IS_SQL = bool(DATABASE_URL) or DB_BACKEND in {"mysql", "postgres", "postgresq
 PW_SCHEME = "pbkdf2_sha256"
 PW_ITERATIONS = 210000
 SPECIAL_COUPON_CODE = "KMAK1957/1965"
+DEFAULT_TRIAL_DAYS = int(os.getenv("DEFAULT_TRIAL_DAYS", "14"))
 # ---------------------------
 # Internal loader (STRICT)
 # ---------------------------
@@ -53,6 +54,11 @@ def _load_users():
         "is_lifetime",
         "coupon_code",
         "created_at",
+        "plan_code",
+        "subscription_status",
+        "trial_ends_at",
+        "subscription_started_at",
+        "subscription_ends_at",
     ]
     if DB_IS_SQL:
         df = _read_table("users", user_cols)
@@ -75,6 +81,13 @@ def _load_users():
     df["password"] = df["password"].fillna("").astype(str)
     df["coupon_code"] = df["coupon_code"].fillna("").astype(str)
     df["created_at"] = df["created_at"].fillna("").astype(str)
+    df["plan_code"] = df["plan_code"].fillna("").astype(str).str.strip().str.lower()
+    df["subscription_status"] = (
+        df["subscription_status"].fillna("").astype(str).str.strip().str.lower()
+    )
+    df["trial_ends_at"] = df["trial_ends_at"].fillna("").astype(str)
+    df["subscription_started_at"] = df["subscription_started_at"].fillna("").astype(str)
+    df["subscription_ends_at"] = df["subscription_ends_at"].fillna("").astype(str)
     df["is_lifetime"] = (
         df["is_lifetime"]
         .fillna(False)
@@ -83,6 +96,11 @@ def _load_users():
         .str.lower()
         .isin({"1", "true", "yes", "y"})
     )
+    df.loc[df["plan_code"] == "", "plan_code"] = "basic"
+    df.loc[df["subscription_status"] == "", "subscription_status"] = "active"
+    lifetime_mask = df["is_lifetime"] == True
+    df.loc[lifetime_mask, "plan_code"] = "lifetime"
+    df.loc[lifetime_mask, "subscription_status"] = "active"
     return df[user_cols]
 
 
@@ -96,6 +114,11 @@ def _save_users(df):
         "is_lifetime",
         "coupon_code",
         "created_at",
+        "plan_code",
+        "subscription_status",
+        "trial_ends_at",
+        "subscription_started_at",
+        "subscription_ends_at",
     ]
     out = df.copy()
     for c in user_cols:
@@ -394,6 +417,17 @@ class User:
 
             uid_col = pd.to_numeric(u["user_id"], errors="coerce").dropna()
             next_uid = 1 if uid_col.empty else int(uid_col.max()) + 1
+            now_iso = datetime.utcnow().isoformat() + "Z"
+            if bool(is_lifetime):
+                plan_code = "lifetime"
+                subscription_status = "active"
+                trial_ends_at = ""
+                subscription_started_at = now_iso
+            else:
+                plan_code = "basic"
+                subscription_status = "trial"
+                trial_ends_at = (datetime.utcnow() + timedelta(days=DEFAULT_TRIAL_DAYS)).isoformat() + "Z"
+                subscription_started_at = ""
             new_row = {
                 "user_id": int(next_uid),
                 "name": name_s,
@@ -402,7 +436,12 @@ class User:
                 "password": _hash_password(pw_s),
                 "is_lifetime": bool(is_lifetime),
                 "coupon_code": coupon_s,
-                "created_at": datetime.utcnow().isoformat() + "Z",
+                "created_at": now_iso,
+                "plan_code": plan_code,
+                "subscription_status": subscription_status,
+                "trial_ends_at": trial_ends_at,
+                "subscription_started_at": subscription_started_at,
+                "subscription_ends_at": "",
             }
             return next_uid, new_row
 
@@ -474,7 +513,45 @@ class User:
                 .strip()
                 .lower() in {"1", "true", "yes", "y"}
             ),
+            "plan_code": str(row.get("plan_code", "")).strip().lower() or "basic",
+            "subscription_status": str(row.get("subscription_status", "")).strip().lower() or "active",
+            "trial_ends_at": str(row.get("trial_ends_at", "")).strip(),
         }
+
+    def set_subscription_plan(self, user_id, plan_code):
+        allowed = {"basic", "regular", "business", "premium_plus"}
+        plan_s = str(plan_code or "").strip().lower()
+        if plan_s not in allowed:
+            raise ValueError("Invalid subscription plan.")
+        uid = int(user_id)
+
+        def _set(df):
+            uid_col = pd.to_numeric(df["user_id"], errors="coerce")
+            idx = df.index[uid_col == uid]
+            if len(idx) == 0:
+                raise ValueError("User not found.")
+            i = idx[0]
+            is_lifetime = str(df.at[i, "is_lifetime"]).strip().lower() in {"1", "true", "yes", "y"}
+            if is_lifetime:
+                raise ValueError("Lifetime users do not need plan changes.")
+            df.at[i, "plan_code"] = plan_s
+            df.at[i, "subscription_status"] = "active"
+            df.at[i, "trial_ends_at"] = ""
+            started = str(df.at[i, "subscription_started_at"]).strip()
+            if not started:
+                df.at[i, "subscription_started_at"] = datetime.utcnow().isoformat() + "Z"
+            return True, df
+
+        if DB_IS_SQL:
+            u = _load_users()
+            ok, out = _set(u)
+            _save_users(out)
+            return ok
+        with _file_lock(USERS_CSV):
+            u = _load_users()
+            ok, out = _set(u)
+            _save_users(out)
+            return ok
 
     def set_password_by_user_id(self, user_id, new_password):
         pw_s = str(new_password or "")
@@ -546,6 +623,11 @@ class User:
             ),
             "coupon_code": str(row.get("coupon_code", "")).strip(),
             "created_at": str(row.get("created_at", "")).strip(),
+            "plan_code": str(row.get("plan_code", "")).strip().lower() or "basic",
+            "subscription_status": str(row.get("subscription_status", "")).strip().lower() or "active",
+            "trial_ends_at": str(row.get("trial_ends_at", "")).strip(),
+            "subscription_started_at": str(row.get("subscription_started_at", "")).strip(),
+            "subscription_ends_at": str(row.get("subscription_ends_at", "")).strip(),
         }
     
 

@@ -1,6 +1,7 @@
 import hmac
 import hashlib
 import logging
+import math
 import os
 import secrets
 import smtplib
@@ -79,6 +80,21 @@ class RecoveryConfirmBody(BaseModel):
     email: str = Field(min_length=3, max_length=200)
     code: str = Field(min_length=4, max_length=20)
     new_password: str = Field(min_length=10, max_length=200)
+
+
+class SubscriptionUpdateBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    user_id: int
+    plan_code: str = Field(min_length=1, max_length=40)
+
+    @field_validator("plan_code")
+    @classmethod
+    def validate_plan_code(cls, v: str) -> str:
+        allowed = {"basic", "regular", "business", "premium_plus"}
+        key = str(v).strip().lower()
+        if key not in allowed:
+            raise ValueError("Invalid plan_code")
+        return key
 
 
 class AccountCreateBody(BaseModel):
@@ -234,6 +250,99 @@ def _verify_token(token: str) -> int:
     return uid
 
 
+def _parse_iso_datetime(value: str) -> Optional[datetime]:
+    s = str(value or "").strip()
+    if not s:
+        return None
+    try:
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        return datetime.fromisoformat(s)
+    except Exception:
+        return None
+
+
+def _build_subscription_payload(profile: dict) -> dict:
+    is_lifetime = bool(profile.get("is_lifetime", False))
+    plan_code = str(profile.get("plan_code", "")).strip().lower()
+    if not plan_code:
+        plan_code = "lifetime" if is_lifetime else "basic"
+    status = str(profile.get("subscription_status", "")).strip().lower()
+    if not status:
+        status = "active" if is_lifetime else "active"
+    trial_ends_at = str(profile.get("trial_ends_at", "")).strip()
+    trial_days_remaining = 0
+    if status == "trial" and trial_ends_at:
+        trial_dt = _parse_iso_datetime(trial_ends_at)
+        if trial_dt is not None:
+            now_dt = datetime.utcnow()
+            delta_s = (trial_dt.replace(tzinfo=None) - now_dt).total_seconds()
+            if delta_s > 0:
+                trial_days_remaining = max(1, int(math.ceil(delta_s / 86400.0)))
+    return {
+        "plan_code": plan_code,
+        "subscription_status": status,
+        "trial_ends_at": trial_ends_at,
+        "trial_days_remaining": int(trial_days_remaining),
+        "is_lifetime": is_lifetime,
+    }
+
+
+SUBSCRIPTION_PLANS = [
+    {
+        "plan_code": "basic",
+        "label": "Basic",
+        "price_monthly": 2,
+        "features": [
+            "Manual financial tracking",
+            "Manual transaction entry",
+            "Manual account management",
+        ],
+    },
+    {
+        "plan_code": "regular",
+        "label": "Regular",
+        "price_monthly": 5,
+        "features": [
+            "Automatic transaction sync (API integration ready)",
+            "Automatic categorization",
+            "Financial analytics dashboard",
+        ],
+    },
+    {
+        "plan_code": "business",
+        "label": "Business",
+        "price_monthly": 25,
+        "features": [
+            "All Regular features",
+            "POS and inventory foundation",
+            "Sales and expense analytics",
+        ],
+    },
+    {
+        "plan_code": "premium_plus",
+        "label": "Premium Plus",
+        "price_monthly": 50,
+        "price_with_website_monthly": 70,
+        "features": [
+            "All Business features",
+            "Advanced analytics",
+            "AI insights foundation",
+            "Optional portfolio website package",
+        ],
+    },
+    {
+        "plan_code": "lifetime",
+        "label": "Lifetime Access",
+        "price_monthly": 0,
+        "features": [
+            "Unlocked by admin coupon",
+            "All currently enabled features",
+        ],
+    },
+]
+
+
 def _extract_token(request: Request, authorization: Optional[str]) -> str:
     if authorization and authorization.startswith("Bearer "):
         return authorization.split(" ", 1)[1].strip()
@@ -293,13 +402,15 @@ def register(body: RegisterBody):
             coupon_code=body.coupon_code or "",
         )
         profile = User().get_user_by_id(uid) or {}
+        subscription = _build_subscription_payload(profile)
         return {
             "ok": True,
             "user_id": uid,
             "name": profile.get("name") or body.email,
             "email": profile.get("email") or body.email,
             "phone": profile.get("phone") or body.phone,
-            "lifetime_access": bool(profile.get("is_lifetime", False)),
+            "lifetime_access": bool(subscription.get("is_lifetime", False)),
+            **subscription,
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -312,6 +423,7 @@ def login(body: LoginBody, response: Response):
     if not ok:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     profile = User().get_user_by_id(int(u.uid)) or {}
+    subscription = _build_subscription_payload(profile)
     token = _issue_token(int(u.uid))
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
@@ -328,9 +440,10 @@ def login(body: LoginBody, response: Response):
         "name": profile.get("name") or u.name,
         "email": profile.get("email", ""),
         "phone": profile.get("phone", ""),
-        "lifetime_access": bool(profile.get("is_lifetime", False)),
+        "lifetime_access": bool(subscription.get("is_lifetime", False)),
         "session_minutes": TOKEN_TTL_SECONDS // 60,
         "token": token,
+        **subscription,
     }
 
 
@@ -423,6 +536,7 @@ def auth_session(request: Request, authorization: Optional[str] = Header(default
     token = _extract_token(request, authorization)
     uid = _verify_token(token)
     profile = User().get_user_by_id(uid) or {}
+    subscription = _build_subscription_payload(profile)
     name = profile.get("name") or profile.get("email") or f"user-{uid}"
     return {
         "ok": True,
@@ -430,8 +544,40 @@ def auth_session(request: Request, authorization: Optional[str] = Header(default
         "name": name,
         "email": profile.get("email", ""),
         "phone": profile.get("phone", ""),
-        "lifetime_access": bool(profile.get("is_lifetime", False)),
+        "lifetime_access": bool(subscription.get("is_lifetime", False)),
+        **subscription,
     }
+
+
+@app.get("/billing/plans")
+def list_billing_plans():
+    return SUBSCRIPTION_PLANS
+
+
+@app.get("/billing/subscription")
+def get_billing_subscription(
+    request: Request,
+    user_id: int,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_user(request, authorization, user_id)
+    profile = User().get_user_by_id(user_id) or {}
+    return {"ok": True, "user_id": int(user_id), **_build_subscription_payload(profile)}
+
+
+@app.put("/billing/subscription")
+def update_billing_subscription(
+    body: SubscriptionUpdateBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_user(request, authorization, body.user_id)
+    try:
+        User().set_subscription_plan(user_id=body.user_id, plan_code=body.plan_code)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    profile = User().get_user_by_id(body.user_id) or {}
+    return {"ok": True, "user_id": int(body.user_id), **_build_subscription_payload(profile)}
 
 
 @app.get("/accounts")
