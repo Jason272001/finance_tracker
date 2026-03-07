@@ -14,6 +14,8 @@ let state = {
   editingAccountId: 0,
   editingTxId: 0,
   currentLang: "en",
+  profile: {},
+  pendingProfileImage: null,
   subscription: {},
   charts: { income: null, expense: null, debt: null },
 };
@@ -100,6 +102,19 @@ const I18N = {
     plan_premium_plus: "Premium Plus",
     plan_lifetime: "Lifetime",
     plan_updated: "Plan updated successfully.",
+    profile_title: "Profile & Settings",
+    profile_username: "Username",
+    profile_email: "Email",
+    profile_phone: "Phone",
+    profile_email_notifications: "Email Notifications Enabled",
+    save_profile: "Save Profile",
+    remove_photo: "Remove Photo",
+    current_password: "Current Password",
+    new_password: "New Password",
+    confirm_new_password: "Confirm New Password",
+    update_password: "Update Password",
+    profile_saved: "Profile updated successfully.",
+    password_updated: "Password updated successfully.",
   },
   my: {
     language: "ဘာသာစကား",
@@ -385,6 +400,17 @@ function applyLanguage(lang) {
   setText("kpiLabelDebt", "total_debt");
   setText("kpiLabelIncome", "total_income");
   setText("kpiLabelExpense", "total_expense");
+  setText("profileTitle", "profile_title");
+  setText("profileUsernameLabel", "profile_username");
+  setText("profileEmailLabel", "profile_email");
+  setText("profilePhoneLabel", "profile_phone");
+  setText("emailNotifLabel", "profile_email_notifications");
+  setText("btnSaveProfile", "save_profile");
+  setText("btnRemoveProfileImage", "remove_photo");
+  setText("currentPasswordLabel", "current_password");
+  setText("newPasswordLabel", "new_password");
+  setText("confirmNewPasswordLabel", "confirm_new_password");
+  setText("btnChangePassword", "update_password");
   setText("subscriptionTitle", "subscription_title");
   setText("currentPlanLabel", "current_plan");
   setText("planStatusLabel", "plan_status");
@@ -433,6 +459,12 @@ function applyLanguage(lang) {
   if ($("txAmount")) $("txAmount").placeholder = t("amount");
   if ($("txCategory")) $("txCategory").placeholder = t("category");
   if ($("txNote")) $("txNote").placeholder = t("note");
+  if ($("profileUsername")) $("profileUsername").placeholder = t("profile_username");
+  if ($("profileEmail")) $("profileEmail").placeholder = "name@example.com";
+  if ($("profilePhone")) $("profilePhone").placeholder = "+1 5551234567";
+  if ($("currentPassword")) $("currentPassword").placeholder = t("current_password");
+  if ($("newPassword")) $("newPassword").placeholder = `${t("new_password")} (10+ letters+numbers)`;
+  if ($("confirmNewPassword")) $("confirmNewPassword").placeholder = t("confirm_new_password");
 
   const isAppVisible = !$("appScreen").classList.contains("hidden");
   setAuthMode(state.authMode);
@@ -443,20 +475,29 @@ function applyLanguage(lang) {
   }
   resetAccountForm();
   resetTxForm();
+  renderProfile();
   renderAccountsTable();
   renderTransactions();
   renderSubscription();
 }
 
 function errMessage(e) {
+  const normalize = (msg) => {
+    const text = String(msg || "").trim();
+    if (!text) return "Unknown error";
+    if (/at least 10 characters/i.test(text) || /10\+/i.test(text)) {
+      return "Password must be at least 10 characters and include letters and numbers.";
+    }
+    return text;
+  };
   if (!e) return "Unknown error";
-  if (typeof e === "string") return e;
-  if (e instanceof Error) return e.message || String(e);
-  if (typeof e.message === "string") return e.message;
+  if (typeof e === "string") return normalize(e);
+  if (e instanceof Error) return normalize(e.message || String(e));
+  if (typeof e.message === "string") return normalize(e.message);
   try {
-    return JSON.stringify(e);
+    return normalize(JSON.stringify(e));
   } catch (_) {
-    return String(e);
+    return normalize(String(e));
   }
 }
 
@@ -484,6 +525,7 @@ function setScreen(isLoggedIn) {
   landing.style.display = isLoggedIn ? "none" : "flex";
   app.style.display = isLoggedIn ? "block" : "none";
   $("userBadge").textContent = isLoggedIn ? `${t("signed_in")}: ${state.userName}` : "";
+  if (isLoggedIn) renderProfile();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -583,6 +625,23 @@ function renderSubscription() {
     btn.classList.toggle("active", btnPlan === planCode);
     btn.disabled = isLifetime;
   });
+}
+
+function getProfileImageUrl() {
+  const raw = String((state.profile || {}).profile_image_url || "").trim();
+  if (raw) return raw;
+  return "../../assets/keeperbma-icon.png";
+}
+
+function renderProfile() {
+  const p = state.profile || {};
+  if ($("profileUsername")) $("profileUsername").value = String(p.name || state.userName || "");
+  if ($("profileEmail")) $("profileEmail").value = String(p.email || "");
+  if ($("profilePhone")) $("profilePhone").value = String(p.phone || "");
+  if ($("profileEmailNotifications")) $("profileEmailNotifications").checked = Boolean(p.email_notifications_enabled ?? true);
+  const img = getProfileImageUrl();
+  if ($("profileAvatarPreview")) $("profileAvatarPreview").src = img;
+  if ($("topLogo")) $("topLogo").src = img;
 }
 
 function renderAccountsTable() {
@@ -975,6 +1034,7 @@ async function downloadSummaryPdf() {
 
 async function refreshAll() {
   const results = await Promise.allSettled([
+    api(`/profile?user_id=${state.userId}`),
     api(`/accounts?user_id=${state.userId}`),
     api(`/categories?user_id=${state.userId}`),
     api(`/transactions?user_id=${state.userId}`),
@@ -982,7 +1042,11 @@ async function refreshAll() {
     api(`/billing/subscription?user_id=${state.userId}`),
   ]);
 
-  const [accountsRes, categoriesRes, txRes, dailyRes, subscriptionRes] = results;
+  const [profileRes, accountsRes, categoriesRes, txRes, dailyRes, subscriptionRes] = results;
+  state.profile = profileRes.status === "fulfilled" ? (profileRes.value || {}) : (state.profile || {});
+  if (state.profile && state.profile.name) {
+    state.userName = String(state.profile.name || state.userName || "");
+  }
   state.accounts = accountsRes.status === "fulfilled" ? (accountsRes.value || []) : [];
   state.categories = categoriesRes.status === "fulfilled" ? (categoriesRes.value || []) : [];
   state.tx = txRes.status === "fulfilled" ? (txRes.value || []) : [];
@@ -990,6 +1054,7 @@ async function refreshAll() {
   state.subscription = subscriptionRes.status === "fulfilled" ? (subscriptionRes.value || {}) : (state.subscription || {});
   applyTxRange();
 
+  renderProfile();
   renderSubscription();
   renderAccountsTable();
   renderCategories();
@@ -1019,6 +1084,98 @@ window.addEventListener("load", async () => {
   $("btnNavRegister").onclick = () => showAuth("register");
   $("btnHeroLogin").onclick = () => showAuth("login");
   $("btnHeroRegister").onclick = () => showAuth("register");
+  if ($("profileImageInput")) {
+    $("profileImageInput").onchange = (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      if (!String(file.type || "").startsWith("image/")) {
+        setStatus("profileStatus", "Please select an image file.");
+        e.target.value = "";
+        return;
+      }
+      if (Number(file.size || 0) > 1_500_000) {
+        setStatus("profileStatus", "Image is too large. Use image under 1.5 MB.");
+        e.target.value = "";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        state.pendingProfileImage = String(reader.result || "");
+        if ($("profileAvatarPreview")) $("profileAvatarPreview").src = state.pendingProfileImage;
+      };
+      reader.readAsDataURL(file);
+    };
+  }
+  if ($("btnRemoveProfileImage")) {
+    $("btnRemoveProfileImage").onclick = () => {
+      state.pendingProfileImage = "";
+      if ($("profileAvatarPreview")) $("profileAvatarPreview").src = "../../assets/keeperbma-icon.png";
+      setStatus("profileStatus", "");
+    };
+  }
+  if ($("btnSaveProfile")) {
+    $("btnSaveProfile").onclick = async () => {
+      try {
+        const payload = {
+          user_id: state.userId,
+          name: $("profileUsername").value.trim(),
+          email: $("profileEmail").value.trim(),
+          phone: $("profilePhone").value.trim(),
+          email_notifications_enabled: Boolean($("profileEmailNotifications").checked),
+          profile_image_url: state.pendingProfileImage !== null
+            ? String(state.pendingProfileImage)
+            : String((state.profile || {}).profile_image_url || ""),
+        };
+        if (!payload.name || !payload.email || !payload.phone) {
+          setStatus("profileStatus", "Username, email, and phone are required.");
+          return;
+        }
+        const out = await api("/profile", {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+        state.profile = out || {};
+        state.userName = String(state.profile.name || state.userName || "");
+        state.pendingProfileImage = null;
+        renderProfile();
+        setScreen(true);
+        setStatus("profileStatus", t("profile_saved"));
+      } catch (e) {
+        setStatus("profileStatus", errMessage(e));
+      }
+    };
+  }
+  if ($("btnChangePassword")) {
+    $("btnChangePassword").onclick = async () => {
+      try {
+        const currentPassword = $("currentPassword").value || "";
+        const newPassword = $("newPassword").value || "";
+        const confirmNewPassword = $("confirmNewPassword").value || "";
+        if (!currentPassword || !newPassword || !confirmNewPassword) {
+          setStatus("passwordStatus", "Please fill all password fields.");
+          return;
+        }
+        if (newPassword !== confirmNewPassword) {
+          setStatus("passwordStatus", "Confirm password does not match.");
+          return;
+        }
+        await api("/profile/password", {
+          method: "PUT",
+          body: JSON.stringify({
+            user_id: state.userId,
+            current_password: currentPassword,
+            new_password: newPassword,
+          }),
+        });
+        $("currentPassword").value = "";
+        $("newPassword").value = "";
+        $("confirmNewPassword").value = "";
+        setStatus("passwordStatus", t("password_updated"));
+      } catch (e) {
+        setStatus("passwordStatus", errMessage(e));
+      }
+    };
+  }
   document.querySelectorAll(".plan-btn").forEach((btn) => {
     btn.onclick = async () => {
       const planCode = String(btn.getAttribute("data-plan") || "").toLowerCase();
@@ -1049,6 +1206,8 @@ window.addEventListener("load", async () => {
     state.categories = [];
     state.tx = [];
     state.daily = [];
+    state.profile = {};
+    state.pendingProfileImage = null;
     state.subscription = {};
     showLanding();
     setStatus("authStatus", "");
@@ -1152,6 +1311,15 @@ window.addEventListener("load", async () => {
     const session = await api("/auth/session");
     state.userId = Number(session.user_id);
     state.userName = String(session.name || `user-${session.user_id}`);
+    state.profile = {
+      name: String(session.name || ""),
+      email: String(session.email || ""),
+      phone: String(session.phone || ""),
+      email_notifications_enabled: Boolean(
+        session.email_notifications_enabled === undefined ? true : session.email_notifications_enabled
+      ),
+      profile_image_url: String(session.profile_image_url || ""),
+    };
     state.subscription = {
       plan_code: String(session.plan_code || ""),
       subscription_status: String(session.subscription_status || ""),

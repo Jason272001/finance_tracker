@@ -97,6 +97,23 @@ class SubscriptionUpdateBody(BaseModel):
         return key
 
 
+class ProfileUpdateBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    user_id: int
+    name: Optional[str] = Field(default=None, min_length=1, max_length=80)
+    email: Optional[str] = Field(default=None, min_length=3, max_length=200)
+    phone: Optional[str] = Field(default=None, min_length=7, max_length=40)
+    email_notifications_enabled: Optional[bool] = None
+    profile_image_url: Optional[str] = Field(default=None, max_length=2_000_000)
+
+
+class PasswordUpdateBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    user_id: int
+    current_password: str = Field(min_length=1, max_length=200)
+    new_password: str = Field(min_length=10, max_length=200)
+
+
 class AccountCreateBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     user_id: int
@@ -288,6 +305,16 @@ def _build_subscription_payload(profile: dict) -> dict:
     }
 
 
+def _build_profile_payload(profile: dict) -> dict:
+    return {
+        "name": str(profile.get("name", "")).strip(),
+        "email": str(profile.get("email", "")).strip(),
+        "phone": str(profile.get("phone", "")).strip(),
+        "email_notifications_enabled": bool(profile.get("email_notifications_enabled", True)),
+        "profile_image_url": str(profile.get("profile_image_url", "")).strip(),
+    }
+
+
 SUBSCRIPTION_PLANS = [
     {
         "plan_code": "basic",
@@ -403,12 +430,15 @@ def register(body: RegisterBody):
         )
         profile = User().get_user_by_id(uid) or {}
         subscription = _build_subscription_payload(profile)
+        profile_payload = _build_profile_payload(profile)
         return {
             "ok": True,
             "user_id": uid,
-            "name": profile.get("name") or body.email,
-            "email": profile.get("email") or body.email,
-            "phone": profile.get("phone") or body.phone,
+            "name": profile_payload.get("name") or body.email,
+            "email": profile_payload.get("email") or body.email,
+            "phone": profile_payload.get("phone") or body.phone,
+            "email_notifications_enabled": bool(profile_payload.get("email_notifications_enabled", True)),
+            "profile_image_url": profile_payload.get("profile_image_url", ""),
             "lifetime_access": bool(subscription.get("is_lifetime", False)),
             **subscription,
         }
@@ -424,6 +454,7 @@ def login(body: LoginBody, response: Response):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     profile = User().get_user_by_id(int(u.uid)) or {}
     subscription = _build_subscription_payload(profile)
+    profile_payload = _build_profile_payload(profile)
     token = _issue_token(int(u.uid))
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
@@ -437,9 +468,11 @@ def login(body: LoginBody, response: Response):
     return {
         "ok": True,
         "user_id": int(u.uid),
-        "name": profile.get("name") or u.name,
-        "email": profile.get("email", ""),
-        "phone": profile.get("phone", ""),
+        "name": profile_payload.get("name") or u.name,
+        "email": profile_payload.get("email", ""),
+        "phone": profile_payload.get("phone", ""),
+        "email_notifications_enabled": bool(profile_payload.get("email_notifications_enabled", True)),
+        "profile_image_url": profile_payload.get("profile_image_url", ""),
         "lifetime_access": bool(subscription.get("is_lifetime", False)),
         "session_minutes": TOKEN_TTL_SECONDS // 60,
         "token": token,
@@ -537,13 +570,16 @@ def auth_session(request: Request, authorization: Optional[str] = Header(default
     uid = _verify_token(token)
     profile = User().get_user_by_id(uid) or {}
     subscription = _build_subscription_payload(profile)
-    name = profile.get("name") or profile.get("email") or f"user-{uid}"
+    profile_payload = _build_profile_payload(profile)
+    name = profile_payload.get("name") or profile_payload.get("email") or f"user-{uid}"
     return {
         "ok": True,
         "user_id": int(uid),
         "name": name,
-        "email": profile.get("email", ""),
-        "phone": profile.get("phone", ""),
+        "email": profile_payload.get("email", ""),
+        "phone": profile_payload.get("phone", ""),
+        "email_notifications_enabled": bool(profile_payload.get("email_notifications_enabled", True)),
+        "profile_image_url": profile_payload.get("profile_image_url", ""),
         "lifetime_access": bool(subscription.get("is_lifetime", False)),
         **subscription,
     }
@@ -552,6 +588,67 @@ def auth_session(request: Request, authorization: Optional[str] = Header(default
 @app.get("/billing/plans")
 def list_billing_plans():
     return SUBSCRIPTION_PLANS
+
+
+@app.get("/profile")
+def get_profile(
+    request: Request,
+    user_id: int,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_user(request, authorization, user_id)
+    profile = User().get_user_by_id(user_id) or {}
+    subscription = _build_subscription_payload(profile)
+    return {"ok": True, "user_id": int(user_id), **_build_profile_payload(profile), **subscription}
+
+
+@app.put("/profile")
+def update_profile(
+    body: ProfileUpdateBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_user(request, authorization, body.user_id)
+    if (
+        body.name is None
+        and body.email is None
+        and body.phone is None
+        and body.email_notifications_enabled is None
+        and body.profile_image_url is None
+    ):
+        raise HTTPException(status_code=400, detail="No fields to update")
+    try:
+        User().update_profile(
+            user_id=body.user_id,
+            name=body.name,
+            email=body.email,
+            phone=body.phone,
+            email_notifications_enabled=body.email_notifications_enabled,
+            profile_image_url=body.profile_image_url,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    profile = User().get_user_by_id(body.user_id) or {}
+    subscription = _build_subscription_payload(profile)
+    return {"ok": True, "user_id": int(body.user_id), **_build_profile_payload(profile), **subscription}
+
+
+@app.put("/profile/password")
+def update_profile_password(
+    body: PasswordUpdateBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_user(request, authorization, body.user_id)
+    try:
+        User().change_password(
+            user_id=body.user_id,
+            current_password=body.current_password,
+            new_password=body.new_password,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True}
 
 
 @app.get("/billing/subscription")

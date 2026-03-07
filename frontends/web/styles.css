@@ -196,11 +196,27 @@ th { color: #3e5471; font-weight: 700; }
 .plan-btn.active {
   outline: 2px solid #23a35c;
 }
+.profile-avatar-box {
+  flex: 0 0 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.profile-avatar {
+  width: 160px;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid #cfe0f6;
+  background: #f8fbff;
+}
 
 @media (max-width: 1080px) {
   .kpi-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
   .chart-grid { grid-template-columns: 1fr; }
   .feature-grid, .price-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+  .profile-avatar-box { flex: 1 1 100%; }
+  .profile-avatar { width: 120px; height: 120px; }
 }
 @media (max-width: 920px) {
   .page { width: 96vw; }

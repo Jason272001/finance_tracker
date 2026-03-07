@@ -52,6 +52,8 @@ def _load_users():
         "phone",
         "password",
         "is_lifetime",
+        "email_notifications_enabled",
+        "profile_image_url",
         "coupon_code",
         "created_at",
         "plan_code",
@@ -70,8 +72,10 @@ def _load_users():
 
     for c in user_cols:
         if c not in df.columns:
-            if c == "is_lifetime":
+            if c in {"is_lifetime"}:
                 df[c] = False
+            elif c == "email_notifications_enabled":
+                df[c] = True
             else:
                 df[c] = ""
     df["user_id"] = pd.to_numeric(df["user_id"], errors="coerce")
@@ -79,6 +83,7 @@ def _load_users():
     df["email"] = df["email"].fillna("").astype(str)
     df["phone"] = df["phone"].fillna("").astype(str)
     df["password"] = df["password"].fillna("").astype(str)
+    df["profile_image_url"] = df["profile_image_url"].fillna("").astype(str)
     df["coupon_code"] = df["coupon_code"].fillna("").astype(str)
     df["created_at"] = df["created_at"].fillna("").astype(str)
     df["plan_code"] = df["plan_code"].fillna("").astype(str).str.strip().str.lower()
@@ -91,6 +96,14 @@ def _load_users():
     df["is_lifetime"] = (
         df["is_lifetime"]
         .fillna(False)
+        .astype(str)
+        .str.strip()
+        .str.lower()
+        .isin({"1", "true", "yes", "y"})
+    )
+    df["email_notifications_enabled"] = (
+        df["email_notifications_enabled"]
+        .fillna(True)
         .astype(str)
         .str.strip()
         .str.lower()
@@ -112,6 +125,8 @@ def _save_users(df):
         "phone",
         "password",
         "is_lifetime",
+        "email_notifications_enabled",
+        "profile_image_url",
         "coupon_code",
         "created_at",
         "plan_code",
@@ -123,8 +138,10 @@ def _save_users(df):
     out = df.copy()
     for c in user_cols:
         if c not in out.columns:
-            if c == "is_lifetime":
+            if c in {"is_lifetime"}:
                 out[c] = False
+            elif c == "email_notifications_enabled":
+                out[c] = True
             else:
                 out[c] = ""
     out = out[user_cols]
@@ -435,6 +452,8 @@ class User:
                 "phone": phone_s,
                 "password": _hash_password(pw_s),
                 "is_lifetime": bool(is_lifetime),
+                "email_notifications_enabled": True,
+                "profile_image_url": "",
                 "coupon_code": coupon_s,
                 "created_at": now_iso,
                 "plan_code": plan_code,
@@ -513,6 +532,12 @@ class User:
                 .strip()
                 .lower() in {"1", "true", "yes", "y"}
             ),
+            "email_notifications_enabled": bool(
+                str(row.get("email_notifications_enabled", ""))
+                .strip()
+                .lower() in {"1", "true", "yes", "y"}
+            ),
+            "profile_image_url": str(row.get("profile_image_url", "")).strip(),
             "plan_code": str(row.get("plan_code", "")).strip().lower() or "basic",
             "subscription_status": str(row.get("subscription_status", "")).strip().lower() or "active",
             "trial_ends_at": str(row.get("trial_ends_at", "")).strip(),
@@ -550,6 +575,101 @@ class User:
         with _file_lock(USERS_CSV):
             u = _load_users()
             ok, out = _set(u)
+            _save_users(out)
+            return ok
+
+    def update_profile(
+        self,
+        user_id,
+        name=None,
+        email=None,
+        phone=None,
+        email_notifications_enabled=None,
+        profile_image_url=None,
+    ):
+        uid = int(user_id)
+
+        def _update(df):
+            uid_col = pd.to_numeric(df["user_id"], errors="coerce")
+            idx = df.index[uid_col == uid]
+            if len(idx) == 0:
+                raise ValueError("User not found.")
+            i = idx[0]
+
+            if name is not None:
+                name_s = str(name).strip()
+                if not name_s:
+                    raise ValueError("Name is required.")
+                existing_name = df["name"].astype(str).str.strip().str.lower()
+                dup = df.index[(existing_name == name_s.lower()) & (uid_col != uid)]
+                if len(dup) > 0:
+                    raise ValueError("User name already exists.")
+                df.at[i, "name"] = name_s
+
+            if email is not None:
+                email_s = self._validate_email(email)
+                existing_email = df["email"].astype(str).str.strip().str.lower()
+                dup = df.index[(existing_email == email_s) & (uid_col != uid)]
+                if len(dup) > 0:
+                    raise ValueError("Email already exists.")
+                df.at[i, "email"] = email_s
+
+            if phone is not None:
+                phone_s = self._validate_phone(phone)
+                existing_phone = df["phone"].astype(str).apply(self._normalize_phone)
+                dup = df.index[(existing_phone == phone_s) & (uid_col != uid)]
+                if len(dup) > 0:
+                    raise ValueError("Phone already exists.")
+                df.at[i, "phone"] = phone_s
+
+            if email_notifications_enabled is not None:
+                df.at[i, "email_notifications_enabled"] = bool(email_notifications_enabled)
+
+            if profile_image_url is not None:
+                pic = str(profile_image_url).strip()
+                if len(pic) > 2_000_000:
+                    raise ValueError("Profile image is too large.")
+                df.at[i, "profile_image_url"] = pic
+
+            return True, df
+
+        if DB_IS_SQL:
+            u = _load_users()
+            ok, out = _update(u)
+            _save_users(out)
+            return ok
+        with _file_lock(USERS_CSV):
+            u = _load_users()
+            ok, out = _update(u)
+            _save_users(out)
+            return ok
+
+    def change_password(self, user_id, current_password, new_password):
+        uid = int(user_id)
+        new_pw = str(new_password or "")
+        if len(new_pw) < 10 or not any(ch.isalpha() for ch in new_pw) or not any(ch.isdigit() for ch in new_pw):
+            raise ValueError("Password must be 10+ chars and include letters and numbers.")
+
+        def _change(df):
+            uid_col = pd.to_numeric(df["user_id"], errors="coerce")
+            idx = df.index[uid_col == uid]
+            if len(idx) == 0:
+                raise ValueError("User not found.")
+            i = idx[0]
+            ok, _ = _verify_password(str(df.at[i, "password"]), str(current_password or ""))
+            if not ok:
+                raise ValueError("Current password is incorrect.")
+            df.at[i, "password"] = _hash_password(new_pw)
+            return True, df
+
+        if DB_IS_SQL:
+            u = _load_users()
+            ok, out = _change(u)
+            _save_users(out)
+            return ok
+        with _file_lock(USERS_CSV):
+            u = _load_users()
+            ok, out = _change(u)
             _save_users(out)
             return ok
 
@@ -621,6 +741,12 @@ class User:
                 .strip()
                 .lower() in {"1", "true", "yes", "y"}
             ),
+            "email_notifications_enabled": bool(
+                str(row.get("email_notifications_enabled", ""))
+                .strip()
+                .lower() in {"1", "true", "yes", "y"}
+            ),
+            "profile_image_url": str(row.get("profile_image_url", "")).strip(),
             "coupon_code": str(row.get("coupon_code", "")).strip(),
             "created_at": str(row.get("created_at", "")).strip(),
             "plan_code": str(row.get("plan_code", "")).strip().lower() or "basic",

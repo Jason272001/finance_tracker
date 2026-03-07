@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <link rel="stylesheet" href="./styles.css?v=29" />
+  <link rel="stylesheet" href="./styles.css?v=30" />
 </head>
 <body>
   <main class="page">
@@ -70,7 +70,7 @@
     <section id="appScreen" class="app-shell hidden">
       <header class="top">
         <div class="top-left">
-          <img class="top-logo" src="../../assets/keeperbma-icon.png" alt="KeeperBMA logo" />
+          <img id="topLogo" class="top-logo" src="../../assets/keeperbma-icon.png" alt="KeeperBMA logo" />
           <h1>KeeperBMA</h1>
         </div>
         <div class="top-right">
@@ -89,6 +89,51 @@
           <button id="btnLogout" class="secondary">Logout</button>
         </div>
       </header>
+
+      <section class="card">
+        <h2 id="profileTitle">Profile & Settings</h2>
+        <div class="row">
+          <div class="profile-avatar-box">
+            <img id="profileAvatarPreview" class="profile-avatar" src="../../assets/keeperbma-icon.png" alt="Profile" />
+            <input id="profileImageInput" type="file" accept="image/*" />
+            <button id="btnRemoveProfileImage" class="danger">Remove Photo</button>
+          </div>
+          <div style="flex: 1 1 460px;">
+            <label id="profileUsernameLabel" for="profileUsername">Username</label>
+            <input id="profileUsername" placeholder="Username" />
+            <label id="profileEmailLabel" for="profileEmail">Email</label>
+            <input id="profileEmail" type="email" placeholder="name@example.com" />
+            <label id="profilePhoneLabel" for="profilePhone">Phone</label>
+            <input id="profilePhone" placeholder="+1 5551234567" />
+            <label for="profileEmailNotifications">
+              <input id="profileEmailNotifications" type="checkbox" />
+              <span id="emailNotifLabel">Email Notifications Enabled</span>
+            </label>
+            <div class="row">
+              <button id="btnSaveProfile">Save Profile</button>
+            </div>
+            <p id="profileStatus" class="muted"></p>
+          </div>
+        </div>
+        <div class="row">
+          <div style="flex: 1 1 300px;">
+            <label id="currentPasswordLabel" for="currentPassword">Current Password</label>
+            <input id="currentPassword" type="password" placeholder="Current password" />
+          </div>
+          <div style="flex: 1 1 300px;">
+            <label id="newPasswordLabel" for="newPassword">New Password</label>
+            <input id="newPassword" type="password" placeholder="New password (10+ letters+numbers)" />
+          </div>
+          <div style="flex: 1 1 300px;">
+            <label id="confirmNewPasswordLabel" for="confirmNewPassword">Confirm New Password</label>
+            <input id="confirmNewPassword" type="password" placeholder="Confirm new password" />
+          </div>
+        </div>
+        <div class="row">
+          <button id="btnChangePassword" class="secondary">Update Password</button>
+        </div>
+        <p id="passwordStatus" class="muted"></p>
+      </section>
 
       <section class="card">
         <h2 id="subscriptionTitle">Subscription</h2>
@@ -251,6 +296,6 @@
     </section>
   </main>
 
-  <script src="./web.js?v=30"></script>
+  <script src="./web.js?v=31"></script>
 </body>
 </html>
