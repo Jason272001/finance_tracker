@@ -1066,19 +1066,18 @@ window.addEventListener("load", async () => {
   showLanding();
   state.authToken = String(localStorage.getItem("keeperbma_token") || "");
 
-  // Open app only when redirected from successful sign-in/up.
-  const q = new URLSearchParams(window.location.search);
-  if (q.get("app") === "1") {
-    try {
-      const session = await api("/auth/session");
-      state.userId = Number(session.user_id);
-      state.userName = String(session.name || `user-${session.user_id}`);
-      setScreen(true);
-      await refreshAll();
+  // Always restore active session on refresh/reopen.
+  try {
+    const session = await api("/auth/session");
+    state.userId = Number(session.user_id);
+    state.userName = String(session.name || `user-${session.user_id}`);
+    setScreen(true);
+    await refreshAll();
+    if (window.location.search) {
       window.history.replaceState({}, "", window.location.pathname);
-    } catch (_) {
-      showLanding();
     }
+  } catch (_) {
+    showLanding();
   }
 });
 
