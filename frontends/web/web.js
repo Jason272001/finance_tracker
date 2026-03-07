@@ -1063,7 +1063,10 @@ window.addEventListener("load", async () => {
   };
   $("btnDownloadPdf").onclick = downloadSummaryPdf;
 
-  showLanding();
+  $("landingScreen").classList.add("hidden");
+  $("appScreen").classList.add("hidden");
+  $("landingScreen").style.display = "none";
+  $("appScreen").style.display = "none";
   state.authToken = String(localStorage.getItem("keeperbma_token") || "");
 
   // Always restore active session on refresh/reopen.
