@@ -452,15 +452,24 @@ function setAuthMode(mode) {
 }
 
 function setScreen(isLoggedIn) {
-  $("landingScreen").classList.toggle("hidden", isLoggedIn);
-  $("appScreen").classList.toggle("hidden", !isLoggedIn);
+  const landing = $("landingScreen");
+  const app = $("appScreen");
+  landing.classList.toggle("hidden", isLoggedIn);
+  app.classList.toggle("hidden", !isLoggedIn);
+  // Force visibility in JS to avoid stale CSS/cache showing both screens.
+  landing.style.display = isLoggedIn ? "none" : "flex";
+  app.style.display = isLoggedIn ? "block" : "none";
   $("userBadge").textContent = isLoggedIn ? `${t("signed_in")}: ${state.userName}` : "";
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function showLanding() {
-  $("landingScreen").classList.remove("hidden");
-  $("appScreen").classList.add("hidden");
+  const landing = $("landingScreen");
+  const app = $("appScreen");
+  landing.classList.remove("hidden");
+  app.classList.add("hidden");
+  landing.style.display = "flex";
+  app.style.display = "none";
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 

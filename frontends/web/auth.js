@@ -60,20 +60,26 @@ function setMode(mode) {
 }
 
 function errMessage(e) {
+  const normalize = (msg) => {
+    const text = String(msg || "").trim();
+    if (!text) return "Unknown error";
+    if (/at least 10 characters/i.test(text)) return "Password must be at least 10 characters.";
+    return text;
+  };
   if (!e) return "Unknown error";
-  if (typeof e === "string") return e;
-  if (e instanceof Error) return e.message || String(e);
-  if (typeof e.message === "string") return e.message;
-  if (e && typeof e.detail === "string") return e.detail;
+  if (typeof e === "string") return normalize(e);
+  if (e instanceof Error) return normalize(e.message || String(e));
+  if (typeof e.message === "string") return normalize(e.message);
+  if (e && typeof e.detail === "string") return normalize(e.detail);
   if (Array.isArray(e?.detail)) {
-    return e.detail
+    return normalize(e.detail
       .map((d) => (typeof d?.msg === "string" ? d.msg : JSON.stringify(d)))
-      .join("; ");
+      .join("; "));
   }
   try {
-    return JSON.stringify(e);
+    return normalize(JSON.stringify(e));
   } catch (_) {
-    return String(e);
+    return normalize(String(e));
   }
 }
 
