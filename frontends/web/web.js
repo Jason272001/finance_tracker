@@ -46,6 +46,7 @@ const I18N = {
     welcome: "Welcome",
     login: "Sign In",
     register: "Sign Up",
+    settings: "Settings",
     name: "Name",
     password: "Password",
     signed_in: "Signed in",
@@ -379,6 +380,7 @@ function applyLanguage(lang) {
   setText("navAbout", "nav_about");
   setText("btnNavLogin", "login");
   setText("btnNavRegister", "register");
+  setText("btnOpenSettings", "settings");
   setText("landingTitle", "landing_title");
   setText("landingSubtitle", "landing_subtitle");
   setText("btnHeroRegister", "get_started");
@@ -1039,10 +1041,9 @@ async function refreshAll() {
     api(`/categories?user_id=${state.userId}`),
     api(`/transactions?user_id=${state.userId}`),
     api(`/daily_balances?user_id=${state.userId}`),
-    api(`/billing/subscription?user_id=${state.userId}`),
   ]);
 
-  const [profileRes, accountsRes, categoriesRes, txRes, dailyRes, subscriptionRes] = results;
+  const [profileRes, accountsRes, categoriesRes, txRes, dailyRes] = results;
   state.profile = profileRes.status === "fulfilled" ? (profileRes.value || {}) : (state.profile || {});
   if (state.profile && state.profile.name) {
     state.userName = String(state.profile.name || state.userName || "");
@@ -1051,11 +1052,9 @@ async function refreshAll() {
   state.categories = categoriesRes.status === "fulfilled" ? (categoriesRes.value || []) : [];
   state.tx = txRes.status === "fulfilled" ? (txRes.value || []) : [];
   state.daily = dailyRes.status === "fulfilled" ? (dailyRes.value || []) : [];
-  state.subscription = subscriptionRes.status === "fulfilled" ? (subscriptionRes.value || {}) : (state.subscription || {});
   applyTxRange();
 
   renderProfile();
-  renderSubscription();
   renderAccountsTable();
   renderCategories();
   renderTransactions();
@@ -1084,6 +1083,7 @@ window.addEventListener("load", async () => {
   $("btnNavRegister").onclick = () => showAuth("register");
   $("btnHeroLogin").onclick = () => showAuth("login");
   $("btnHeroRegister").onclick = () => showAuth("register");
+  if ($("btnOpenSettings")) $("btnOpenSettings").onclick = () => { window.location.href = "./settings.html"; };
   if ($("profileImageInput")) {
     $("profileImageInput").onchange = (e) => {
       const file = e.target.files && e.target.files[0];

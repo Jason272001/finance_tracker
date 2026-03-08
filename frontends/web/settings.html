@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KeeperBMA Settings</title>
+  <link rel="icon" type="image/png" href="../../assets/keeperbma-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css?v=30" />
+</head>
+<body>
+  <main class="page">
+    <section class="app-shell">
+      <header class="top">
+        <div class="top-left">
+          <img id="topLogo" class="top-logo" src="../../assets/keeperbma-icon.png" alt="KeeperBMA logo" />
+          <h1>KeeperBMA</h1>
+        </div>
+        <div class="top-right">
+          <label id="langLabelApp" for="appLangSelect">Language</label>
+          <select id="appLangSelect" class="lang-select">
+            <option value="en">English</option>
+            <option value="my">Myanmar</option>
+            <option value="ar">Arabic</option>
+            <option value="ja">Japanese</option>
+            <option value="zh">Chinese</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+          </select>
+          <span id="userBadge" class="badge"></span>
+          <button id="btnBackDashboard" class="secondary">Dashboard</button>
+          <button id="btnLogout" class="secondary">Logout</button>
+        </div>
+      </header>
+
+      <section class="card">
+        <h2 id="profileTitle">Profile & Settings</h2>
+        <div class="row">
+          <div class="profile-avatar-box">
+            <img id="profileAvatarPreview" class="profile-avatar" src="../../assets/keeperbma-icon.png" alt="Profile" />
+            <input id="profileImageInput" type="file" accept="image/*" />
+            <button id="btnRemoveProfileImage" class="danger">Remove Photo</button>
+          </div>
+          <div style="flex: 1 1 460px;">
+            <label id="profileUsernameLabel" for="profileUsername">Username</label>
+            <input id="profileUsername" placeholder="Username" />
+            <label id="profileEmailLabel" for="profileEmail">Email</label>
+            <input id="profileEmail" type="email" placeholder="name@example.com" />
+            <label id="profilePhoneLabel" for="profilePhone">Phone</label>
+            <input id="profilePhone" placeholder="+1 5551234567" />
+            <label for="profileEmailNotifications">
+              <input id="profileEmailNotifications" type="checkbox" />
+              <span id="emailNotifLabel">Email Notifications Enabled</span>
+            </label>
+            <div class="row">
+              <button id="btnSaveProfile">Save Profile</button>
+            </div>
+            <p id="profileStatus" class="muted"></p>
+          </div>
+        </div>
+        <div class="row">
+          <div style="flex: 1 1 300px;">
+            <label id="currentPasswordLabel" for="currentPassword">Current Password</label>
+            <input id="currentPassword" type="password" placeholder="Current password" />
+          </div>
+          <div style="flex: 1 1 300px;">
+            <label id="newPasswordLabel" for="newPassword">New Password</label>
+            <input id="newPassword" type="password" placeholder="New password (10+ letters+numbers)" />
+          </div>
+          <div style="flex: 1 1 300px;">
+            <label id="confirmNewPasswordLabel" for="confirmNewPassword">Confirm New Password</label>
+            <input id="confirmNewPassword" type="password" placeholder="Confirm new password" />
+          </div>
+        </div>
+        <div class="row">
+          <button id="btnChangePassword" class="secondary">Update Password</button>
+        </div>
+        <p id="passwordStatus" class="muted"></p>
+      </section>
+
+      <section class="card">
+        <h2 id="subscriptionTitle">Subscription</h2>
+        <div class="row plan-meta">
+          <div><strong id="currentPlanLabel">Current Plan</strong><div id="planCodeValue">Basic</div></div>
+          <div><strong id="planStatusLabel">Status</strong><div id="planStatusValue">active</div></div>
+          <div><strong id="trialEndsLabel">Trial Ends</strong><div id="trialEndsValue">-</div></div>
+          <div><strong id="trialDaysLabel">Trial Days Left</strong><div id="trialDaysValue">0</div></div>
+        </div>
+        <div class="row">
+          <label id="changePlanLabel" for="planBtnBasic">Change Plan</label>
+        </div>
+        <div class="row">
+          <button id="planBtnBasic" class="plan-btn" data-plan="basic">Basic</button>
+          <button id="planBtnRegular" class="plan-btn" data-plan="regular">Regular</button>
+          <button id="planBtnBusiness" class="plan-btn" data-plan="business">Business</button>
+          <button id="planBtnPremium" class="plan-btn" data-plan="premium_plus">Premium Plus</button>
+        </div>
+        <p id="planStatusMsg" class="muted"></p>
+      </section>
+    </section>
+  </main>
+  <script src="./settings.js?v=1"></script>
+</body>
+</html>
