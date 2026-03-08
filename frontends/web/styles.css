@@ -1,4 +1,5 @@
 * { box-sizing: border-box; }
+html, body { overflow-x: hidden; }
 body {
   margin: 0;
   font-family: "Noto Sans", "Segoe UI", Tahoma, sans-serif;
@@ -129,10 +130,19 @@ body {
   border: 1px solid #dbe8fa;
   border-radius: 12px;
   padding: 12px;
-  min-height: 280px;
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
 }
 .chart-card h3 { margin: 0 0 8px; }
 .chart-card canvas { width: 100% !important; height: 220px !important; }
+.chart-empty {
+  margin: auto 0;
+  padding: 22px 8px;
+  text-align: center;
+  color: #5d6f8d;
+  font-weight: 600;
+}
 
 .grid {
   margin-top: 14px;
@@ -241,44 +251,58 @@ th { color: #3e5471; font-weight: 700; }
   td button { width: auto; }
   .top-right button { width: auto; }
   .lang-select { width: 100%; min-width: 0; }
-  .landing-links { width: 100%; }
-  .landing-links button { width: 100%; }
+  .landing-links { width: 100%; gap: 8px; }
+  .landing-links a { font-size: 1.15rem; }
   .landing-hero h2 { font-size: 1.4rem; }
+  .landing-cta { flex-direction: column; }
+  .landing-cta button { width: 100%; }
   .feature-grid, .price-grid { grid-template-columns: 1fr; }
-  table {
+  table.mobile-stack thead { display: none; }
+  table.mobile-stack,
+  table.mobile-stack tbody,
+  table.mobile-stack tr,
+  table.mobile-stack td {
     display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    width: 100%;
   }
-  th, td { white-space: nowrap; }
-  #accountsRows td,
-  #txRows td {
+  table.mobile-stack tr {
+    border: 1px solid #e3ebf8;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    padding: 8px;
+    background: #ffffff;
+  }
+  table.mobile-stack td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    border-bottom: 0;
+    padding: 6px 4px;
     white-space: normal;
     word-break: break-word;
   }
-  #accountsRows tr,
-  #txRows tr {
-    line-height: 1.2;
+  table.mobile-stack td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: #3e5471;
+    flex: 0 0 40%;
+    max-width: 40%;
   }
-  #accountsRows td:first-child,
-  #txRows td:nth-child(5),
-  #txRows td:nth-child(6),
-  #txRows td:nth-child(7) {
-    min-width: 120px;
-  }
-  #accountsRows td:last-child,
-  #txRows td:last-child {
-    display: flex;
+  table.mobile-stack td.table-actions {
+    flex-direction: column;
+    align-items: stretch;
     gap: 6px;
-    flex-wrap: wrap;
-    align-items: center;
-    white-space: normal;
-    min-width: 130px;
   }
-  #accountsRows td:last-child button,
-  #txRows td:last-child button {
-    padding: 7px 10px;
-    font-size: 0.85rem;
+  table.mobile-stack td.table-actions::before {
+    flex: 0 0 auto;
+    max-width: 100%;
+  }
+  table.mobile-stack td.table-actions button {
+    width: 100%;
+    margin: 0;
+    padding: 8px 10px;
+    font-size: 0.88rem;
     border-radius: 8px;
   }
   .chart-card canvas { height: 190px !important; }

@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <link rel="stylesheet" href="./styles.css?v=30" />
+  <link rel="stylesheet" href="./styles.css?v=31" />
 </head>
 <body>
   <main class="page">
@@ -25,8 +25,6 @@
           <a id="navFeatures" href="#features">Features</a>
           <a id="navPricing" href="#pricing">Pricing</a>
           <a id="navAbout" href="#about">About</a>
-          <button id="btnNavLogin" class="secondary">Sign In</button>
-          <button id="btnNavRegister">Sign Up</button>
         </nav>
       </header>
 
@@ -145,7 +143,7 @@
 
       <section class="card">
         <h2 id="dailySummaryTitle">Daily Balance Summary</h2>
-        <table>
+        <table class="mobile-stack">
           <thead>
             <tr>
               <th id="dailyColDate">Date</th>
@@ -176,7 +174,7 @@
           </div>
           <button id="btnAddAccount">Add Account</button>
           <button id="btnCancelAccount" class="secondary hidden">Cancel Edit</button>
-          <table>
+          <table class="mobile-stack">
             <thead>
               <tr>
                 <th id="accountsColName">Name</th>
@@ -212,7 +210,7 @@
           </div>
           <button id="btnAddTx">Add Transaction</button>
           <button id="btnCancelTx" class="secondary hidden">Cancel Edit</button>
-          <table>
+          <table class="mobile-stack">
             <thead>
               <tr>
                 <th id="txColId">ID</th>
@@ -232,6 +230,6 @@
     </section>
   </main>
 
-  <script src="./web.js?v=32"></script>
+  <script src="./web.js?v=33"></script>
 </body>
 </html>

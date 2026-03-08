@@ -651,17 +651,21 @@ function renderAccountsTable() {
   const sel = $("txAccount");
   tbody.innerHTML = "";
   sel.innerHTML = "";
+  const labels = [t("account_name"), t("type"), t("balance"), t("actions")];
   const rows = [...state.accounts].sort((a, b) => String(a.account_name).localeCompare(String(b.account_name)));
   rows.forEach((a) => {
     const tr = document.createElement("tr");
     const vals = [a.account_name || "", a.account_type || "", fmtMoney(a.balance)];
-    vals.forEach((v) => {
+    vals.forEach((v, idx) => {
       const td = document.createElement("td");
       td.textContent = String(v);
+      td.setAttribute("data-label", labels[idx]);
       tr.appendChild(td);
     });
 
     const actionTd = document.createElement("td");
+    actionTd.className = "table-actions";
+    actionTd.setAttribute("data-label", labels[3]);
     const editBtn = document.createElement("button");
     editBtn.className = "secondary";
     editBtn.textContent = t("edit");
@@ -697,6 +701,7 @@ function renderTransactions() {
   const tbody = $("txRows");
   tbody.innerHTML = "";
   const accountNameById = new Map(state.accounts.map((a) => [Number(a.account_id), a.account_name]));
+  const labels = [t("id"), t("date"), t("type"), t("amount"), t("account"), t("category"), t("note"), t("actions")];
   state.tx.forEach((r) => {
     const tr = document.createElement("tr");
     const vals = [
@@ -708,13 +713,16 @@ function renderTransactions() {
       r.category ?? "",
       r.note ?? "",
     ];
-    vals.forEach((v) => {
+    vals.forEach((v, idx) => {
       const td = document.createElement("td");
       td.textContent = String(v);
+      td.setAttribute("data-label", labels[idx]);
       tr.appendChild(td);
     });
 
     const actionTd = document.createElement("td");
+    actionTd.className = "table-actions";
+    actionTd.setAttribute("data-label", labels[7]);
     const editBtn = document.createElement("button");
     editBtn.className = "secondary";
     editBtn.textContent = t("edit");
@@ -850,11 +858,38 @@ function applyTxRange() {
 }
 
 function upsertPieChart(id, chartKey, labelMap) {
-  const labels = [...labelMap.keys()];
-  const data = labels.map((k) => Number(labelMap.get(k) || 0));
   const ctx = $(id);
   if (!ctx) return;
-  if (state.charts[chartKey]) state.charts[chartKey].destroy();
+  const entries = [...labelMap.entries()]
+    .map(([k, v]) => [k, Number(v || 0)])
+    .filter(([, v]) => v > 0);
+  const labels = entries.map(([k]) => k);
+  const data = entries.map(([, v]) => v);
+
+  const card = ctx.closest(".chart-card");
+  let empty = card ? card.querySelector(".chart-empty") : null;
+  if (!empty && card) {
+    empty = document.createElement("p");
+    empty.className = "chart-empty";
+    card.appendChild(empty);
+  }
+
+  if (state.charts[chartKey]) {
+    state.charts[chartKey].destroy();
+    state.charts[chartKey] = null;
+  }
+
+  if (labels.length === 0) {
+    if (empty) {
+      empty.textContent = "No data yet";
+      empty.style.display = "block";
+    }
+    ctx.style.display = "none";
+    return;
+  }
+
+  if (empty) empty.style.display = "none";
+  ctx.style.display = "block";
   state.charts[chartKey] = new Chart(ctx, {
     type: "pie",
     data: {
@@ -919,6 +954,7 @@ function renderKpisAndCharts() {
 function renderDailySummary() {
   const rows = $("dailyRows");
   rows.innerHTML = "";
+  const labels = [t("date"), t("income"), t("expense"), t("net"), t("snapshot")];
   const txByDay = new Map();
   const txForSummary = state.filteredTx.length > 0 || $("sumStart").value || $("sumEnd").value
     ? state.filteredTx
@@ -951,9 +987,10 @@ function renderDailySummary() {
       fmtMoney(rec.income - rec.expense),
       fmtMoney(snap),
     ];
-    vals.forEach((v) => {
+    vals.forEach((v, idx) => {
       const td = document.createElement("td");
       td.textContent = String(v);
+      td.setAttribute("data-label", labels[idx]);
       tr.appendChild(td);
     });
     rows.appendChild(tr);
@@ -1079,10 +1116,10 @@ window.addEventListener("load", async () => {
   }
   applyLanguage(savedLang);
 
-  $("btnNavLogin").onclick = () => showAuth("login");
-  $("btnNavRegister").onclick = () => showAuth("register");
-  $("btnHeroLogin").onclick = () => showAuth("login");
-  $("btnHeroRegister").onclick = () => showAuth("register");
+  if ($("btnNavLogin")) $("btnNavLogin").onclick = () => showAuth("login");
+  if ($("btnNavRegister")) $("btnNavRegister").onclick = () => showAuth("register");
+  if ($("btnHeroLogin")) $("btnHeroLogin").onclick = () => showAuth("login");
+  if ($("btnHeroRegister")) $("btnHeroRegister").onclick = () => showAuth("register");
   if ($("btnOpenSettings")) $("btnOpenSettings").onclick = () => { window.location.href = "./settings.html"; };
   if ($("profileImageInput")) {
     $("profileImageInput").onchange = (e) => {
