@@ -8,7 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=30" />
+  <link rel="stylesheet" href="./styles.css?v=33" />
+  <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
   <main class="page">
@@ -93,15 +94,39 @@
           <label id="changePlanLabel" for="planBtnBasic">Change Plan</label>
         </div>
         <div class="row">
+          <div>
+            <label id="billingCycleLabel" for="billingCycleSelect">Billing Cycle</label>
+            <select id="billingCycleSelect">
+              <option id="billingCycleMonthlyOption" value="monthly">Monthly</option>
+              <option id="billingCycleAnnualOption" value="annual">Annual</option>
+            </select>
+            <p id="billingSavingsHint" class="muted"></p>
+          </div>
+        </div>
+        <div class="row">
           <button id="planBtnBasic" class="plan-btn" data-plan="basic">Basic</button>
           <button id="planBtnRegular" class="plan-btn" data-plan="regular">Regular</button>
           <button id="planBtnBusiness" class="plan-btn" data-plan="business">Business</button>
           <button id="planBtnPremium" class="plan-btn" data-plan="premium_plus">Premium Plus</button>
         </div>
+        <div class="row">
+          <button id="btnOpenBillingPortal" class="secondary">Manage Billing</button>
+          <button id="btnCancelSubscription" class="danger">Cancel Subscription</button>
+        </div>
         <p id="planStatusMsg" class="muted"></p>
+      </section>
+
+      <section id="embeddedCheckoutCard" class="card hidden">
+        <div class="row">
+          <h2 id="embeddedCheckoutTitle">Secure Payment</h2>
+        </div>
+        <div id="embeddedCheckoutContainer"></div>
+        <div class="row">
+          <button id="btnCloseEmbeddedCheckout" class="secondary">Close Payment</button>
+        </div>
       </section>
     </section>
   </main>
-  <script src="./settings.js?v=1"></script>
+  <script src="./settings.js?v=6"></script>
 </body>
 </html>

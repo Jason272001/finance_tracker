@@ -8,6 +8,11 @@ const state = {
   currentLang: "en",
   profile: {},
   subscription: {},
+  billingConfig: {},
+  billingCycle: "monthly",
+  billingPlans: [],
+  stripe: null,
+  embeddedCheckout: null,
   pendingProfileImage: null,
 };
 
@@ -42,8 +47,38 @@ const I18N = {
     plan_premium_plus: "Premium Plus",
     plan_lifetime: "Lifetime",
     plan_updated: "Plan updated successfully.",
+    manage_billing: "Manage Billing",
+    cancel_subscription: "Cancel Subscription",
+    redirect_checkout: "Redirecting to Stripe checkout...",
+    redirect_portal: "Opening Stripe billing portal...",
+    stripe_not_configured: "Stripe billing is not configured yet.",
+    stripe_plan_not_configured: "Stripe price is not configured for this plan yet.",
+    billing_no_customer: "No Stripe customer found yet. Complete checkout first.",
+    billing_success: "Payment completed. Subscription will sync shortly.",
+    billing_cancel: "Checkout canceled.",
+    embedded_payment_title: "Secure Payment",
+    close_payment: "Close Payment",
+    embedded_loading: "Loading secure payment...",
+    embedded_unavailable: "Embedded checkout is unavailable. Falling back to hosted checkout.",
+    billing_cycle: "Billing Cycle",
+    cycle_monthly: "Monthly",
+    cycle_annual: "Annual",
+    premium_plus_choice_monthly: "Include website package ($70/month)? Click Cancel for $50/month.",
+    premium_plus_choice_annual: "Include website package ($700/year)? Click Cancel for $500/year.",
+    cancel_confirm: "Cancel now? Refund policy: full refund within 7 days; annual plans after 7 days get prorated refund for remaining time.",
+    cancel_no_stripe: "Stripe subscription not found for this user.",
+    annual_savings_prefix: "Annual savings vs monthly: ",
+    annual_savings_empty: "No annual savings configured yet.",
+    annual_switch_hint: "Choose Annual to save more each year.",
   },
 };
+
+const DEFAULT_BILLING_PLANS = [
+  { plan_code: "basic", price_monthly: 2, price_annual: 20 },
+  { plan_code: "regular", price_monthly: 5, price_annual: 50 },
+  { plan_code: "business", price_monthly: 25, price_annual: 250 },
+  { plan_code: "premium_plus", price_monthly: 50, price_annual: 500, price_with_website_monthly: 70, price_with_website_annual: 700 },
+];
 
 function t(key) {
   const pack = I18N[state.currentLang] || I18N.en;
@@ -80,6 +115,88 @@ function errMessage(e) {
   }
 }
 
+function numberOrZero(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatUSD(v) {
+  return `$${numberOrZero(v).toFixed(0)}`;
+}
+
+function getBillingPlans() {
+  return Array.isArray(state.billingPlans) && state.billingPlans.length > 0
+    ? state.billingPlans
+    : DEFAULT_BILLING_PLANS;
+}
+
+function getPlanMeta(planCode) {
+  const key = String(planCode || "").toLowerCase();
+  return getBillingPlans().find((p) => String(p?.plan_code || "").toLowerCase() === key) || null;
+}
+
+function getAnnualSavings(planCode, withWebsite = false) {
+  const plan = getPlanMeta(planCode);
+  if (!plan) return 0;
+  const monthly = withWebsite
+    ? numberOrZero(plan.price_with_website_monthly)
+    : numberOrZero(plan.price_monthly);
+  const annual = withWebsite
+    ? numberOrZero(plan.price_with_website_annual)
+    : numberOrZero(plan.price_annual);
+  return Math.max(0, (monthly * 12) - annual);
+}
+
+function planButtonText(planCode) {
+  const label = planLabel(planCode);
+  const cycle = state.billingCycle === "annual" ? "annual" : "monthly";
+  const plan = getPlanMeta(planCode);
+  if (!plan) return label;
+  const monthly = numberOrZero(plan.price_monthly);
+  const annual = numberOrZero(plan.price_annual);
+  if (cycle === "annual") {
+    const save = Math.max(0, (monthly * 12) - annual);
+    if (save > 0) return `${label} - ${formatUSD(annual)} / year (Save ${formatUSD(save)})`;
+    return `${label} - ${formatUSD(annual)} / year`;
+  }
+  return `${label} - ${formatUSD(monthly)} / month`;
+}
+
+function renderBillingPresentation() {
+  const buttonMap = [
+    ["planBtnBasic", "basic"],
+    ["planBtnRegular", "regular"],
+    ["planBtnBusiness", "business"],
+    ["planBtnPremium", "premium_plus"],
+  ];
+  buttonMap.forEach(([id, planCode]) => {
+    const el = $(id);
+    if (el) el.textContent = planButtonText(planCode);
+  });
+
+  const hintEl = $("billingSavingsHint");
+  if (!hintEl) return;
+  if (state.billingCycle !== "annual") {
+    hintEl.textContent = t("annual_switch_hint");
+    return;
+  }
+  const items = [
+    ["Basic", getAnnualSavings("basic")],
+    ["Regular", getAnnualSavings("regular")],
+    ["Business", getAnnualSavings("business")],
+    ["Premium Plus", getAnnualSavings("premium_plus")],
+    ["Premium Plus + Website", getAnnualSavings("premium_plus", true)],
+  ].filter((x) => numberOrZero(x[1]) > 0);
+
+  if (!items.length) {
+    hintEl.textContent = t("annual_savings_empty");
+    return;
+  }
+  hintEl.textContent = `${t("annual_savings_prefix")}${items
+    .map(([name, save]) => `${name} ${formatUSD(save)}`)
+    .join(", ")}`;
+}
+
 function applyLanguage(lang) {
   state.currentLang = I18N[lang] ? lang : "en";
   localStorage.setItem("keeperbma_lang", state.currentLang);
@@ -110,6 +227,13 @@ function applyLanguage(lang) {
   setText("planBtnRegular", "plan_regular");
   setText("planBtnBusiness", "plan_business");
   setText("planBtnPremium", "plan_premium_plus");
+  setText("btnOpenBillingPortal", "manage_billing");
+  setText("btnCancelSubscription", "cancel_subscription");
+  setText("embeddedCheckoutTitle", "embedded_payment_title");
+  setText("btnCloseEmbeddedCheckout", "close_payment");
+  setText("billingCycleLabel", "billing_cycle");
+  setText("billingCycleMonthlyOption", "cycle_monthly");
+  setText("billingCycleAnnualOption", "cycle_annual");
 
   if ($("profileUsername")) $("profileUsername").placeholder = t("profile_username");
   if ($("profileEmail")) $("profileEmail").placeholder = "name@example.com";
@@ -119,6 +243,7 @@ function applyLanguage(lang) {
   if ($("confirmNewPassword")) $("confirmNewPassword").placeholder = t("confirm_new_password");
 
   renderSubscription();
+  renderBillingPresentation();
 }
 
 async function api(path, opts = {}) {
@@ -189,6 +314,7 @@ function renderSubscription() {
   const trialEnds = String(sub.trial_ends_at || "");
   const trialDays = Number(sub.trial_days_remaining || 0);
   const isLifetime = Boolean(sub.is_lifetime);
+  const hasStripeSub = String(sub.billing_subscription_id || "").trim().length > 0;
 
   if ($("planCodeValue")) $("planCodeValue").textContent = planLabel(planCode);
   if ($("planStatusValue")) $("planStatusValue").textContent = status;
@@ -200,16 +326,96 @@ function renderSubscription() {
     btn.classList.toggle("active", btnPlan === planCode);
     btn.disabled = isLifetime;
   });
+  if ($("btnCancelSubscription")) {
+    $("btnCancelSubscription").disabled = isLifetime || !hasStripeSub;
+  }
+  renderBillingPresentation();
+}
+
+async function closeEmbeddedCheckout() {
+  if (state.embeddedCheckout && typeof state.embeddedCheckout.destroy === "function") {
+    try {
+      state.embeddedCheckout.destroy();
+    } catch (_) {}
+  }
+  state.embeddedCheckout = null;
+  if ($("embeddedCheckoutContainer")) $("embeddedCheckoutContainer").innerHTML = "";
+  if ($("embeddedCheckoutCard")) $("embeddedCheckoutCard").classList.add("hidden");
+}
+
+async function startEmbeddedCheckout(planCode, withWebsite = false, billingCycle = "monthly") {
+  if (!Boolean(state.billingConfig?.embedded_checkout_enabled)) {
+    throw new Error(t("embedded_unavailable"));
+  }
+  const publishableKey = String(state.billingConfig?.publishable_key || "").trim();
+  if (!publishableKey || !window.Stripe) {
+    throw new Error(t("embedded_unavailable"));
+  }
+  setStatus("planStatusMsg", t("embedded_loading"));
+  await closeEmbeddedCheckout();
+  if ($("embeddedCheckoutCard")) $("embeddedCheckoutCard").classList.remove("hidden");
+  if ($("embeddedCheckoutContainer")) $("embeddedCheckoutContainer").innerHTML = "";
+  state.stripe = state.stripe || window.Stripe(publishableKey);
+  const stripe = state.stripe;
+  const checkout = await stripe.initEmbeddedCheckout({
+    fetchClientSecret: async () => {
+      const out = await api("/billing/checkout/embedded", {
+        method: "POST",
+        body: JSON.stringify({
+          user_id: state.userId,
+          plan_code: String(planCode || "").toLowerCase(),
+          billing_cycle: String(billingCycle || "monthly").toLowerCase(),
+          with_website: Boolean(withWebsite),
+          return_url: `${window.location.origin}${window.location.pathname}?billing=success`,
+        }),
+      });
+      return String(out?.client_secret || "");
+    },
+    onComplete: async () => {
+      setStatus("planStatusMsg", t("billing_success"));
+      await loadPageData();
+      await closeEmbeddedCheckout();
+    },
+  });
+  state.embeddedCheckout = checkout;
+  checkout.mount("#embeddedCheckoutContainer");
+  setStatus("planStatusMsg", "");
+}
+
+async function startHostedCheckout(planCode, withWebsite = false, billingCycle = "monthly") {
+  setStatus("planStatusMsg", t("redirect_checkout"));
+  const out = await api("/billing/checkout", {
+    method: "POST",
+    body: JSON.stringify({
+      user_id: state.userId,
+      plan_code: String(planCode || "").toLowerCase(),
+      billing_cycle: String(billingCycle || "monthly").toLowerCase(),
+      with_website: Boolean(withWebsite),
+      success_url: `${window.location.origin}${window.location.pathname}?billing=success`,
+      cancel_url: `${window.location.origin}${window.location.pathname}?billing=cancel`,
+    }),
+  });
+  const checkoutUrl = String(out?.url || "").trim();
+  if (!checkoutUrl) {
+    throw new Error(t("stripe_plan_not_configured"));
+  }
+  window.location.href = checkoutUrl;
 }
 
 async function loadPageData() {
   const results = await Promise.allSettled([
     api(`/profile?user_id=${state.userId}`),
     api(`/billing/subscription?user_id=${state.userId}`),
+    api(`/billing/config?user_id=${state.userId}`),
+    api("/billing/plans"),
   ]);
-  const [profileRes, subscriptionRes] = results;
+  const [profileRes, subscriptionRes, billingConfigRes, billingPlansRes] = results;
   state.profile = profileRes.status === "fulfilled" ? (profileRes.value || {}) : (state.profile || {});
   state.subscription = subscriptionRes.status === "fulfilled" ? (subscriptionRes.value || {}) : (state.subscription || {});
+  state.billingConfig = billingConfigRes.status === "fulfilled" ? (billingConfigRes.value || {}) : (state.billingConfig || {});
+  state.billingPlans = billingPlansRes.status === "fulfilled" && Array.isArray(billingPlansRes.value)
+    ? billingPlansRes.value
+    : state.billingPlans;
   if (state.profile && state.profile.name) state.userName = String(state.profile.name || state.userName || "");
   renderProfile();
   renderSubscription();
@@ -220,15 +426,38 @@ window.addEventListener("load", async () => {
   const savedLang = String(localStorage.getItem("keeperbma_lang") || "en");
   if ($("appLangSelect")) $("appLangSelect").onchange = (e) => applyLanguage(String(e.target.value || "en"));
   applyLanguage(savedLang);
+  state.billingCycle = String(localStorage.getItem("keeperbma_billing_cycle") || "monthly").toLowerCase();
+  if (!["monthly", "annual"].includes(state.billingCycle)) state.billingCycle = "monthly";
+  if ($("billingCycleSelect")) {
+    $("billingCycleSelect").value = state.billingCycle;
+    $("billingCycleSelect").onchange = (e) => {
+      const next = String(e.target.value || "monthly").toLowerCase();
+      state.billingCycle = ["monthly", "annual"].includes(next) ? next : "monthly";
+      localStorage.setItem("keeperbma_billing_cycle", state.billingCycle);
+      setStatus("planStatusMsg", "");
+      renderBillingPresentation();
+    };
+  }
+  renderBillingPresentation();
 
-  if ($("btnBackDashboard")) $("btnBackDashboard").onclick = () => { window.location.href = "./index.html"; };
+  if ($("btnBackDashboard")) $("btnBackDashboard").onclick = async () => {
+    await closeEmbeddedCheckout();
+    window.location.href = "./index.html";
+  };
   if ($("btnLogout")) {
     $("btnLogout").onclick = async () => {
       try {
         await api("/auth/logout", { method: "POST" });
       } catch (_) {}
+      await closeEmbeddedCheckout();
       localStorage.removeItem("keeperbma_token");
       window.location.href = "./auth.html?mode=signin";
+    };
+  }
+  if ($("btnCloseEmbeddedCheckout")) {
+    $("btnCloseEmbeddedCheckout").onclick = async () => {
+      await closeEmbeddedCheckout();
+      setStatus("planStatusMsg", "");
     };
   }
 
@@ -327,11 +556,93 @@ window.addEventListener("load", async () => {
     };
   }
 
+  if ($("btnOpenBillingPortal")) {
+    $("btnOpenBillingPortal").onclick = async () => {
+      try {
+        if (!Boolean(state.billingConfig?.stripe_enabled)) {
+          setStatus("planStatusMsg", t("stripe_not_configured"));
+          return;
+        }
+        setStatus("planStatusMsg", t("redirect_portal"));
+        const out = await api("/billing/portal", {
+          method: "POST",
+          body: JSON.stringify({
+            user_id: state.userId,
+            return_url: `${window.location.origin}${window.location.pathname}`,
+          }),
+        });
+        const url = String(out?.url || "").trim();
+        if (!url) {
+          setStatus("planStatusMsg", t("billing_no_customer"));
+          return;
+        }
+        window.location.href = url;
+      } catch (e) {
+        setStatus("planStatusMsg", errMessage(e));
+      }
+    };
+  }
+  if ($("btnCancelSubscription")) {
+    $("btnCancelSubscription").onclick = async () => {
+      try {
+        const subId = String((state.subscription || {}).billing_subscription_id || "").trim();
+        if (!subId) {
+          setStatus("planStatusMsg", t("cancel_no_stripe"));
+          return;
+        }
+        if (!window.confirm(t("cancel_confirm"))) return;
+        setStatus("planStatusMsg", t("embedded_loading"));
+        const out = await api("/billing/cancel", {
+          method: "POST",
+          body: JSON.stringify({ user_id: state.userId }),
+        });
+        await loadPageData();
+        setStatus("planStatusMsg", String(out?.message || "Subscription canceled."));
+      } catch (e) {
+        setStatus("planStatusMsg", errMessage(e));
+      }
+    };
+  }
+
   document.querySelectorAll(".plan-btn").forEach((btn) => {
     btn.onclick = async () => {
       const planCode = String(btn.getAttribute("data-plan") || "").toLowerCase();
       if (!state.userId || !planCode) return;
       try {
+        const billingCycle = String(
+          ($("billingCycleSelect") && $("billingCycleSelect").value) || state.billingCycle || "monthly"
+        ).toLowerCase();
+        state.billingCycle = ["monthly", "annual"].includes(billingCycle) ? billingCycle : "monthly";
+        localStorage.setItem("keeperbma_billing_cycle", state.billingCycle);
+        const useStripe = Boolean(state.billingConfig?.stripe_enabled);
+        const useEmbedded = Boolean(state.billingConfig?.embedded_checkout_enabled);
+        const configuredPriceKeys = new Set(
+          (state.billingConfig?.configured_price_keys || []).map((x) => String(x).toLowerCase())
+        );
+        const standardKey = `${state.billingCycle}:${planCode}`;
+        if (useStripe && configuredPriceKeys.has(standardKey)) {
+          let withWebsite = false;
+          const premiumWebsiteKey = `${state.billingCycle}:premium_plus_website`;
+          if (planCode === "premium_plus" && configuredPriceKeys.has(premiumWebsiteKey)) {
+            withWebsite = window.confirm(
+              state.billingCycle === "annual" ? t("premium_plus_choice_annual") : t("premium_plus_choice_monthly")
+            );
+          }
+          if (useEmbedded) {
+            try {
+              await startEmbeddedCheckout(planCode, withWebsite, state.billingCycle);
+              return;
+            } catch (e) {
+              setStatus("planStatusMsg", t("embedded_unavailable"));
+            }
+          }
+          await startHostedCheckout(planCode, withWebsite, state.billingCycle);
+          return;
+        }
+        if (useStripe) {
+          setStatus("planStatusMsg", t("stripe_plan_not_configured"));
+          return;
+        }
         const out = await api("/billing/subscription", {
           method: "PUT",
           body: JSON.stringify({ user_id: state.userId, plan_code: planCode }),
@@ -364,12 +675,19 @@ window.addEventListener("load", async () => {
       trial_ends_at: String(session.trial_ends_at || ""),
       trial_days_remaining: Number(session.trial_days_remaining || 0),
       is_lifetime: Boolean(session.is_lifetime || false),
+      billing_subscription_id: String(session.billing_subscription_id || ""),
     };
     renderProfile();
     renderSubscription();
     await loadPageData();
+    const qs = new URLSearchParams(window.location.search);
+    const billingState = String(qs.get("billing") || "").toLowerCase();
+    if (billingState === "success") setStatus("planStatusMsg", t("billing_success"));
+    if (billingState === "cancel") setStatus("planStatusMsg", t("billing_cancel"));
+    if (billingState && window.location.search) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   } catch (_) {
     window.location.href = "./auth.html?mode=signin";
   }
 });
-

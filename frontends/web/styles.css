@@ -220,6 +220,14 @@ th { color: #3e5471; font-weight: 700; }
   border: 1px solid #cfe0f6;
   background: #f8fbff;
 }
+#embeddedCheckoutContainer {
+  width: 100%;
+  min-height: 520px;
+  border: 1px solid #dbe8fa;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 8px;
+}
 
 @media (max-width: 1080px) {
   .kpi-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
@@ -227,6 +235,7 @@ th { color: #3e5471; font-weight: 700; }
   .feature-grid, .price-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
   .profile-avatar-box { flex: 1 1 100%; }
   .profile-avatar { width: 120px; height: 120px; }
+  #embeddedCheckoutContainer { min-height: 460px; }
 }
 @media (max-width: 920px) {
   .page { width: 96vw; }
@@ -306,6 +315,7 @@ th { color: #3e5471; font-weight: 700; }
     border-radius: 8px;
   }
   .chart-card canvas { height: 190px !important; }
+  #embeddedCheckoutContainer { min-height: 420px; }
 }
 
 @media (max-width: 480px) {

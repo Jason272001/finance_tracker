@@ -61,6 +61,10 @@ def _load_users():
         "trial_ends_at",
         "subscription_started_at",
         "subscription_ends_at",
+        "billing_provider",
+        "billing_customer_id",
+        "billing_subscription_id",
+        "billing_price_id",
     ]
     if DB_IS_SQL:
         df = _read_table("users", user_cols)
@@ -93,6 +97,10 @@ def _load_users():
     df["trial_ends_at"] = df["trial_ends_at"].fillna("").astype(str)
     df["subscription_started_at"] = df["subscription_started_at"].fillna("").astype(str)
     df["subscription_ends_at"] = df["subscription_ends_at"].fillna("").astype(str)
+    df["billing_provider"] = df["billing_provider"].fillna("").astype(str).str.strip().str.lower()
+    df["billing_customer_id"] = df["billing_customer_id"].fillna("").astype(str).str.strip()
+    df["billing_subscription_id"] = df["billing_subscription_id"].fillna("").astype(str).str.strip()
+    df["billing_price_id"] = df["billing_price_id"].fillna("").astype(str).str.strip()
     df["is_lifetime"] = (
         df["is_lifetime"]
         .fillna(False)
@@ -134,6 +142,10 @@ def _save_users(df):
         "trial_ends_at",
         "subscription_started_at",
         "subscription_ends_at",
+        "billing_provider",
+        "billing_customer_id",
+        "billing_subscription_id",
+        "billing_price_id",
     ]
     out = df.copy()
     for c in user_cols:
@@ -461,6 +473,10 @@ class User:
                 "trial_ends_at": trial_ends_at,
                 "subscription_started_at": subscription_started_at,
                 "subscription_ends_at": "",
+                "billing_provider": "",
+                "billing_customer_id": "",
+                "billing_subscription_id": "",
+                "billing_price_id": "",
             }
             return next_uid, new_row
 
@@ -541,6 +557,10 @@ class User:
             "plan_code": str(row.get("plan_code", "")).strip().lower() or "basic",
             "subscription_status": str(row.get("subscription_status", "")).strip().lower() or "active",
             "trial_ends_at": str(row.get("trial_ends_at", "")).strip(),
+            "billing_provider": str(row.get("billing_provider", "")).strip().lower(),
+            "billing_customer_id": str(row.get("billing_customer_id", "")).strip(),
+            "billing_subscription_id": str(row.get("billing_subscription_id", "")).strip(),
+            "billing_price_id": str(row.get("billing_price_id", "")).strip(),
         }
 
     def set_subscription_plan(self, user_id, plan_code):
@@ -575,6 +595,87 @@ class User:
         with _file_lock(USERS_CSV):
             u = _load_users()
             ok, out = _set(u)
+            _save_users(out)
+            return ok
+
+    def get_user_by_billing_customer_id(self, billing_customer_id):
+        customer_id = str(billing_customer_id or "").strip()
+        if not customer_id:
+            return None
+        u = _load_users()
+        billing_col = u["billing_customer_id"].astype(str).str.strip()
+        hit = u[billing_col == customer_id]
+        if hit.empty:
+            return None
+        return self.get_user_by_id(int(hit.iloc[0]["user_id"]))
+
+    def update_billing_subscription(
+        self,
+        user_id,
+        plan_code=None,
+        subscription_status=None,
+        trial_ends_at=None,
+        subscription_started_at=None,
+        subscription_ends_at=None,
+        billing_provider=None,
+        billing_customer_id=None,
+        billing_subscription_id=None,
+        billing_price_id=None,
+    ):
+        uid = int(user_id)
+        allowed_plan_codes = {"basic", "regular", "business", "premium_plus", "lifetime"}
+        allowed_status = {"trial", "active", "past_due", "canceled", "incomplete", "unpaid"}
+
+        def _update(df):
+            uid_col = pd.to_numeric(df["user_id"], errors="coerce")
+            idx = df.index[uid_col == uid]
+            if len(idx) == 0:
+                raise ValueError("User not found.")
+            i = idx[0]
+
+            if plan_code is not None:
+                plan_s = str(plan_code).strip().lower()
+                if plan_s not in allowed_plan_codes:
+                    raise ValueError("Invalid subscription plan.")
+                df.at[i, "plan_code"] = plan_s
+
+            if subscription_status is not None:
+                status_s = str(subscription_status).strip().lower()
+                if status_s not in allowed_status:
+                    raise ValueError("Invalid subscription status.")
+                df.at[i, "subscription_status"] = status_s
+
+            if trial_ends_at is not None:
+                df.at[i, "trial_ends_at"] = str(trial_ends_at).strip()
+
+            if subscription_started_at is not None:
+                df.at[i, "subscription_started_at"] = str(subscription_started_at).strip()
+
+            if subscription_ends_at is not None:
+                df.at[i, "subscription_ends_at"] = str(subscription_ends_at).strip()
+
+            if billing_provider is not None:
+                df.at[i, "billing_provider"] = str(billing_provider).strip().lower()
+
+            if billing_customer_id is not None:
+                df.at[i, "billing_customer_id"] = str(billing_customer_id).strip()
+
+            if billing_subscription_id is not None:
+                df.at[i, "billing_subscription_id"] = str(billing_subscription_id).strip()
+
+            if billing_price_id is not None:
+                df.at[i, "billing_price_id"] = str(billing_price_id).strip()
+
+            return True, df
+
+        if DB_IS_SQL:
+            u = _load_users()
+            ok, out = _update(u)
+            _save_users(out)
+            return ok
+        with _file_lock(USERS_CSV):
+            u = _load_users()
+            ok, out = _update(u)
             _save_users(out)
             return ok
 
@@ -754,6 +855,10 @@ class User:
             "trial_ends_at": str(row.get("trial_ends_at", "")).strip(),
             "subscription_started_at": str(row.get("subscription_started_at", "")).strip(),
             "subscription_ends_at": str(row.get("subscription_ends_at", "")).strip(),
+            "billing_provider": str(row.get("billing_provider", "")).strip().lower(),
+            "billing_customer_id": str(row.get("billing_customer_id", "")).strip(),
+            "billing_subscription_id": str(row.get("billing_subscription_id", "")).strip(),
+            "billing_price_id": str(row.get("billing_price_id", "")).strip(),
         }
     
 
