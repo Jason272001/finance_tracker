@@ -225,7 +225,6 @@ window.addEventListener("load", async () => {
     ? queryWebsite
     : parseBoolFlag(localStorage.getItem(SIGNUP_WITH_WEBSITE_KEY));
   if (state.signupPlan !== "premium_plus") state.signupWithWebsite = false;
-  const savedCoupon = String(localStorage.getItem(SIGNUP_COUPON_KEY) || "");
   const savedLang = String(localStorage.getItem("keeperbma_lang") || "en");
   state.lang = AUTH_I18N[savedLang] ? savedLang : "en";
   setMode(q.get("mode") || "signin");
@@ -234,9 +233,6 @@ window.addEventListener("load", async () => {
     $("authLangSelect").onchange = (e) => applyAuthLanguage(String(e.target.value || "en"));
   }
   applyAuthLanguage(state.lang);
-  if ($("authCoupon")) {
-    $("authCoupon").value = queryCoupon || savedCoupon;
-  }
 
   $("tabSignin").onclick = () => setMode("signin");
   $("tabSignup").onclick = () => {
@@ -288,11 +284,7 @@ window.addEventListener("load", async () => {
         const countryCode = $("authCountryCode").value.trim();
         const localPhone = $("authPhoneLocal").value.trim();
         const normalizedLocalPhone = localPhone.replace(/[^\d]/g, "");
-        const couponRaw = String($("authCoupon").value || "").trim();
-        if (couponRaw.length > 64) {
-          setStatus("Coupon code must be 64 characters or less.");
-          return;
-        }
+        const couponRaw = String(localStorage.getItem(SIGNUP_COUPON_KEY) || "").trim().slice(0, 64);
         const payload = {
           name,
           email: $("authEmail").value.trim(),
