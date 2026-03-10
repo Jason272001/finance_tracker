@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=34" />
+  <link rel="stylesheet" href="./styles.css?v=35" />
 </head>
 <body>
   <main class="page">
@@ -25,17 +25,42 @@
     <section class="card plan-shell">
       <h2>Choose Your Plan</h2>
       <p class="muted">Each plan has its own coupon field. Enter a coupon only for the plan you choose.</p>
-      <div class="billing-cycle-wrap">
-        <div class="billing-cycle-label">Payment Option</div>
-        <div class="billing-cycle-toggle" role="group" aria-label="Payment option">
-          <button id="btnCycleMonthly" type="button" data-billing-cycle="monthly">Monthly</button>
-          <button id="btnCycleAnnual" type="button" data-billing-cycle="annual" class="secondary">Yearly</button>
+      <div class="plan-switch-grid">
+        <div class="switch-block">
+          <div class="switch-label">Plan Type</div>
+          <div
+            id="planTypeSwitch"
+            class="toggle-switch"
+            data-state="left"
+            role="group"
+            aria-label="Plan type"
+          >
+            <span class="toggle-thumb" aria-hidden="true"></span>
+            <button id="btnSegmentPersonal" type="button" data-plan-segment-toggle="personal" class="active">Personal</button>
+            <button id="btnSegmentBusiness" type="button" data-plan-segment-toggle="business">Business</button>
+          </div>
+          <p id="planTypeHint" class="muted">Personal includes Basic and Regular.</p>
         </div>
-        <p id="billingCycleHint" class="muted">Yearly gives discounted pricing.</p>
+
+        <div class="switch-block">
+          <div class="switch-label">Payment Option</div>
+          <div
+            id="billingCycleSwitch"
+            class="toggle-switch"
+            data-state="left"
+            role="group"
+            aria-label="Payment option"
+          >
+            <span class="toggle-thumb" aria-hidden="true"></span>
+            <button id="btnCycleMonthly" type="button" data-billing-cycle="monthly" class="active">Monthly</button>
+            <button id="btnCycleAnnual" type="button" data-billing-cycle="annual">Yearly</button>
+          </div>
+          <p id="billingCycleHint" class="muted">Yearly gives discounted pricing.</p>
+        </div>
       </div>
 
       <div class="plan-grid">
-        <article class="plan-option" data-plan="basic">
+        <article class="plan-option" data-plan="basic" data-plan-segment="personal">
           <h3>Basic</h3>
           <p class="plan-price" data-plan-price="basic">$2 / month or $20 / year</p>
           <label for="planCouponBasic">Coupon Code (Optional)</label>
@@ -49,7 +74,7 @@
           <button class="plan-continue-btn" data-plan-continue="basic">Continue with Basic</button>
         </article>
 
-        <article class="plan-option" data-plan="regular">
+        <article class="plan-option" data-plan="regular" data-plan-segment="personal">
           <h3>Regular</h3>
           <p class="plan-price" data-plan-price="regular">$5 / month or $50 / year</p>
           <label for="planCouponRegular">Coupon Code (Optional)</label>
@@ -63,7 +88,7 @@
           <button class="plan-continue-btn" data-plan-continue="regular">Continue with Regular</button>
         </article>
 
-        <article class="plan-option" data-plan="business">
+        <article class="plan-option" data-plan="business" data-plan-segment="business">
           <h3>Business</h3>
           <p class="plan-price" data-plan-price="business">$25 / month or $250 / year</p>
           <label for="planCouponBusiness">Coupon Code (Optional)</label>
@@ -77,9 +102,9 @@
           <button class="plan-continue-btn" data-plan-continue="business">Continue with Business</button>
         </article>
 
-        <article class="plan-option" data-plan="premium_plus">
+        <article class="plan-option" data-plan="premium_plus" data-plan-segment="business">
           <h3>Premium Plus</h3>
-          <p class="plan-price" data-plan-price="premium_plus">$50-$70 / month or $500-$700 / year</p>
+          <p class="plan-price" data-plan-price="premium_plus">$50 / month or $500 / year</p>
           <label for="planCouponPremium">Coupon Code (Optional)</label>
           <input
             id="planCouponPremium"
@@ -90,6 +115,20 @@
           />
           <button class="plan-continue-btn" data-plan-continue="premium_plus">Continue with Premium Plus</button>
         </article>
+
+        <article class="plan-option" data-plan="diamond" data-plan-segment="business">
+          <h3>Diamond</h3>
+          <p class="plan-price" data-plan-price="diamond">$70 / month or $700 / year</p>
+          <label for="planCouponDiamond">Coupon Code (Optional)</label>
+          <input
+            id="planCouponDiamond"
+            class="plan-coupon-input"
+            data-coupon-plan="diamond"
+            placeholder="Coupon for Diamond"
+            maxlength="64"
+          />
+          <button class="plan-continue-btn" data-plan-continue="diamond">Continue with Diamond</button>
+        </article>
       </div>
 
       <div class="row">
@@ -99,6 +138,6 @@
     </section>
   </main>
 
-  <script src="./plans.js?v=3"></script>
+  <script src="./plans.js?v=4"></script>
 </body>
 </html>

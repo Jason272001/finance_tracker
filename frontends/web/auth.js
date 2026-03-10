@@ -6,9 +6,11 @@ const state = {
   lang: "en",
   signupPlan: "",
   signupBillingCycle: "monthly",
+  signupWithWebsite: false,
 };
 
 const SIGNUP_PLAN_KEY = "keeperbma_signup_plan";
+const SIGNUP_WITH_WEBSITE_KEY = "keeperbma_signup_with_website";
 const SIGNUP_COUPON_KEY = "keeperbma_signup_coupon";
 const BILLING_CYCLE_KEY = "keeperbma_billing_cycle";
 const ALLOWED_SIGNUP_PLANS = new Set(["basic", "regular", "business", "premium_plus"]);
@@ -16,7 +18,7 @@ const ALLOWED_BILLING_CYCLES = new Set(["monthly", "annual"]);
 const DEFAULT_BILLING_CYCLE = "monthly";
 
 const AUTH_I18N = {
-  en: { signin: "Sign In", signup: "Sign Up", recover: "Recover", username: "Username", password: "Password", new_password: "New Password", confirm_password: "Confirm Password", forgot: "Forgot Password?", send_code: "Send Recovery Code", reset_password: "Reset Password", recovery_sent: "Recovery code sent. Check your email.", signup_ok: "Sign up successful. Redirecting...", signup_plan_selected: "Selected Plan", choose_plan_first: "Please choose a plan first from Home > Pricing.", plan_basic: "Basic", plan_regular: "Regular", plan_business: "Business", plan_premium_plus: "Premium Plus" },
+  en: { signin: "Sign In", signup: "Sign Up", recover: "Recover", username: "Username", password: "Password", new_password: "New Password", confirm_password: "Confirm Password", forgot: "Forgot Password?", send_code: "Send Recovery Code", reset_password: "Reset Password", recovery_sent: "Recovery code sent. Check your email.", signup_ok: "Sign up successful. Redirecting...", signup_plan_selected: "Selected Plan", choose_plan_first: "Please choose a plan first from Home > Pricing.", plan_basic: "Basic", plan_regular: "Regular", plan_business: "Business", plan_premium_plus: "Premium Plus", plan_diamond: "Diamond" },
   es: { signin: "Iniciar sesion", signup: "Registrarse", recover: "Recuperar", username: "Nombre de usuario", password: "Contrasena", new_password: "Nueva contrasena", confirm_password: "Confirmar contrasena", forgot: "Olvido su contrasena?", send_code: "Enviar codigo", reset_password: "Restablecer", recovery_sent: "Codigo enviado. Revise su correo.", signup_ok: "Registro exitoso. Redirigiendo..." },
   fr: { signin: "Se connecter", signup: "S'inscrire", recover: "Recuperer", username: "Nom d'utilisateur", password: "Mot de passe", new_password: "Nouveau mot de passe", confirm_password: "Confirmer le mot de passe", forgot: "Mot de passe oublie ?", send_code: "Envoyer le code", reset_password: "Reinitialiser", recovery_sent: "Code envoye. Verifiez votre email.", signup_ok: "Inscription reussie. Redirection..." },
   de: { signin: "Anmelden", signup: "Registrieren", recover: "Wiederherstellen", username: "Benutzername", password: "Passwort", new_password: "Neues Passwort", confirm_password: "Passwort bestaetigen", forgot: "Passwort vergessen?", send_code: "Code senden", reset_password: "Zuruecksetzen", recovery_sent: "Code gesendet. Bitte E-Mail pruefen.", signup_ok: "Registrierung erfolgreich. Weiterleitung..." },
@@ -37,8 +39,16 @@ function normalizeBillingCycle(cycle) {
   return ALLOWED_BILLING_CYCLES.has(key) ? key : DEFAULT_BILLING_CYCLE;
 }
 
+function parseBoolFlag(value) {
+  const key = String(value || "").trim().toLowerCase();
+  return key === "1" || key === "true" || key === "yes" || key === "on";
+}
+
 function planLabel(planCode) {
   const key = normalizeSignupPlan(planCode);
+  if (key === "premium_plus" && state.signupWithWebsite) {
+    return authT("plan_diamond") || "Diamond";
+  }
   const labels = {
     basic: authT("plan_basic"),
     regular: authT("plan_regular"),
@@ -135,7 +145,12 @@ function buildAppUrl(pathWithQuery) {
   return new URL(pathWithQuery, window.location.href).toString();
 }
 
-async function startPostSignupBilling(userId, planCode, billingCycle = DEFAULT_BILLING_CYCLE) {
+async function startPostSignupBilling(
+  userId,
+  planCode,
+  billingCycle = DEFAULT_BILLING_CYCLE,
+  withWebsite = false
+) {
   const uid = Number(userId || 0);
   const plan = normalizeSignupPlan(planCode);
   const cycle = normalizeBillingCycle(billingCycle);
@@ -147,6 +162,7 @@ async function startPostSignupBilling(userId, planCode, billingCycle = DEFAULT_B
       user_id: uid,
       plan_code: plan,
       billing_cycle: cycle,
+      with_website: Boolean(withWebsite),
       success_url: buildAppUrl("./settings.html?billing=success"),
       cancel_url: buildAppUrl("./settings.html?billing=cancel"),
     }),
@@ -195,12 +211,20 @@ window.addEventListener("load", async () => {
   const queryPlan = normalizeSignupPlan(q.get("plan"));
   const rawQueryCycle = String(q.get("cycle") || "").trim().toLowerCase();
   const queryCycle = rawQueryCycle ? normalizeBillingCycle(rawQueryCycle) : "";
+  const queryWebsiteRaw = String(q.get("website") || "").trim();
+  const queryWebsiteProvided = queryWebsiteRaw !== "";
+  const queryWebsite = parseBoolFlag(queryWebsiteRaw);
   const queryCoupon = String(q.get("coupon") || "").trim();
   if (queryPlan) localStorage.setItem(SIGNUP_PLAN_KEY, queryPlan);
   if (queryCycle) localStorage.setItem(BILLING_CYCLE_KEY, queryCycle);
+  if (queryWebsiteProvided) localStorage.setItem(SIGNUP_WITH_WEBSITE_KEY, queryWebsite ? "1" : "0");
   if (queryCoupon) localStorage.setItem(SIGNUP_COUPON_KEY, queryCoupon);
   state.signupPlan = queryPlan || normalizeSignupPlan(localStorage.getItem(SIGNUP_PLAN_KEY));
   state.signupBillingCycle = queryCycle || normalizeBillingCycle(localStorage.getItem(BILLING_CYCLE_KEY));
+  state.signupWithWebsite = queryWebsiteProvided
+    ? queryWebsite
+    : parseBoolFlag(localStorage.getItem(SIGNUP_WITH_WEBSITE_KEY));
+  if (state.signupPlan !== "premium_plus") state.signupWithWebsite = false;
   const savedCoupon = String(localStorage.getItem(SIGNUP_COUPON_KEY) || "");
   const savedLang = String(localStorage.getItem("keeperbma_lang") || "en");
   state.lang = AUTH_I18N[savedLang] ? savedLang : "en";
@@ -301,6 +325,7 @@ window.addEventListener("load", async () => {
         if (token) localStorage.setItem("keeperbma_token", token);
         localStorage.setItem(BILLING_CYCLE_KEY, normalizeBillingCycle(state.signupBillingCycle));
         localStorage.removeItem(SIGNUP_PLAN_KEY);
+        localStorage.removeItem(SIGNUP_WITH_WEBSITE_KEY);
         localStorage.removeItem(SIGNUP_COUPON_KEY);
         const isLifetime = Boolean(out.is_lifetime || out.lifetime_access);
         if (isLifetime) {
@@ -311,7 +336,12 @@ window.addEventListener("load", async () => {
 
         setStatus("Account created. Redirecting to billing...");
         try {
-          await startPostSignupBilling(out.user_id, signupPlan, state.signupBillingCycle);
+          await startPostSignupBilling(
+            out.user_id,
+            signupPlan,
+            state.signupBillingCycle,
+            state.signupWithWebsite
+          );
           return;
         } catch (billingErr) {
           console.error("Billing redirect failed:", billingErr);

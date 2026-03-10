@@ -20,7 +20,7 @@ let state = {
   charts: { income: null, expense: null, debt: null },
 };
 const SIGNUP_PLAN_KEY = "keeperbma_signup_plan";
-const ALLOWED_SIGNUP_PLANS = new Set(["basic", "regular", "business", "premium_plus"]);
+const ALLOWED_SIGNUP_PLANS = new Set(["basic", "regular", "business", "premium_plus", "diamond"]);
 
 const I18N = {
   en: {
@@ -47,6 +47,7 @@ const I18N = {
     choose_regular: "Choose Regular",
     choose_business: "Choose Business",
     choose_premium_plus: "Choose Premium Plus",
+    choose_diamond: "Choose Diamond",
     select_plan_before_register: "Please choose a plan first from Pricing.",
     about_title: "About KeeperBMA",
     about_desc: "KeeperBMA is designed for individuals, families, and business owners who need one scalable platform to manage finances securely across all devices.",
@@ -109,6 +110,7 @@ const I18N = {
     plan_regular: "Regular",
     plan_business: "Business",
     plan_premium_plus: "Premium Plus",
+    plan_diamond: "Diamond",
     plan_lifetime: "Lifetime",
     plan_updated: "Plan updated successfully.",
     profile_title: "Profile & Settings",
@@ -429,6 +431,7 @@ function applyLanguage(lang) {
   setText("btnPickRegular", "choose_regular");
   setText("btnPickBusiness", "choose_business");
   setText("btnPickPremium", "choose_premium_plus");
+  setText("btnPickDiamond", "choose_diamond");
   setText("aboutTitle", "about_title");
   setText("aboutDesc", "about_desc");
   setText("btnLogout", "logout");
@@ -648,6 +651,7 @@ function planLabel(planCode) {
     regular: t("plan_regular"),
     business: t("plan_business"),
     premium_plus: t("plan_premium_plus"),
+    diamond: t("plan_diamond"),
     lifetime: t("plan_lifetime"),
   };
   return labels[key] || key || t("plan_basic");

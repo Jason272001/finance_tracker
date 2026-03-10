@@ -50,6 +50,9 @@ body {
   gap: 12px;
   grid-template-columns: repeat(4, minmax(180px, 1fr));
 }
+.price-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
 .feature-item, .price-item {
   border: 1px solid #dbe8fa;
   border-radius: 12px;
@@ -94,33 +97,67 @@ body {
   margin-bottom: 2px;
 }
 .plan-shell { max-width: 980px; margin: 16px auto; }
-.billing-cycle-wrap {
+.plan-switch-grid {
   margin: 8px 0 12px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
 }
-.billing-cycle-label {
+.switch-block {
+  border: 1px solid #dbe8fa;
+  border-radius: 12px;
+  background: #f8fbff;
+  padding: 10px;
+}
+.switch-label {
   font-weight: 700;
   margin-bottom: 8px;
 }
-.billing-cycle-toggle {
-  display: inline-flex;
-  gap: 8px;
-  flex-wrap: wrap;
+.toggle-switch {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  border: 1px solid #c3d8f6;
+  border-radius: 999px;
+  background: #e5eefc;
+  padding: 4px;
+  overflow: hidden;
 }
-.billing-cycle-toggle button {
-  min-width: 140px;
+.toggle-thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  height: calc(100% - 8px);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #1e74d6, #23a35c);
+  box-shadow: 0 4px 12px rgba(16, 35, 63, 0.16);
+  transition: transform 0.2s ease;
+  pointer-events: none;
 }
-.billing-cycle-toggle button.active {
-  background: #1e74d6;
-  color: #fff;
+.toggle-switch[data-state="right"] .toggle-thumb {
+  transform: translateX(100%);
 }
-.billing-cycle-hint {
-  margin-top: 6px;
+.toggle-switch button {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  background: transparent;
+  color: #355273;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 10px;
+  font-weight: 700;
+}
+.toggle-switch button.active {
+  color: #ffffff;
 }
 .plan-grid {
   margin: 12px 0;
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 .plan-option {
   border: 1px solid #dbe8fa;
@@ -137,6 +174,9 @@ body {
 .plan-option.active {
   border-color: #23a35c;
   box-shadow: 0 0 0 2px rgba(35, 163, 92, 0.2) inset;
+}
+.plan-option.segment-hidden {
+  display: none;
 }
 .plan-option label {
   font-weight: 600;
@@ -311,6 +351,7 @@ th { color: #3e5471; font-weight: 700; }
   .welcome { font-size: 1.6rem; }
   .grid { grid-template-columns: 1fr; }
   .span-2 { grid-column: span 1; }
+  .plan-switch-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .page { width: 98vw; margin: 8px auto 16px; }
