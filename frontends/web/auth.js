@@ -4,10 +4,15 @@ const state = {
   apiBase: "https://api.keeperbma.com",
   mode: "signin",
   lang: "en",
+  signupPlan: "",
 };
 
+const SIGNUP_PLAN_KEY = "keeperbma_signup_plan";
+const SIGNUP_COUPON_KEY = "keeperbma_signup_coupon";
+const ALLOWED_SIGNUP_PLANS = new Set(["basic", "regular", "business", "premium_plus"]);
+
 const AUTH_I18N = {
-  en: { signin: "Sign In", signup: "Sign Up", recover: "Recover", username: "Username", password: "Password", new_password: "New Password", confirm_password: "Confirm Password", forgot: "Forgot Password?", send_code: "Send Recovery Code", reset_password: "Reset Password", recovery_sent: "Recovery code sent. Check your email.", signup_ok: "Sign up successful. Redirecting..." },
+  en: { signin: "Sign In", signup: "Sign Up", recover: "Recover", username: "Username", password: "Password", new_password: "New Password", confirm_password: "Confirm Password", forgot: "Forgot Password?", send_code: "Send Recovery Code", reset_password: "Reset Password", recovery_sent: "Recovery code sent. Check your email.", signup_ok: "Sign up successful. Redirecting...", signup_plan_selected: "Selected Plan", choose_plan_first: "Please choose a plan first from Home > Pricing.", plan_basic: "Basic", plan_regular: "Regular", plan_business: "Business", plan_premium_plus: "Premium Plus" },
   es: { signin: "Iniciar sesion", signup: "Registrarse", recover: "Recuperar", username: "Nombre de usuario", password: "Contrasena", new_password: "Nueva contrasena", confirm_password: "Confirmar contrasena", forgot: "Olvido su contrasena?", send_code: "Enviar codigo", reset_password: "Restablecer", recovery_sent: "Codigo enviado. Revise su correo.", signup_ok: "Registro exitoso. Redirigiendo..." },
   fr: { signin: "Se connecter", signup: "S'inscrire", recover: "Recuperer", username: "Nom d'utilisateur", password: "Mot de passe", new_password: "Nouveau mot de passe", confirm_password: "Confirmer le mot de passe", forgot: "Mot de passe oublie ?", send_code: "Envoyer le code", reset_password: "Reinitialiser", recovery_sent: "Code envoye. Verifiez votre email.", signup_ok: "Inscription reussie. Redirection..." },
   de: { signin: "Anmelden", signup: "Registrieren", recover: "Wiederherstellen", username: "Benutzername", password: "Passwort", new_password: "Neues Passwort", confirm_password: "Passwort bestaetigen", forgot: "Passwort vergessen?", send_code: "Code senden", reset_password: "Zuruecksetzen", recovery_sent: "Code gesendet. Bitte E-Mail pruefen.", signup_ok: "Registrierung erfolgreich. Weiterleitung..." },
@@ -16,6 +21,35 @@ const AUTH_I18N = {
 function authT(key) {
   const pack = AUTH_I18N[state.lang] || AUTH_I18N.en;
   return pack[key] || AUTH_I18N.en[key] || key;
+}
+
+function normalizeSignupPlan(planCode) {
+  const key = String(planCode || "").trim().toLowerCase();
+  return ALLOWED_SIGNUP_PLANS.has(key) ? key : "";
+}
+
+function planLabel(planCode) {
+  const key = normalizeSignupPlan(planCode);
+  const labels = {
+    basic: authT("plan_basic"),
+    regular: authT("plan_regular"),
+    business: authT("plan_business"),
+    premium_plus: authT("plan_premium_plus"),
+  };
+  return labels[key] || key;
+}
+
+function renderSignupPlanBanner() {
+  const banner = $("signupPlanBanner");
+  if (!banner) return;
+  const isSignup = state.mode === "signup";
+  if (!isSignup || !state.signupPlan) {
+    banner.classList.add("hidden");
+    banner.textContent = "";
+    return;
+  }
+  banner.classList.remove("hidden");
+  banner.textContent = `${authT("signup_plan_selected")}: ${planLabel(state.signupPlan)}`;
 }
 
 function applyAuthLanguage(lang) {
@@ -30,6 +64,7 @@ function applyAuthLanguage(lang) {
   if ($("labelConfirmPassword")) $("labelConfirmPassword").textContent = authT("confirm_password");
   if ($("btnForgot")) $("btnForgot").textContent = authT("forgot");
   if ($("btnSendCode")) $("btnSendCode").textContent = authT("send_code");
+  renderSignupPlanBanner();
 }
 
 function setStatus(msg) {
@@ -37,7 +72,10 @@ function setStatus(msg) {
 }
 
 function setMode(mode) {
-  if (mode === "signup" || mode === "recover") state.mode = mode;
+  if (mode === "signup" && !state.signupPlan) {
+    state.mode = "signin";
+    setStatus(authT("choose_plan_first"));
+  } else if (mode === "signup" || mode === "recover") state.mode = mode;
   else state.mode = "signin";
   const isSignin = state.mode === "signin";
   const isSignup = state.mode === "signup";
@@ -56,7 +94,8 @@ function setMode(mode) {
   $("authSubmit").textContent = isSignin ? authT("signin") : (isSignup ? authT("signup") : authT("reset_password"));
   document.title = isSignin ? "KeeperBMA - Sign In" : (isSignup ? "KeeperBMA - Sign Up" : "KeeperBMA - Recover Password");
   applyAuthLanguage(state.lang);
-  setStatus("");
+  if (!(mode === "signup" && !state.signupPlan)) setStatus("");
+  renderSignupPlanBanner();
 }
 
 function errMessage(e) {
@@ -114,6 +153,12 @@ async function api(path, opts = {}) {
 
 window.addEventListener("load", async () => {
   const q = new URLSearchParams(window.location.search);
+  const queryPlan = normalizeSignupPlan(q.get("plan"));
+  const queryCoupon = String(q.get("coupon") || "").trim();
+  if (queryPlan) localStorage.setItem(SIGNUP_PLAN_KEY, queryPlan);
+  if (queryCoupon) localStorage.setItem(SIGNUP_COUPON_KEY, queryCoupon);
+  state.signupPlan = queryPlan || normalizeSignupPlan(localStorage.getItem(SIGNUP_PLAN_KEY));
+  const savedCoupon = String(localStorage.getItem(SIGNUP_COUPON_KEY) || "");
   const savedLang = String(localStorage.getItem("keeperbma_lang") || "en");
   state.lang = AUTH_I18N[savedLang] ? savedLang : "en";
   setMode(q.get("mode") || "signin");
@@ -122,9 +167,18 @@ window.addEventListener("load", async () => {
     $("authLangSelect").onchange = (e) => applyAuthLanguage(String(e.target.value || "en"));
   }
   applyAuthLanguage(state.lang);
+  if ($("authCoupon")) {
+    $("authCoupon").value = queryCoupon || savedCoupon;
+  }
 
   $("tabSignin").onclick = () => setMode("signin");
-  $("tabSignup").onclick = () => setMode("signup");
+  $("tabSignup").onclick = () => {
+    if (!state.signupPlan) {
+      setStatus(authT("choose_plan_first"));
+      return;
+    }
+    setMode("signup");
+  };
   $("tabRecover").onclick = () => setMode("recover");
   $("btnForgot").onclick = () => setMode("recover");
   $("btnSendCode").onclick = async () => {
@@ -159,6 +213,10 @@ window.addEventListener("load", async () => {
       }
 
       if (state.mode === "signup") {
+        if (!state.signupPlan) {
+          setStatus(authT("choose_plan_first"));
+          return;
+        }
         const countryCode = $("authCountryCode").value.trim();
         const localPhone = $("authPhoneLocal").value.trim();
         const normalizedLocalPhone = localPhone.replace(/[^\d]/g, "");
@@ -167,6 +225,7 @@ window.addEventListener("load", async () => {
           email: $("authEmail").value.trim(),
           phone: `${countryCode} ${normalizedLocalPhone}`.trim(),
           coupon_code: $("authCoupon").value.trim(),
+          plan_code: state.signupPlan,
           password,
         };
         if (password !== password2) {
@@ -191,6 +250,8 @@ window.addEventListener("load", async () => {
         });
         const token = String(out.token || "");
         if (token) localStorage.setItem("keeperbma_token", token);
+        localStorage.removeItem(SIGNUP_PLAN_KEY);
+        localStorage.removeItem(SIGNUP_COUPON_KEY);
         setStatus(authT("signup_ok"));
         window.location.href = "./index.html?app=1";
         return;

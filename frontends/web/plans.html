@@ -1,0 +1,61 @@
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KeeperBMA - Choose Plan</title>
+  <link rel="icon" type="image/png" href="../../assets/keeperbma-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css?v=33" />
+</head>
+<body>
+  <main class="page">
+    <header class="landing-nav">
+      <div class="brand-row">
+        <img class="brand-logo small" src="../../assets/keeperbma-icon.png" alt="KeeperBMA" />
+        <h1>KeeperBMA</h1>
+      </div>
+      <div class="landing-links">
+        <a href="./index.html">Home</a>
+        <a href="./auth.html?mode=signin">Sign In</a>
+      </div>
+    </header>
+
+    <section class="card plan-shell">
+      <h2>Choose Your Plan</h2>
+      <p class="muted">Select a plan first, then continue to Sign Up.</p>
+
+      <label for="planCoupon">Coupon Code (Optional)</label>
+      <input id="planCoupon" placeholder="Enter coupon code" />
+
+      <div class="plan-grid">
+        <article class="plan-option" data-plan="basic">
+          <h3>Basic</h3>
+          <p>$2 / month or $20 / year</p>
+        </article>
+        <article class="plan-option" data-plan="regular">
+          <h3>Regular</h3>
+          <p>$5 / month or $50 / year</p>
+        </article>
+        <article class="plan-option" data-plan="business">
+          <h3>Business</h3>
+          <p>$25 / month or $250 / year</p>
+        </article>
+        <article class="plan-option" data-plan="premium_plus">
+          <h3>Premium Plus</h3>
+          <p>$50-$70 / month or $500-$700 / year</p>
+        </article>
+      </div>
+
+      <div class="row">
+        <button id="btnPlanContinue">Continue to Sign Up</button>
+        <button id="btnPlanBack" class="secondary">Back</button>
+      </div>
+      <p id="planStatus" class="muted"></p>
+    </section>
+  </main>
+
+  <script src="./plans.js?v=1"></script>
+</body>
+</html>

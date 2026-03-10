@@ -406,7 +406,7 @@ class User:
         self._login_attempts[key] = rec
         return False
 
-    def register(self, name=None, pw=None, email=None, phone=None, coupon_code=""):
+    def register(self, name=None, pw=None, email=None, phone=None, coupon_code="", plan_code=None):
         # Backward compatible: legacy caller passes (name, pw).
         if pw is None:
             pw = ""
@@ -423,6 +423,10 @@ class User:
                 raise ValueError("Name is required.")
             coupon_s = str(coupon_code or "").strip()
             is_lifetime = coupon_s == SPECIAL_COUPON_CODE
+            plan_s = str(plan_code or "").strip().lower()
+            allowed_plans = {"basic", "regular", "business", "premium_plus"}
+            if not is_lifetime and plan_s not in allowed_plans:
+                raise ValueError("Plan selection is required.")
         else:
             name_s = str(name or "").strip()
             if not name_s:
@@ -431,6 +435,7 @@ class User:
             phone_s = ""
             coupon_s = ""
             is_lifetime = False
+            plan_s = "basic"
 
         def _create_user_row(u):
             existing_name = u["name"].astype(str).str.strip().str.lower()
@@ -453,7 +458,7 @@ class User:
                 trial_ends_at = ""
                 subscription_started_at = now_iso
             else:
-                plan_code = "basic"
+                plan_code = plan_s
                 subscription_status = "trial"
                 trial_ends_at = (datetime.utcnow() + timedelta(days=DEFAULT_TRIAL_DAYS)).isoformat() + "Z"
                 subscription_started_at = ""

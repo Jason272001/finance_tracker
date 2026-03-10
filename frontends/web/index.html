@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <link rel="stylesheet" href="./styles.css?v=31" />
+  <link rel="stylesheet" href="./styles.css?v=33" />
 </head>
 <body>
   <main class="page">
@@ -51,11 +51,28 @@
 
       <section id="pricing" class="card">
         <h2 id="pricingTitle">Pricing Plans</h2>
+        <p id="pricingHint" class="muted pricing-hint">Choose a plan to continue to Sign Up.</p>
         <div class="price-grid">
-          <article class="price-item"><h3>Basic</h3><p>$2 / month</p></article>
-          <article class="price-item"><h3>Regular</h3><p>$5 / month</p></article>
-          <article class="price-item"><h3>Business</h3><p>$25 / month</p></article>
-          <article class="price-item"><h3>Premium Plus</h3><p>$50-$70 / month</p></article>
+          <article class="price-item">
+            <h3>Basic</h3>
+            <p>$2 / month</p>
+            <button id="btnPickBasic" class="secondary plan-pick-btn" data-signup-plan="basic">Choose Basic</button>
+          </article>
+          <article class="price-item">
+            <h3>Regular</h3>
+            <p>$5 / month</p>
+            <button id="btnPickRegular" class="secondary plan-pick-btn" data-signup-plan="regular">Choose Regular</button>
+          </article>
+          <article class="price-item">
+            <h3>Business</h3>
+            <p>$25 / month</p>
+            <button id="btnPickBusiness" class="secondary plan-pick-btn" data-signup-plan="business">Choose Business</button>
+          </article>
+          <article class="price-item">
+            <h3>Premium Plus</h3>
+            <p>$50-$70 / month</p>
+            <button id="btnPickPremium" class="secondary plan-pick-btn" data-signup-plan="premium_plus">Choose Premium Plus</button>
+          </article>
         </div>
       </section>
 
@@ -230,6 +247,6 @@
     </section>
   </main>
 
-  <script src="./web.js?v=33"></script>
+  <script src="./web.js?v=34"></script>
 </body>
 </html>

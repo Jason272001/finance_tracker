@@ -83,6 +83,16 @@ class RegisterBody(BaseModel):
     phone: str = Field(min_length=7, max_length=40)
     password: str = Field(min_length=10, max_length=200)
     coupon_code: Optional[str] = Field(default="", max_length=64)
+    plan_code: str = Field(min_length=1, max_length=40)
+
+    @field_validator("plan_code")
+    @classmethod
+    def validate_plan_code(cls, v: str) -> str:
+        allowed = {"basic", "regular", "business", "premium_plus"}
+        key = str(v).strip().lower()
+        if key not in allowed:
+            raise ValueError("Invalid plan_code")
+        return key
 
 
 class LoginBody(BaseModel):
@@ -748,6 +758,7 @@ def register(body: RegisterBody):
             email=body.email,
             phone=body.phone,
             coupon_code=body.coupon_code or "",
+            plan_code=body.plan_code,
         )
         profile = User().get_user_by_id(uid) or {}
         subscription = _build_subscription_payload(profile)

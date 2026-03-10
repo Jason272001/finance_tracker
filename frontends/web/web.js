@@ -19,6 +19,8 @@ let state = {
   subscription: {},
   charts: { income: null, expense: null, debt: null },
 };
+const SIGNUP_PLAN_KEY = "keeperbma_signup_plan";
+const ALLOWED_SIGNUP_PLANS = new Set(["basic", "regular", "business", "premium_plus"]);
 
 const I18N = {
   en: {
@@ -40,6 +42,12 @@ const I18N = {
     feat_ai_title: "AI Insights",
     feat_ai_desc: "Get forecasting, spending patterns, and category-level performance insights.",
     pricing_plans: "Pricing Plans",
+    pricing_hint: "Choose a plan to continue to Sign Up.",
+    choose_basic: "Choose Basic",
+    choose_regular: "Choose Regular",
+    choose_business: "Choose Business",
+    choose_premium_plus: "Choose Premium Plus",
+    select_plan_before_register: "Please choose a plan first from Pricing.",
     about_title: "About KeeperBMA",
     about_desc: "KeeperBMA is designed for individuals, families, and business owners who need one scalable platform to manage finances securely across all devices.",
     language: "Language",
@@ -346,6 +354,28 @@ function t(key) {
   return pack[key] || I18N.en[key] || key;
 }
 
+function normalizeSignupPlan(planCode) {
+  const key = String(planCode || "").trim().toLowerCase();
+  return ALLOWED_SIGNUP_PLANS.has(key) ? key : "";
+}
+
+function setPendingSignupPlan(planCode) {
+  const key = normalizeSignupPlan(planCode);
+  if (key) localStorage.setItem(SIGNUP_PLAN_KEY, key);
+  return key;
+}
+
+function getPendingSignupPlan() {
+  return normalizeSignupPlan(localStorage.getItem(SIGNUP_PLAN_KEY));
+}
+
+function setPricingHint(msg, isError = false) {
+  const el = $("pricingHint");
+  if (!el) return;
+  el.textContent = msg || t("pricing_hint");
+  el.classList.toggle("error", Boolean(isError));
+}
+
 function fmtMoney(v) {
   const n = Number(v || 0);
   return `$${n.toFixed(2)}`;
@@ -395,6 +425,10 @@ function applyLanguage(lang) {
   setText("featAiTitle", "feat_ai_title");
   setText("featAiDesc", "feat_ai_desc");
   setText("pricingTitle", "pricing_plans");
+  setText("btnPickBasic", "choose_basic");
+  setText("btnPickRegular", "choose_regular");
+  setText("btnPickBusiness", "choose_business");
+  setText("btnPickPremium", "choose_premium_plus");
   setText("aboutTitle", "about_title");
   setText("aboutDesc", "about_desc");
   setText("btnLogout", "logout");
@@ -461,6 +495,7 @@ function applyLanguage(lang) {
   if ($("txAmount")) $("txAmount").placeholder = t("amount");
   if ($("txCategory")) $("txCategory").placeholder = t("category");
   if ($("txNote")) $("txNote").placeholder = t("note");
+  setPricingHint("", false);
   if ($("profileUsername")) $("profileUsername").placeholder = t("profile_username");
   if ($("profileEmail")) $("profileEmail").placeholder = "name@example.com";
   if ($("profilePhone")) $("profilePhone").placeholder = "+1 5551234567";
@@ -541,9 +576,19 @@ function showLanding() {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function showAuth(mode = "login") {
-  const route = mode === "register" ? "signup" : "signin";
-  window.location.href = `./auth.html?mode=${route}`;
+function openPlansPage(planCode = "") {
+  const selected = setPendingSignupPlan(planCode);
+  const q = selected ? `?plan=${encodeURIComponent(selected)}` : "";
+  window.location.href = `./plans.html${q}`;
+}
+
+function showAuth(mode = "login", opts = {}) {
+  const isRegister = mode === "register";
+  if (isRegister) {
+    openPlansPage(opts.planCode || "");
+    return;
+  }
+  window.location.href = "./auth.html?mode=signin";
 }
 
 async function api(path, opts = {}) {
@@ -1120,6 +1165,12 @@ window.addEventListener("load", async () => {
   if ($("btnNavRegister")) $("btnNavRegister").onclick = () => showAuth("register");
   if ($("btnHeroLogin")) $("btnHeroLogin").onclick = () => showAuth("login");
   if ($("btnHeroRegister")) $("btnHeroRegister").onclick = () => showAuth("register");
+  document.querySelectorAll("[data-signup-plan]").forEach((btn) => {
+    btn.onclick = () => {
+      const planCode = String(btn.getAttribute("data-signup-plan") || "").trim().toLowerCase();
+      showAuth("register", { planCode });
+    };
+  });
   if ($("btnOpenSettings")) $("btnOpenSettings").onclick = () => { window.location.href = "./settings.html"; };
   if ($("profileImageInput")) {
     $("profileImageInput").onchange = (e) => {

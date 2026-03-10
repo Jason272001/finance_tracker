@@ -58,6 +58,9 @@ body {
 }
 .feature-item h3, .price-item h3 { margin: 0 0 8px; }
 .feature-item p, .price-item p { margin: 0; color: #3e5471; }
+.pricing-hint { margin: 0 0 10px; }
+.pricing-hint.error { color: #b42318; font-weight: 700; }
+.plan-pick-btn { margin-top: 10px; width: 100%; }
 .auth-top {
   display: flex;
   justify-content: space-between;
@@ -83,6 +86,33 @@ body {
 .tab.active { color: #196dd8; border-bottom-color: #196dd8; }
 .auth-card { display: flex; flex-direction: column; gap: 10px; }
 .full { width: 100%; }
+#signupPlanBanner {
+  border: 1px solid #dbe8fa;
+  border-radius: 10px;
+  background: #f8fbff;
+  padding: 10px 12px;
+  margin-bottom: 2px;
+}
+.plan-shell { max-width: 980px; margin: 16px auto; }
+.plan-grid {
+  margin: 12px 0;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+}
+.plan-option {
+  border: 1px solid #dbe8fa;
+  border-radius: 12px;
+  background: #f8fbff;
+  padding: 12px;
+  cursor: pointer;
+}
+.plan-option h3 { margin: 0 0 6px; }
+.plan-option p { margin: 0; color: #3e5471; }
+.plan-option.active {
+  border-color: #23a35c;
+  box-shadow: 0 0 0 2px rgba(35, 163, 92, 0.2) inset;
+}
 
 .top {
   background: linear-gradient(135deg, #165ec6, #23a35c);
@@ -266,6 +296,7 @@ th { color: #3e5471; font-weight: 700; }
   .landing-cta { flex-direction: column; }
   .landing-cta button { width: 100%; }
   .feature-grid, .price-grid { grid-template-columns: 1fr; }
+  .plan-grid { grid-template-columns: 1fr; }
   table.mobile-stack thead { display: none; }
   table.mobile-stack,
   table.mobile-stack tbody,
