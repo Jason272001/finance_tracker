@@ -94,6 +94,28 @@ body {
   margin-bottom: 2px;
 }
 .plan-shell { max-width: 980px; margin: 16px auto; }
+.billing-cycle-wrap {
+  margin: 8px 0 12px;
+}
+.billing-cycle-label {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.billing-cycle-toggle {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.billing-cycle-toggle button {
+  min-width: 140px;
+}
+.billing-cycle-toggle button.active {
+  background: #1e74d6;
+  color: #fff;
+}
+.billing-cycle-hint {
+  margin-top: 6px;
+}
 .plan-grid {
   margin: 12px 0;
   display: grid;

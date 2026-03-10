@@ -5,11 +5,14 @@ const state = {
   mode: "signin",
   lang: "en",
   signupPlan: "",
+  signupBillingCycle: "monthly",
 };
 
 const SIGNUP_PLAN_KEY = "keeperbma_signup_plan";
 const SIGNUP_COUPON_KEY = "keeperbma_signup_coupon";
+const BILLING_CYCLE_KEY = "keeperbma_billing_cycle";
 const ALLOWED_SIGNUP_PLANS = new Set(["basic", "regular", "business", "premium_plus"]);
+const ALLOWED_BILLING_CYCLES = new Set(["monthly", "annual"]);
 const DEFAULT_BILLING_CYCLE = "monthly";
 
 const AUTH_I18N = {
@@ -27,6 +30,11 @@ function authT(key) {
 function normalizeSignupPlan(planCode) {
   const key = String(planCode || "").trim().toLowerCase();
   return ALLOWED_SIGNUP_PLANS.has(key) ? key : "";
+}
+
+function normalizeBillingCycle(cycle) {
+  const key = String(cycle || "").trim().toLowerCase();
+  return ALLOWED_BILLING_CYCLES.has(key) ? key : DEFAULT_BILLING_CYCLE;
 }
 
 function planLabel(planCode) {
@@ -127,9 +135,10 @@ function buildAppUrl(pathWithQuery) {
   return new URL(pathWithQuery, window.location.href).toString();
 }
 
-async function startPostSignupBilling(userId, planCode) {
+async function startPostSignupBilling(userId, planCode, billingCycle = DEFAULT_BILLING_CYCLE) {
   const uid = Number(userId || 0);
   const plan = normalizeSignupPlan(planCode);
+  const cycle = normalizeBillingCycle(billingCycle);
   if (!uid || !plan) return false;
 
   const out = await api("/billing/checkout", {
@@ -137,7 +146,7 @@ async function startPostSignupBilling(userId, planCode) {
     body: JSON.stringify({
       user_id: uid,
       plan_code: plan,
-      billing_cycle: DEFAULT_BILLING_CYCLE,
+      billing_cycle: cycle,
       success_url: buildAppUrl("./settings.html?billing=success"),
       cancel_url: buildAppUrl("./settings.html?billing=cancel"),
     }),
@@ -184,10 +193,14 @@ window.addEventListener("load", async () => {
   const q = new URLSearchParams(window.location.search);
   const explicitMode = String(q.get("mode") || "").trim().toLowerCase();
   const queryPlan = normalizeSignupPlan(q.get("plan"));
+  const rawQueryCycle = String(q.get("cycle") || "").trim().toLowerCase();
+  const queryCycle = rawQueryCycle ? normalizeBillingCycle(rawQueryCycle) : "";
   const queryCoupon = String(q.get("coupon") || "").trim();
   if (queryPlan) localStorage.setItem(SIGNUP_PLAN_KEY, queryPlan);
+  if (queryCycle) localStorage.setItem(BILLING_CYCLE_KEY, queryCycle);
   if (queryCoupon) localStorage.setItem(SIGNUP_COUPON_KEY, queryCoupon);
   state.signupPlan = queryPlan || normalizeSignupPlan(localStorage.getItem(SIGNUP_PLAN_KEY));
+  state.signupBillingCycle = queryCycle || normalizeBillingCycle(localStorage.getItem(BILLING_CYCLE_KEY));
   const savedCoupon = String(localStorage.getItem(SIGNUP_COUPON_KEY) || "");
   const savedLang = String(localStorage.getItem("keeperbma_lang") || "en");
   state.lang = AUTH_I18N[savedLang] ? savedLang : "en";
@@ -286,6 +299,7 @@ window.addEventListener("load", async () => {
         });
         const token = String(out.token || "");
         if (token) localStorage.setItem("keeperbma_token", token);
+        localStorage.setItem(BILLING_CYCLE_KEY, normalizeBillingCycle(state.signupBillingCycle));
         localStorage.removeItem(SIGNUP_PLAN_KEY);
         localStorage.removeItem(SIGNUP_COUPON_KEY);
         const isLifetime = Boolean(out.is_lifetime || out.lifetime_access);
@@ -297,7 +311,7 @@ window.addEventListener("load", async () => {
 
         setStatus("Account created. Redirecting to billing...");
         try {
-          await startPostSignupBilling(out.user_id, signupPlan);
+          await startPostSignupBilling(out.user_id, signupPlan, state.signupBillingCycle);
           return;
         } catch (billingErr) {
           console.error("Billing redirect failed:", billingErr);
