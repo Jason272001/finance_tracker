@@ -10,6 +10,7 @@ const state = {
 const SIGNUP_PLAN_KEY = "keeperbma_signup_plan";
 const SIGNUP_COUPON_KEY = "keeperbma_signup_coupon";
 const ALLOWED_SIGNUP_PLANS = new Set(["basic", "regular", "business", "premium_plus"]);
+const DEFAULT_BILLING_CYCLE = "monthly";
 
 const AUTH_I18N = {
   en: { signin: "Sign In", signup: "Sign Up", recover: "Recover", username: "Username", password: "Password", new_password: "New Password", confirm_password: "Confirm Password", forgot: "Forgot Password?", send_code: "Send Recovery Code", reset_password: "Reset Password", recovery_sent: "Recovery code sent. Check your email.", signup_ok: "Sign up successful. Redirecting...", signup_plan_selected: "Selected Plan", choose_plan_first: "Please choose a plan first from Home > Pricing.", plan_basic: "Basic", plan_regular: "Regular", plan_business: "Business", plan_premium_plus: "Premium Plus" },
@@ -122,6 +123,34 @@ function errMessage(e) {
   }
 }
 
+function buildAppUrl(pathWithQuery) {
+  return new URL(pathWithQuery, window.location.href).toString();
+}
+
+async function startPostSignupBilling(userId, planCode) {
+  const uid = Number(userId || 0);
+  const plan = normalizeSignupPlan(planCode);
+  if (!uid || !plan) return false;
+
+  const out = await api("/billing/checkout", {
+    method: "POST",
+    body: JSON.stringify({
+      user_id: uid,
+      plan_code: plan,
+      billing_cycle: DEFAULT_BILLING_CYCLE,
+      success_url: buildAppUrl("./settings.html?billing=success"),
+      cancel_url: buildAppUrl("./settings.html?billing=cancel"),
+    }),
+  });
+
+  const checkoutUrl = String(out?.url || "").trim();
+  if (!checkoutUrl) {
+    throw new Error("Billing checkout URL was not returned.");
+  }
+  window.location.href = checkoutUrl;
+  return true;
+}
+
 async function api(path, opts = {}) {
   const headers = { ...(opts.headers || {}) };
   if (opts.body && !Object.keys(headers).some((k) => String(k).toLowerCase() === "content-type")) {
@@ -153,6 +182,7 @@ async function api(path, opts = {}) {
 
 window.addEventListener("load", async () => {
   const q = new URLSearchParams(window.location.search);
+  const explicitMode = String(q.get("mode") || "").trim().toLowerCase();
   const queryPlan = normalizeSignupPlan(q.get("plan"));
   const queryCoupon = String(q.get("coupon") || "").trim();
   if (queryPlan) localStorage.setItem(SIGNUP_PLAN_KEY, queryPlan);
@@ -213,19 +243,25 @@ window.addEventListener("load", async () => {
       }
 
       if (state.mode === "signup") {
-        if (!state.signupPlan) {
+        const signupPlan = normalizeSignupPlan(state.signupPlan);
+        if (!signupPlan) {
           setStatus(authT("choose_plan_first"));
           return;
         }
         const countryCode = $("authCountryCode").value.trim();
         const localPhone = $("authPhoneLocal").value.trim();
         const normalizedLocalPhone = localPhone.replace(/[^\d]/g, "");
+        const couponRaw = String($("authCoupon").value || "").trim();
+        if (couponRaw.length > 64) {
+          setStatus("Coupon code must be 64 characters or less.");
+          return;
+        }
         const payload = {
           name,
           email: $("authEmail").value.trim(),
           phone: `${countryCode} ${normalizedLocalPhone}`.trim(),
-          coupon_code: $("authCoupon").value.trim(),
-          plan_code: state.signupPlan,
+          coupon_code: couponRaw,
+          plan_code: signupPlan,
           password,
         };
         if (password !== password2) {
@@ -252,8 +288,24 @@ window.addEventListener("load", async () => {
         if (token) localStorage.setItem("keeperbma_token", token);
         localStorage.removeItem(SIGNUP_PLAN_KEY);
         localStorage.removeItem(SIGNUP_COUPON_KEY);
-        setStatus(authT("signup_ok"));
-        window.location.href = "./index.html?app=1";
+        const isLifetime = Boolean(out.is_lifetime || out.lifetime_access);
+        if (isLifetime) {
+          setStatus(authT("signup_ok"));
+          window.location.href = "./index.html?app=1";
+          return;
+        }
+
+        setStatus("Account created. Redirecting to billing...");
+        try {
+          await startPostSignupBilling(out.user_id, signupPlan);
+          return;
+        } catch (billingErr) {
+          console.error("Billing redirect failed:", billingErr);
+          setStatus(
+            "Account created. Could not open checkout automatically. Redirecting to billing settings..."
+          );
+        }
+        window.location.href = "./settings.html?billing=required";
         return;
       }
 
@@ -298,9 +350,12 @@ window.addEventListener("load", async () => {
     }
   };
 
-  // If already signed in, skip this page.
-  try {
-    await api("/auth/session");
-    window.location.href = "./index.html?app=1";
-  } catch (_) {}
+  // If user explicitly opens sign-in/sign-up/recover, do not auto-redirect.
+  // This allows switching accounts without forcing logout first.
+  if (!explicitMode) {
+    try {
+      await api("/auth/session");
+      window.location.href = "./index.html?app=1";
+    } catch (_) {}
+  }
 });

@@ -24,38 +24,73 @@
 
     <section class="card plan-shell">
       <h2>Choose Your Plan</h2>
-      <p class="muted">Select a plan first, then continue to Sign Up.</p>
-
-      <label for="planCoupon">Coupon Code (Optional)</label>
-      <input id="planCoupon" placeholder="Enter coupon code" />
+      <p class="muted">Each plan has its own coupon field. Enter a coupon only for the plan you choose.</p>
 
       <div class="plan-grid">
         <article class="plan-option" data-plan="basic">
           <h3>Basic</h3>
           <p>$2 / month or $20 / year</p>
+          <label for="planCouponBasic">Coupon Code (Optional)</label>
+          <input
+            id="planCouponBasic"
+            class="plan-coupon-input"
+            data-coupon-plan="basic"
+            placeholder="Coupon for Basic"
+            maxlength="64"
+          />
+          <button class="plan-continue-btn" data-plan-continue="basic">Continue with Basic</button>
         </article>
+
         <article class="plan-option" data-plan="regular">
           <h3>Regular</h3>
           <p>$5 / month or $50 / year</p>
+          <label for="planCouponRegular">Coupon Code (Optional)</label>
+          <input
+            id="planCouponRegular"
+            class="plan-coupon-input"
+            data-coupon-plan="regular"
+            placeholder="Coupon for Regular"
+            maxlength="64"
+          />
+          <button class="plan-continue-btn" data-plan-continue="regular">Continue with Regular</button>
         </article>
+
         <article class="plan-option" data-plan="business">
           <h3>Business</h3>
           <p>$25 / month or $250 / year</p>
+          <label for="planCouponBusiness">Coupon Code (Optional)</label>
+          <input
+            id="planCouponBusiness"
+            class="plan-coupon-input"
+            data-coupon-plan="business"
+            placeholder="Coupon for Business"
+            maxlength="64"
+          />
+          <button class="plan-continue-btn" data-plan-continue="business">Continue with Business</button>
         </article>
+
         <article class="plan-option" data-plan="premium_plus">
           <h3>Premium Plus</h3>
           <p>$50-$70 / month or $500-$700 / year</p>
+          <label for="planCouponPremium">Coupon Code (Optional)</label>
+          <input
+            id="planCouponPremium"
+            class="plan-coupon-input"
+            data-coupon-plan="premium_plus"
+            placeholder="Coupon for Premium Plus"
+            maxlength="64"
+          />
+          <button class="plan-continue-btn" data-plan-continue="premium_plus">Continue with Premium Plus</button>
         </article>
       </div>
 
       <div class="row">
-        <button id="btnPlanContinue">Continue to Sign Up</button>
         <button id="btnPlanBack" class="secondary">Back</button>
       </div>
       <p id="planStatus" class="muted"></p>
     </section>
   </main>
 
-  <script src="./plans.js?v=1"></script>
+  <script src="./plans.js?v=2"></script>
 </body>
 </html>

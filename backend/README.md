@@ -60,6 +60,7 @@ Set these in Render to enable Stripe subscription checkout:
 - `BILLING_SUCCESS_URL` (optional)
 - `BILLING_CANCEL_URL` (optional)
 - `BILLING_RETURN_URL` (optional)
+- `BILLING_ALLOWED_HOSTS` (optional comma-separated host allowlist for billing redirects)
 - `REFUND_FULL_WINDOW_DAYS` (default `7`)
 
 ## Notes

@@ -54,6 +54,21 @@ BILLING_SUCCESS_URL = str(os.getenv("BILLING_SUCCESS_URL", "https://keeperbma.co
 BILLING_CANCEL_URL = str(os.getenv("BILLING_CANCEL_URL", "https://keeperbma.com/settings.html?billing=cancel")).strip()
 BILLING_RETURN_URL = str(os.getenv("BILLING_RETURN_URL", "https://keeperbma.com/settings.html")).strip()
 REFUND_FULL_WINDOW_DAYS = int(os.getenv("REFUND_FULL_WINDOW_DAYS", "7"))
+_billing_hosts_raw = str(
+    os.getenv(
+        "BILLING_ALLOWED_HOSTS",
+        "keeperbma.com,www.keeperbma.com,jason272001.github.io,localhost,127.0.0.1",
+    )
+).strip()
+BILLING_ALLOWED_HOSTS = {h.strip().lower() for h in _billing_hosts_raw.split(",") if h.strip()}
+if not BILLING_ALLOWED_HOSTS:
+    BILLING_ALLOWED_HOSTS = {
+        "keeperbma.com",
+        "www.keeperbma.com",
+        "jason272001.github.io",
+        "localhost",
+        "127.0.0.1",
+    }
 
 _cors_raw = str(
     os.getenv(
@@ -666,6 +681,32 @@ def _stripe_compute_refund_for_cancel(subscription: dict, amount_paid: int, max_
     return min(prorated, int(max_refundable)), "annual_prorated_refund"
 
 
+def _sanitize_billing_redirect_url(raw_url: Optional[str], fallback_url: str) -> str:
+    def _is_allowed(parsed) -> bool:
+        host = str(parsed.hostname or "").strip().lower()
+        scheme = str(parsed.scheme or "").strip().lower()
+        if not host or host not in BILLING_ALLOWED_HOSTS:
+            return False
+        if scheme == "https":
+            return True
+        if scheme == "http" and host in {"localhost", "127.0.0.1"}:
+            return True
+        return False
+
+    candidates = [str(raw_url or "").strip(), str(fallback_url or "").strip()]
+    for candidate in candidates:
+        if not candidate:
+            continue
+        try:
+            parsed = urllib.parse.urlparse(candidate)
+        except Exception:
+            continue
+        if _is_allowed(parsed):
+            safe = parsed._replace(fragment="")
+            return urllib.parse.urlunparse(safe)
+    raise HTTPException(status_code=400, detail="Invalid billing redirect URL.")
+
+
 def _parse_stripe_signature(sig_header: str) -> tuple[Optional[int], Optional[str]]:
     if not sig_header:
         return None, None
@@ -702,11 +743,11 @@ def _verify_stripe_webhook_signature(payload: bytes, sig_header: str) -> bool:
 
 
 def _extract_token(request: Request, authorization: Optional[str]) -> str:
-    if authorization and authorization.startswith("Bearer "):
-        return authorization.split(" ", 1)[1].strip()
     cookie_token = request.cookies.get(SESSION_COOKIE_NAME)
     if cookie_token:
         return cookie_token
+    if authorization and authorization.startswith("Bearer "):
+        return authorization.split(" ", 1)[1].strip()
     raise HTTPException(status_code=401, detail="Missing auth token")
 
 
@@ -985,8 +1026,8 @@ def billing_checkout(
             status_code=400,
             detail=f"Stripe price not configured for plan '{plan_code}' ({billing_cycle}).",
         )
-    success_url = str(body.success_url or BILLING_SUCCESS_URL).strip() or BILLING_SUCCESS_URL
-    cancel_url = str(body.cancel_url or BILLING_CANCEL_URL).strip() or BILLING_CANCEL_URL
+    success_url = _sanitize_billing_redirect_url(body.success_url, BILLING_SUCCESS_URL)
+    cancel_url = _sanitize_billing_redirect_url(body.cancel_url, BILLING_CANCEL_URL)
     email = str(profile.get("email", "")).strip()
     if not email:
         raise HTTPException(status_code=400, detail="User email is required for billing.")
@@ -1039,7 +1080,7 @@ def billing_checkout_embedded(
             status_code=400,
             detail=f"Stripe price not configured for plan '{plan_code}' ({billing_cycle}).",
         )
-    return_url = str(body.return_url or BILLING_RETURN_URL).strip() or BILLING_RETURN_URL
+    return_url = _sanitize_billing_redirect_url(body.return_url, BILLING_RETURN_URL)
     email = str(profile.get("email", "")).strip()
     if not email:
         raise HTTPException(status_code=400, detail="User email is required for billing.")
@@ -1086,7 +1127,7 @@ def billing_portal(
     customer_id = str(profile.get("billing_customer_id", "")).strip()
     if not customer_id:
         raise HTTPException(status_code=400, detail="No Stripe customer found for this user.")
-    return_url = str(body.return_url or BILLING_RETURN_URL).strip() or BILLING_RETURN_URL
+    return_url = _sanitize_billing_redirect_url(body.return_url, BILLING_RETURN_URL)
     out = _stripe_api_request("/v1/billing_portal/sessions", {
         "customer": customer_id,
         "return_url": return_url,
