@@ -39,7 +39,7 @@ DB_IS_SQL = bool(DATABASE_URL) or DB_BACKEND in {"mysql", "postgres", "postgresq
 PW_SCHEME = "pbkdf2_sha256"
 PW_ITERATIONS = 210000
 SPECIAL_COUPON_CODE = "KMAK1957/1965"
-DEFAULT_TRIAL_DAYS = int(os.getenv("DEFAULT_TRIAL_DAYS", "14"))
+DEFAULT_TRIAL_DAYS = int(os.getenv("DEFAULT_TRIAL_DAYS", "60"))
 # ---------------------------
 # Internal loader (STRICT)
 # ---------------------------

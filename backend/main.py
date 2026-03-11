@@ -54,6 +54,7 @@ BILLING_SUCCESS_URL = str(os.getenv("BILLING_SUCCESS_URL", "https://keeperbma.co
 BILLING_CANCEL_URL = str(os.getenv("BILLING_CANCEL_URL", "https://keeperbma.com/settings.html?billing=cancel")).strip()
 BILLING_RETURN_URL = str(os.getenv("BILLING_RETURN_URL", "https://keeperbma.com/settings.html")).strip()
 REFUND_FULL_WINDOW_DAYS = int(os.getenv("REFUND_FULL_WINDOW_DAYS", "7"))
+BILLING_TRIAL_DAYS = int(os.getenv("BILLING_TRIAL_DAYS", "60"))
 _billing_hosts_raw = str(
     os.getenv(
         "BILLING_ALLOWED_HOSTS",
@@ -1031,9 +1032,17 @@ def billing_checkout(
     email = str(profile.get("email", "")).strip()
     if not email:
         raise HTTPException(status_code=400, detail="User email is required for billing.")
+    existing_subscription_id = str(profile.get("billing_subscription_id", "")).strip()
+    subscription_status = str(profile.get("subscription_status", "")).strip().lower()
+    apply_trial = bool(
+        BILLING_TRIAL_DAYS > 0
+        and not existing_subscription_id
+        and subscription_status in {"", "trial", "incomplete"}
+    )
 
     form = {
         "mode": "subscription",
+        "payment_method_collection": "always",
         "success_url": success_url,
         "cancel_url": cancel_url,
         "allow_promotion_codes": "true",
@@ -1044,6 +1053,9 @@ def billing_checkout(
         "line_items[0][price]": price_id,
         "line_items[0][quantity]": "1",
     }
+    if apply_trial:
+        form["subscription_data[trial_period_days]"] = str(int(BILLING_TRIAL_DAYS))
+        form["subscription_data[trial_settings][end_behavior][missing_payment_method]"] = "cancel"
     customer_id = str(profile.get("billing_customer_id", "")).strip()
     if customer_id:
         form["customer"] = customer_id
@@ -1084,10 +1096,18 @@ def billing_checkout_embedded(
     email = str(profile.get("email", "")).strip()
     if not email:
         raise HTTPException(status_code=400, detail="User email is required for billing.")
+    existing_subscription_id = str(profile.get("billing_subscription_id", "")).strip()
+    subscription_status = str(profile.get("subscription_status", "")).strip().lower()
+    apply_trial = bool(
+        BILLING_TRIAL_DAYS > 0
+        and not existing_subscription_id
+        and subscription_status in {"", "trial", "incomplete"}
+    )
 
     form = {
         "mode": "subscription",
         "ui_mode": "embedded",
+        "payment_method_collection": "always",
         "return_url": return_url,
         "allow_promotion_codes": "true",
         "client_reference_id": str(body.user_id),
@@ -1097,6 +1117,9 @@ def billing_checkout_embedded(
         "line_items[0][price]": price_id,
         "line_items[0][quantity]": "1",
     }
+    if apply_trial:
+        form["subscription_data[trial_period_days]"] = str(int(BILLING_TRIAL_DAYS))
+        form["subscription_data[trial_settings][end_behavior][missing_payment_method]"] = "cancel"
     customer_id = str(profile.get("billing_customer_id", "")).strip()
     if customer_id:
         form["customer"] = customer_id

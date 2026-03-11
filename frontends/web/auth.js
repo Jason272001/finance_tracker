@@ -338,7 +338,7 @@ window.addEventListener("load", async () => {
         } catch (billingErr) {
           console.error("Billing redirect failed:", billingErr);
           setStatus(
-            "Account created. Could not open checkout automatically. Redirecting to billing settings..."
+            `Account created. Checkout failed: ${errMessage(billingErr)}. Redirecting to billing settings...`
           );
         }
         window.location.href = "./settings.html?billing=required";
