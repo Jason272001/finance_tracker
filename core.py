@@ -1188,6 +1188,14 @@ class Account:
         df["balance"] = pd.to_numeric(df["balance"], errors="coerce")
         return df
 
+    def _normalize_account_type_value(self, account_type):
+        key = str(account_type or "").strip().lower().replace(" ", "_")
+        if key == "creditcard":
+            key = "credit_card"
+        if key == "savings":
+            key = "saving"
+        return key
+
     def _next_id(self, df):
         if df.empty:
             return 1
@@ -1224,6 +1232,7 @@ class Account:
     def add(self, account_name, account_type, group_name, balance=0.0, user_id=None):
         if user_id is None:
             raise ValueError("Need to login")
+        account_type = self._normalize_account_type_value(account_type)
         with _file_lock(self.path):
             df = self._load()
             next_id = self._next_id(df)
@@ -1279,6 +1288,8 @@ class Account:
             for k, v in changes.items():
                 if k not in allowed:
                     continue
+                if k == "account_type":
+                    v = self._normalize_account_type_value(v)
                 if k == "balance":
                     v = float(v)
                 df.at[i, k] = v

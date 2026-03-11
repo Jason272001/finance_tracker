@@ -6,6 +6,7 @@ const state = {
   userId: 0,
   userName: "",
   currentLang: "en",
+  theme: "light",
   profile: {},
   subscription: {},
   billingConfig: {},
@@ -83,6 +84,20 @@ const DEFAULT_BILLING_PLANS = [
 function t(key) {
   const pack = I18N[state.currentLang] || I18N.en;
   return pack[key] || I18N.en[key] || key;
+}
+
+function applyTheme(theme) {
+  state.theme = String(theme || "").trim().toLowerCase() === "dark" ? "dark" : "light";
+  localStorage.setItem("keeperbma_theme", state.theme);
+  document.documentElement.dataset.theme = state.theme;
+  document.documentElement.style.colorScheme = state.theme;
+  const btn = $("settingsThemeToggle");
+  if (btn) {
+    btn.setAttribute("aria-pressed", String(state.theme === "dark"));
+    btn.setAttribute("data-theme", state.theme);
+  }
+  const label = $("settingsThemeLabel");
+  if (label) label.textContent = `Theme: ${state.theme === "dark" ? "Dark" : "Light"}`;
 }
 
 function setText(id, key) {
@@ -424,8 +439,15 @@ async function loadPageData() {
 window.addEventListener("load", async () => {
   state.authToken = String(localStorage.getItem("keeperbma_token") || "");
   const savedLang = String(localStorage.getItem("keeperbma_lang") || "en");
+  state.theme = String(localStorage.getItem("keeperbma_theme") || "light").trim().toLowerCase() === "dark" ? "dark" : "light";
   if ($("appLangSelect")) $("appLangSelect").onchange = (e) => applyLanguage(String(e.target.value || "en"));
   applyLanguage(savedLang);
+  applyTheme(state.theme);
+  if ($("settingsThemeToggle")) {
+    $("settingsThemeToggle").onclick = () => {
+      applyTheme(state.theme === "dark" ? "light" : "dark");
+    };
+  }
   state.billingCycle = String(localStorage.getItem("keeperbma_billing_cycle") || "monthly").toLowerCase();
   if (!["monthly", "annual"].includes(state.billingCycle)) state.billingCycle = "monthly";
   if ($("billingCycleSelect")) {

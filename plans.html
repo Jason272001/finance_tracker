@@ -1,10 +1,11 @@
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>KeeperBMA - Choose Plan</title>
   <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; block-all-mixed-content" />
-  <link rel="icon" type="image/png" href="../../assets/keeperbma-icon.png" />
+  <link rel="icon" type="image/png" href="./assets/keeperbma-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -17,13 +18,13 @@
     }
     document.documentElement.dataset.theme = localStorage.getItem("keeperbma_theme") || "light";
   </script>
-  <link rel="stylesheet" href="./styles.css?v=38" />
+  <link rel="stylesheet" href="./frontends/web/styles.css?v=38" />
 </head>
 <body>
   <main class="page">
     <header class="landing-nav">
       <div class="brand-row">
-        <img class="brand-logo small" src="../../assets/keeperbma-icon.png" alt="KeeperBMA" />
+        <img class="brand-logo small" src="./assets/keeperbma-icon.png" alt="KeeperBMA" />
         <h1>KeeperBMA</h1>
       </div>
       <div class="landing-links">
@@ -80,13 +81,7 @@
           <h3>Basic</h3>
           <p class="plan-price" data-plan-price="basic">$2 / month or $20 / year</p>
           <label for="planCouponBasic">Coupon Code (Optional)</label>
-          <input
-            id="planCouponBasic"
-            class="plan-coupon-input"
-            data-coupon-plan="basic"
-            placeholder="Coupon for Basic"
-            maxlength="64"
-          />
+          <input id="planCouponBasic" class="plan-coupon-input" data-coupon-plan="basic" placeholder="Coupon for Basic" maxlength="64" />
           <button class="plan-continue-btn" data-plan-continue="basic">Continue with Basic</button>
         </article>
 
@@ -94,13 +89,7 @@
           <h3>Regular</h3>
           <p class="plan-price" data-plan-price="regular">$5 / month or $50 / year</p>
           <label for="planCouponRegular">Coupon Code (Optional)</label>
-          <input
-            id="planCouponRegular"
-            class="plan-coupon-input"
-            data-coupon-plan="regular"
-            placeholder="Coupon for Regular"
-            maxlength="64"
-          />
+          <input id="planCouponRegular" class="plan-coupon-input" data-coupon-plan="regular" placeholder="Coupon for Regular" maxlength="64" />
           <button class="plan-continue-btn" data-plan-continue="regular">Continue with Regular</button>
         </article>
 
@@ -108,13 +97,7 @@
           <h3>Business</h3>
           <p class="plan-price" data-plan-price="business">$25 / month or $250 / year</p>
           <label for="planCouponBusiness">Coupon Code (Optional)</label>
-          <input
-            id="planCouponBusiness"
-            class="plan-coupon-input"
-            data-coupon-plan="business"
-            placeholder="Coupon for Business"
-            maxlength="64"
-          />
+          <input id="planCouponBusiness" class="plan-coupon-input" data-coupon-plan="business" placeholder="Coupon for Business" maxlength="64" />
           <button class="plan-continue-btn" data-plan-continue="business">Continue with Business</button>
         </article>
 
@@ -122,13 +105,7 @@
           <h3>Premium Plus</h3>
           <p class="plan-price" data-plan-price="premium_plus">$50 / month or $500 / year</p>
           <label for="planCouponPremium">Coupon Code (Optional)</label>
-          <input
-            id="planCouponPremium"
-            class="plan-coupon-input"
-            data-coupon-plan="premium_plus"
-            placeholder="Coupon for Premium Plus"
-            maxlength="64"
-          />
+          <input id="planCouponPremium" class="plan-coupon-input" data-coupon-plan="premium_plus" placeholder="Coupon for Premium Plus" maxlength="64" />
           <button class="plan-continue-btn" data-plan-continue="premium_plus">Continue with Premium Plus</button>
         </article>
 
@@ -136,13 +113,7 @@
           <h3>Diamond</h3>
           <p class="plan-price" data-plan-price="diamond">$70 / month or $700 / year</p>
           <label for="planCouponDiamond">Coupon Code (Optional)</label>
-          <input
-            id="planCouponDiamond"
-            class="plan-coupon-input"
-            data-coupon-plan="diamond"
-            placeholder="Coupon for Diamond"
-            maxlength="64"
-          />
+          <input id="planCouponDiamond" class="plan-coupon-input" data-coupon-plan="diamond" placeholder="Coupon for Diamond" maxlength="64" />
           <button class="plan-continue-btn" data-plan-continue="diamond">Continue with Diamond</button>
         </article>
       </div>
@@ -154,6 +125,6 @@
     </section>
   </main>
 
-  <script src="./plans.js?v=8"></script>
+  <script src="./frontends/web/plans.js?v=8"></script>
 </body>
 </html>

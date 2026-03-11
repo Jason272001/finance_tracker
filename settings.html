@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>KeeperBMA Settings</title>
   <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; block-all-mixed-content" />
-  <link rel="icon" type="image/png" href="../../assets/keeperbma-icon.png" />
+  <link rel="icon" type="image/png" href="./assets/keeperbma-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -18,7 +18,7 @@
     }
     document.documentElement.dataset.theme = localStorage.getItem("keeperbma_theme") || "light";
   </script>
-  <link rel="stylesheet" href="./styles.css?v=38" />
+  <link rel="stylesheet" href="./frontends/web/styles.css?v=38" />
   <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
@@ -26,7 +26,7 @@
     <section class="app-shell">
       <header class="top">
         <div class="top-left">
-          <img id="topLogo" class="top-logo" src="../../assets/keeperbma-icon.png" alt="KeeperBMA logo" />
+          <img id="topLogo" class="top-logo" src="./assets/keeperbma-icon.png" alt="KeeperBMA logo" />
           <h1>KeeperBMA</h1>
         </div>
         <div class="top-right">
@@ -57,7 +57,7 @@
         <h2 id="profileTitle">Profile & Settings</h2>
         <div class="row">
           <div class="profile-avatar-box">
-            <img id="profileAvatarPreview" class="profile-avatar" src="../../assets/keeperbma-icon.png" alt="Profile" />
+            <img id="profileAvatarPreview" class="profile-avatar" src="./assets/keeperbma-icon.png" alt="Profile" />
             <input id="profileImageInput" type="file" accept="image/*" />
             <button id="btnRemoveProfileImage" class="danger">Remove Photo</button>
           </div>
@@ -143,6 +143,6 @@
       </section>
     </section>
   </main>
-  <script src="./settings.js?v=9"></script>
+  <script src="./frontends/web/settings.js?v=9"></script>
 </body>
 </html>

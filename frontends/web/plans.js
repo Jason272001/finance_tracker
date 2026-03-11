@@ -6,6 +6,8 @@ const SIGNUP_COUPON_KEY = "keeperbma_signup_coupon";
 const SIGNUP_COUPON_MAP_KEY = "keeperbma_signup_coupon_map";
 const BILLING_CYCLE_KEY = "keeperbma_billing_cycle";
 const PLAN_SEGMENT_KEY = "keeperbma_plan_segment";
+const SIGNUP_SKIP_BILLING_KEY = "keeperbma_signup_skip_billing";
+const PRECHECKOUT_SESSION_KEY = "keeperbma_precheckout_session_id";
 const ALLOWED_SIGNUP_PLANS = new Set(["basic", "regular", "business", "premium_plus", "diamond"]);
 const ALLOWED_REGISTER_PLANS = new Set(["basic", "regular", "business", "premium_plus"]);
 const ALLOWED_BILLING_CYCLES = new Set(["monthly", "annual"]);
@@ -13,9 +15,11 @@ const ALLOWED_PLAN_SEGMENTS = new Set(["personal", "business"]);
 const COUPON_MAX_LEN = 64;
 
 const state = {
+  apiBase: "https://api.keeperbma.com",
   selectedPlan: "",
   billingCycle: "monthly",
   planSegment: "personal",
+  theme: "light",
   couponsByPlan: {
     basic: "",
     regular: "",
@@ -24,6 +28,20 @@ const state = {
     diamond: "",
   },
 };
+
+function applyTheme(theme) {
+  state.theme = String(theme || "").trim().toLowerCase() === "dark" ? "dark" : "light";
+  localStorage.setItem("keeperbma_theme", state.theme);
+  document.documentElement.dataset.theme = state.theme;
+  document.documentElement.style.colorScheme = state.theme;
+  const btn = $("planThemeToggle");
+  if (btn) {
+    btn.setAttribute("aria-pressed", String(state.theme === "dark"));
+    btn.setAttribute("data-theme", state.theme);
+  }
+  const label = $("planThemeLabel");
+  if (label) label.textContent = `Theme: ${state.theme === "dark" ? "Dark" : "Light"}`;
+}
 
 function normalizePlan(planCode) {
   const key = String(planCode || "").trim().toLowerCase();
@@ -119,6 +137,37 @@ function setCouponForPlan(planCode, coupon) {
 function setStatus(msg) {
   const el = $("planStatus");
   if (el) el.textContent = msg || "";
+}
+
+function errMessage(e) {
+  if (!e) return "Unknown error";
+  if (typeof e === "string") return e;
+  if (e instanceof Error) return String(e.message || e);
+  if (typeof e.message === "string") return e.message;
+  if (typeof e.detail === "string") return e.detail;
+  try {
+    return JSON.stringify(e);
+  } catch (_) {
+    return String(e);
+  }
+}
+
+async function api(path, opts = {}) {
+  const headers = { ...(opts.headers || {}) };
+  if (opts.body && !Object.keys(headers).some((k) => String(k).toLowerCase() === "content-type")) {
+    headers["Content-Type"] = "application/json";
+  }
+  const res = await fetch(`${state.apiBase}${path}`, {
+    credentials: "include",
+    headers,
+    ...opts,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    if (typeof body?.detail === "string") throw new Error(body.detail);
+    throw new Error(`HTTP ${res.status}`);
+  }
+  return res.json();
 }
 
 function renderBillingCycle() {
@@ -223,7 +272,7 @@ function renderCouponInputs() {
   });
 }
 
-function continueToSignup(planCode) {
+async function continueToSignup(planCode) {
   const uiPlan = normalizePlan(planCode) || state.selectedPlan;
   if (!uiPlan) {
     setStatus("Please select a plan to continue.");
@@ -245,7 +294,9 @@ function continueToSignup(planCode) {
   localStorage.setItem(SIGNUP_WITH_WEBSITE_KEY, withWebsite ? "1" : "0");
   localStorage.setItem(SIGNUP_COUPON_KEY, coupon);
   localStorage.setItem(BILLING_CYCLE_KEY, cycle);
-
+  localStorage.removeItem(SIGNUP_SKIP_BILLING_KEY);
+  localStorage.removeItem(PRECHECKOUT_SESSION_KEY);
+  setStatus("Continue to account setup and billing.");
   const couponQuery = coupon ? `&coupon=${encodeURIComponent(coupon)}` : "";
   const websiteQuery = `&website=${withWebsite ? "1" : "0"}`;
   window.location.href = `./auth.html?mode=signup&plan=${encodeURIComponent(registerPlan)}&cycle=${encodeURIComponent(cycle)}${websiteQuery}${couponQuery}`;
@@ -253,6 +304,7 @@ function continueToSignup(planCode) {
 
 window.addEventListener("load", () => {
   const q = new URLSearchParams(window.location.search);
+  state.theme = String(localStorage.getItem("keeperbma_theme") || "light").trim().toLowerCase() === "dark" ? "dark" : "light";
 
   const queryPlanRaw = String(q.get("plan") || "").trim().toLowerCase();
   const queryCycleRaw = String(q.get("cycle") || "").trim().toLowerCase();
@@ -290,6 +342,13 @@ window.addEventListener("load", () => {
   renderBillingCycle();
   renderSelectedPlan();
   renderCouponInputs();
+  applyTheme(state.theme);
+
+  if ($("planThemeToggle")) {
+    $("planThemeToggle").onclick = () => {
+      applyTheme(state.theme === "dark" ? "light" : "dark");
+    };
+  }
 
   document.querySelectorAll("[data-plan-segment-toggle]").forEach((el) => {
     el.onclick = () => {

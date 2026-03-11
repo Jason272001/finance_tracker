@@ -3,13 +3,279 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>KeeperBMA</title>
-  <meta http-equiv="refresh" content="0; url=./frontends/web/" />
+  <title>KeeperBMA Web</title>
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; block-all-mixed-content" />
+  <link rel="icon" type="image/png" href="./assets/keeperbma-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
   <script>
-    window.location.replace("./frontends/web/");
+    if (
+      window.location.protocol === "http:" &&
+      !["localhost", "127.0.0.1"].includes(window.location.hostname)
+    ) {
+      window.location.replace(`https://${window.location.host}${window.location.pathname}${window.location.search}${window.location.hash}`);
+    }
+    document.documentElement.dataset.theme = localStorage.getItem("keeperbma_theme") || "light";
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <link rel="stylesheet" href="./frontends/web/styles.css?v=38" />
 </head>
 <body>
-  <p>Redirecting to KeeperBMA Web...</p>
+  <main class="page">
+    <section id="landingScreen" class="landing-shell hidden">
+      <header class="landing-nav">
+        <div class="brand-row">
+          <img class="brand-logo small" src="./assets/keeperbma-icon.png" alt="KeeperBMA" />
+          <h1>KeeperBMA</h1>
+        </div>
+        <nav class="landing-links">
+          <div class="theme-switch compact">
+            <span id="landingThemeLabel">Theme</span>
+            <button id="landingThemeToggle" type="button" class="theme-toggle" aria-pressed="false">
+              <span class="theme-toggle-thumb" aria-hidden="true"></span>
+            </button>
+          </div>
+          <a id="navHome" href="#home">Home</a>
+          <a id="navFeatures" href="#features">Features</a>
+          <a id="navPricing" href="#pricing">Pricing</a>
+          <a id="navAbout" href="#about">About</a>
+        </nav>
+      </header>
+
+      <section id="home" class="landing-hero card">
+        <h2 id="landingTitle">All-in-One Finance Platform for Personal and Business Growth</h2>
+        <p id="landingSubtitle">
+          KeeperBMA helps you track money, manage subscriptions, run business operations, and scale across web, mobile, and desktop with one secure backend.
+        </p>
+        <div class="landing-cta">
+          <button id="btnHeroRegister">Get Started</button>
+          <button id="btnHeroLogin" class="secondary">I Already Have an Account</button>
+        </div>
+      </section>
+
+      <section id="features" class="card">
+        <h2 id="featuresTitle">Features Overview</h2>
+        <div class="feature-grid">
+          <article class="feature-item"><h3 id="featManualTitle">Manual Tracking</h3><p id="featManualDesc">Add income, expenses, accounts, and notes manually with full control.</p></article>
+          <article class="feature-item"><h3 id="featAutoTitle">Auto Sync</h3><p id="featAutoDesc">Connect bank accounts for automatic transaction sync and smart categorization.</p></article>
+          <article class="feature-item"><h3 id="featPosTitle">POS & Inventory</h3><p id="featPosDesc">Business users get POS, inventory, sales records, and product analytics.</p></article>
+          <article class="feature-item"><h3 id="featAiTitle">AI Insights</h3><p id="featAiDesc">Get forecasting, spending patterns, and category-level performance insights.</p></article>
+        </div>
+      </section>
+
+      <section id="pricing" class="card">
+        <h2 id="pricingTitle">Pricing Plans</h2>
+        <p id="pricingHint" class="muted pricing-hint">Choose a plan to continue to Sign Up.</p>
+        <div class="price-grid">
+          <article class="price-item">
+            <h3>Basic</h3>
+            <p>$2 / month</p>
+            <button id="btnPickBasic" class="secondary plan-pick-btn" data-signup-plan="basic">Choose Basic</button>
+          </article>
+          <article class="price-item">
+            <h3>Regular</h3>
+            <p>$5 / month</p>
+            <button id="btnPickRegular" class="secondary plan-pick-btn" data-signup-plan="regular">Choose Regular</button>
+          </article>
+          <article class="price-item">
+            <h3>Business</h3>
+            <p>$25 / month</p>
+            <button id="btnPickBusiness" class="secondary plan-pick-btn" data-signup-plan="business">Choose Business</button>
+          </article>
+          <article class="price-item">
+            <h3>Premium Plus</h3>
+            <p>$50 / month</p>
+            <button id="btnPickPremium" class="secondary plan-pick-btn" data-signup-plan="premium_plus">Choose Premium Plus</button>
+          </article>
+          <article class="price-item">
+            <h3>Diamond</h3>
+            <p>$70 / month</p>
+            <button id="btnPickDiamond" class="secondary plan-pick-btn" data-signup-plan="diamond">Choose Diamond</button>
+          </article>
+        </div>
+      </section>
+
+      <section id="about" class="card">
+        <h2 id="aboutTitle">About KeeperBMA</h2>
+        <p id="aboutDesc">KeeperBMA is designed for individuals, families, and business owners who need one scalable platform to manage finances securely across all devices.</p>
+      </section>
+    </section>
+
+    <section id="appScreen" class="app-shell hidden">
+      <header class="top">
+        <div class="top-left">
+          <img id="topLogo" class="top-logo" src="./assets/keeperbma-icon.png" alt="KeeperBMA logo" />
+          <h1>KeeperBMA</h1>
+        </div>
+        <div class="top-right">
+          <div class="theme-switch compact">
+            <span id="appThemeLabel">Theme</span>
+            <button id="appThemeToggle" type="button" class="theme-toggle" aria-pressed="false">
+              <span class="theme-toggle-thumb" aria-hidden="true"></span>
+            </button>
+          </div>
+          <label id="langLabelApp" for="appLangSelect">Language</label>
+          <select id="appLangSelect" class="lang-select">
+            <option value="en">English</option>
+            <option value="my">Myanmar</option>
+            <option value="ar">Arabic</option>
+            <option value="ja">Japanese</option>
+            <option value="zh">Chinese</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+          </select>
+          <span id="userBadge" class="badge"></span>
+          <button id="btnOpenSettings" class="accent">Settings</button>
+          <button id="btnLogout" class="danger">Logout</button>
+        </div>
+      </header>
+
+      <section class="kpi-grid">
+        <article class="kpi-card">
+          <h3 id="kpiLabelAvailable">Current Available Balance</h3>
+          <p id="kpiNetWorth">$0.00</p>
+        </article>
+        <article class="kpi-card debt">
+          <h3 id="kpiLabelDebt">Total Debt</h3>
+          <p id="kpiDebt">$0.00</p>
+        </article>
+        <article class="kpi-card income">
+          <h3 id="kpiLabelIncome">Total Income</h3>
+          <p id="kpiIncome">$0.00</p>
+        </article>
+        <article class="kpi-card expense">
+          <h3 id="kpiLabelExpense">Total Expense</h3>
+          <p id="kpiExpense">$0.00</p>
+        </article>
+      </section>
+
+      <section class="card">
+        <h2 id="summaryExportTitle">Summary Export</h2>
+        <div class="row">
+          <input id="sumStart" type="date" />
+          <input id="sumEnd" type="date" />
+          <button id="btnApplySummary">Apply Range</button>
+          <button id="btnResetSummary">Reset</button>
+          <button id="btnDownloadPdf" class="secondary">Download PDF</button>
+        </div>
+      </section>
+
+      <section class="card app-status">
+        <p id="health" class="muted"></p>
+      </section>
+
+      <section class="card charts">
+        <h2 id="summaryChartsTitle">Summary Charts</h2>
+        <div class="chart-grid">
+          <div class="chart-card">
+            <h3 id="incomeChartTitle">Income by Category</h3>
+            <canvas id="incomeChart"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3 id="expenseChartTitle">Expense by Category</h3>
+            <canvas id="expenseChart"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3 id="debtChartTitle">Debt by Account</h3>
+            <canvas id="debtChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 id="dailySummaryTitle">Daily Balance Summary</h2>
+        <table class="mobile-stack">
+          <thead>
+            <tr>
+              <th id="dailyColDate">Date</th>
+              <th id="dailyColIncome">Income</th>
+              <th id="dailyColExpense">Expense</th>
+              <th id="dailyColNet">Net</th>
+              <th id="dailyColSnapshot">Snapshot</th>
+            </tr>
+          </thead>
+          <tbody id="dailyRows"></tbody>
+        </table>
+      </section>
+
+      <div class="grid">
+        <section class="card">
+          <h2 id="accountsTitle">Accounts</h2>
+          <div class="row">
+            <input id="accName" placeholder="Account Name" />
+            <select id="accType">
+              <option>checking</option>
+              <option>credit</option>
+              <option>credit_card</option>
+              <option>saving</option>
+              <option>savings</option>
+              <option>cash</option>
+              <option>asset</option>
+            </select>
+            <input id="accGroup" placeholder="Group" value="bank" />
+            <input id="accBal" type="number" step="0.01" placeholder="Balance" value="0" />
+          </div>
+          <button id="btnAddAccount">Add Account</button>
+          <button id="btnCancelAccount" class="secondary hidden">Cancel Edit</button>
+          <table class="mobile-stack">
+            <thead>
+              <tr>
+                <th id="accountsColName">Name</th>
+                <th id="accountsColType">Type</th>
+                <th id="accountsColBalance">Balance</th>
+                <th id="accountsColActions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="accountsRows"></tbody>
+          </table>
+        </section>
+
+        <section class="card">
+          <h2 id="categoriesTitle">Categories</h2>
+          <div class="row">
+            <input id="catName" placeholder="Category Name" />
+            <button id="btnAddCategory">Add Category</button>
+          </div>
+          <div id="categories" class="chips"></div>
+        </section>
+
+        <section class="card span-2">
+          <h2 id="transactionsTitle">Transactions</h2>
+          <div class="row">
+            <select id="txType">
+              <option>income</option>
+              <option>expense</option>
+            </select>
+            <input id="txAmount" type="number" step="0.01" placeholder="Amount" />
+            <select id="txAccount"></select>
+            <input id="txCategory" placeholder="Category" />
+            <input id="txNote" placeholder="Note" />
+          </div>
+          <button id="btnAddTx">Add Transaction</button>
+          <button id="btnCancelTx" class="secondary hidden">Cancel Edit</button>
+          <table class="mobile-stack">
+            <thead>
+              <tr>
+                <th id="txColId">ID</th>
+                <th id="txColDate">Date</th>
+                <th id="txColType">Type</th>
+                <th id="txColAmount">Amount</th>
+                <th id="txColAccount">Account</th>
+                <th id="txColCategory">Category</th>
+                <th id="txColNote">Note</th>
+                <th id="txColActions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="txRows"></tbody>
+          </table>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script src="./frontends/web/web.js?v=38"></script>
 </body>
 </html>

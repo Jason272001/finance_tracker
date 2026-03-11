@@ -5,6 +5,7 @@ let state = {
   authToken: "",
   userId: 0,
   userName: "",
+  theme: "light",
   accounts: [],
   categories: [],
   tx: [],
@@ -21,6 +22,7 @@ let state = {
 };
 const SIGNUP_PLAN_KEY = "keeperbma_signup_plan";
 const ALLOWED_SIGNUP_PLANS = new Set(["basic", "regular", "business", "premium_plus", "diamond"]);
+const ALLOWED_ACCOUNT_TYPES = new Set(["checking", "credit", "credit_card", "saving", "savings", "cash", "asset"]);
 
 const I18N = {
   en: {
@@ -52,6 +54,9 @@ const I18N = {
     about_title: "About KeeperBMA",
     about_desc: "KeeperBMA is designed for individuals, families, and business owners who need one scalable platform to manage finances securely across all devices.",
     language: "Language",
+    theme: "Theme",
+    light_mode: "Light",
+    dark_mode: "Dark",
     welcome: "Welcome",
     login: "Sign In",
     register: "Sign Up",
@@ -371,6 +376,46 @@ function getPendingSignupPlan() {
   return normalizeSignupPlan(localStorage.getItem(SIGNUP_PLAN_KEY));
 }
 
+function normalizeAccountTypeValue(value) {
+  const key = String(value || "").trim().toLowerCase().replace(/\s+/g, "_");
+  if (key === "creditcard") return "credit";
+  if (key === "credit_card") return "credit";
+  if (key === "savings") return "saving";
+  return ALLOWED_ACCOUNT_TYPES.has(key) ? key : "checking";
+}
+
+function formatAccountTypeLabel(value) {
+  const key = String(value || "").trim().toLowerCase().replace(/\s+/g, "_");
+  const labels = {
+    checking: "Checking",
+    credit: "Credit",
+    credit_card: "Credit",
+    saving: "Saving",
+    savings: "Saving",
+    cash: "Cash",
+    asset: "Asset",
+  };
+  return labels[key] || (key ? key.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase()) : "");
+}
+
+function applyTheme(theme) {
+  state.theme = String(theme || "").trim().toLowerCase() === "dark" ? "dark" : "light";
+  localStorage.setItem("keeperbma_theme", state.theme);
+  document.documentElement.dataset.theme = state.theme;
+  document.documentElement.style.colorScheme = state.theme;
+  const isDark = state.theme === "dark";
+  ["landingThemeToggle", "appThemeToggle"].forEach((id) => {
+    const btn = $(id);
+    if (!btn) return;
+    btn.setAttribute("aria-pressed", String(isDark));
+    btn.setAttribute("data-theme", state.theme);
+  });
+  ["landingThemeLabel", "appThemeLabel"].forEach((id) => {
+    const el = $(id);
+    if (el) el.textContent = `${t("theme")}: ${isDark ? t("dark_mode") : t("light_mode")}`;
+  });
+}
+
 function setPricingHint(msg, isError = false) {
   const el = $("pricingHint");
   if (!el) return;
@@ -406,6 +451,8 @@ function applyLanguage(lang) {
   if ($("appLangSelect")) $("appLangSelect").value = state.currentLang;
 
   setText("langLabelApp", "language");
+  setText("landingThemeLabel", "theme");
+  setText("appThemeLabel", "theme");
   setText("navHome", "nav_home");
   setText("navFeatures", "nav_features");
   setText("navPricing", "nav_pricing");
@@ -519,6 +566,7 @@ function applyLanguage(lang) {
   renderAccountsTable();
   renderTransactions();
   renderSubscription();
+  applyTheme(state.theme);
 }
 
 function errMessage(e) {
@@ -704,7 +752,7 @@ function renderAccountsTable() {
   const rows = [...state.accounts].sort((a, b) => String(a.account_name).localeCompare(String(b.account_name)));
   rows.forEach((a) => {
     const tr = document.createElement("tr");
-    const vals = [a.account_name || "", a.account_type || "", fmtMoney(a.balance)];
+    const vals = [a.account_name || "", formatAccountTypeLabel(a.account_type), fmtMoney(a.balance)];
     vals.forEach((v, idx) => {
       const td = document.createElement("td");
       td.textContent = String(v);
@@ -791,7 +839,7 @@ function renderTransactions() {
 function beginEditAccount(acc) {
   state.editingAccountId = Number(acc.account_id || 0);
   $("accName").value = String(acc.account_name || "");
-  $("accType").value = String(acc.account_type || "checking");
+  $("accType").value = normalizeAccountTypeValue(acc.account_type);
   $("accGroup").value = String(acc.group || "bank");
   $("accBal").value = String(Number(acc.balance || 0));
   $("btnAddAccount").textContent = t("update_account");
@@ -1157,12 +1205,18 @@ async function refreshAll() {
 
 window.addEventListener("load", async () => {
   const savedLang = localStorage.getItem("keeperbma_lang") || "en";
+  state.theme = String(localStorage.getItem("keeperbma_theme") || "light").trim().toLowerCase() === "dark" ? "dark" : "light";
   if ($("langSelect")) {
     $("langSelect").onchange = (e) => applyLanguage(e.target.value);
   }
   if ($("appLangSelect")) {
     $("appLangSelect").onchange = (e) => applyLanguage(e.target.value);
   }
+  ["landingThemeToggle", "appThemeToggle"].forEach((id) => {
+    const btn = $(id);
+    if (!btn) return;
+    btn.onclick = () => applyTheme(state.theme === "dark" ? "light" : "dark");
+  });
   applyLanguage(savedLang);
 
   if ($("btnNavLogin")) $("btnNavLogin").onclick = () => showAuth("login");
@@ -1310,7 +1364,7 @@ window.addEventListener("load", async () => {
       const payload = {
         user_id: state.userId,
         account_name: $("accName").value.trim(),
-        account_type: $("accType").value,
+        account_type: normalizeAccountTypeValue($("accType").value),
         group_name: $("accGroup").value.trim() || "bank",
         balance: Number($("accBal").value || 0),
       };

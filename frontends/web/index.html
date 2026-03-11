@@ -4,13 +4,23 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>KeeperBMA Web</title>
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; block-all-mixed-content" />
   <link rel="icon" type="image/png" href="../../assets/keeperbma-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script>
+    if (
+      window.location.protocol === "http:" &&
+      !["localhost", "127.0.0.1"].includes(window.location.hostname)
+    ) {
+      window.location.replace(`https://${window.location.host}${window.location.pathname}${window.location.search}${window.location.hash}`);
+    }
+    document.documentElement.dataset.theme = localStorage.getItem("keeperbma_theme") || "light";
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <link rel="stylesheet" href="./styles.css?v=35" />
+  <link rel="stylesheet" href="./styles.css?v=38" />
 </head>
 <body>
   <main class="page">
@@ -21,6 +31,12 @@
           <h1>KeeperBMA</h1>
         </div>
         <nav class="landing-links">
+          <div class="theme-switch compact">
+            <span id="landingThemeLabel">Theme</span>
+            <button id="landingThemeToggle" type="button" class="theme-toggle" aria-pressed="false">
+              <span class="theme-toggle-thumb" aria-hidden="true"></span>
+            </button>
+          </div>
           <a id="navHome" href="#home">Home</a>
           <a id="navFeatures" href="#features">Features</a>
           <a id="navPricing" href="#pricing">Pricing</a>
@@ -94,6 +110,12 @@
           <h1>KeeperBMA</h1>
         </div>
         <div class="top-right">
+          <div class="theme-switch compact">
+            <span id="appThemeLabel">Theme</span>
+            <button id="appThemeToggle" type="button" class="theme-toggle" aria-pressed="false">
+              <span class="theme-toggle-thumb" aria-hidden="true"></span>
+            </button>
+          </div>
           <label id="langLabelApp" for="appLangSelect">Language</label>
           <select id="appLangSelect" class="lang-select">
             <option value="en">English</option>
@@ -106,8 +128,8 @@
             <option value="de">German</option>
           </select>
           <span id="userBadge" class="badge"></span>
-          <button id="btnOpenSettings" class="secondary">Settings</button>
-          <button id="btnLogout" class="secondary">Logout</button>
+          <button id="btnOpenSettings" class="accent">Settings</button>
+          <button id="btnLogout" class="danger">Logout</button>
         </div>
       </header>
 
@@ -186,8 +208,10 @@
             <input id="accName" placeholder="Account Name" />
             <select id="accType">
               <option>checking</option>
+              <option>credit</option>
               <option>credit_card</option>
               <option>saving</option>
+              <option>savings</option>
               <option>cash</option>
               <option>asset</option>
             </select>
@@ -252,6 +276,6 @@
     </section>
   </main>
 
-  <script src="./web.js?v=35"></script>
+  <script src="./web.js?v=38"></script>
 </body>
 </html>

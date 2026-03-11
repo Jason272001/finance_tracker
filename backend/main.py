@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
-from core import Account, Category, DailyBalance, Transaction, User
+from core import Account, Category, DailyBalance, SPECIAL_COUPON_CODE, Transaction, User
 
 
 app = FastAPI(title="KeeperBMA Backend", version="1.1.0")
@@ -100,6 +100,7 @@ class RegisterBody(BaseModel):
     password: str = Field(min_length=10, max_length=200)
     coupon_code: Optional[str] = Field(default="", max_length=64)
     plan_code: str = Field(min_length=1, max_length=40)
+    checkout_session_id: Optional[str] = Field(default="", max_length=255)
 
     @field_validator("plan_code")
     @classmethod
@@ -180,6 +181,60 @@ class BillingPortalBody(BaseModel):
 class BillingCancelBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     user_id: int
+
+
+class BillingPrecheckoutBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    plan_code: str = Field(min_length=1, max_length=40)
+    billing_cycle: str = Field(default="monthly", min_length=1, max_length=20)
+    with_website: bool = False
+    coupon_code: Optional[str] = Field(default="", max_length=64)
+    success_url: Optional[str] = Field(default=None, max_length=1000)
+    cancel_url: Optional[str] = Field(default=None, max_length=1000)
+
+    @field_validator("plan_code")
+    @classmethod
+    def validate_plan_code(cls, v: str) -> str:
+        allowed = {"basic", "regular", "business", "premium_plus"}
+        key = str(v).strip().lower()
+        if key not in allowed:
+            raise ValueError("Invalid plan_code")
+        return key
+
+    @field_validator("billing_cycle")
+    @classmethod
+    def validate_billing_cycle(cls, v: str) -> str:
+        key = str(v).strip().lower()
+        if key not in {"monthly", "annual"}:
+            raise ValueError("Invalid billing_cycle")
+        return key
+
+
+class BillingPrecheckoutEmbeddedBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    plan_code: str = Field(min_length=1, max_length=40)
+    billing_cycle: str = Field(default="monthly", min_length=1, max_length=20)
+    with_website: bool = False
+    coupon_code: Optional[str] = Field(default="", max_length=64)
+    email: str = Field(min_length=3, max_length=200)
+    return_url: Optional[str] = Field(default=None, max_length=1000)
+
+    @field_validator("plan_code")
+    @classmethod
+    def validate_plan_code(cls, v: str) -> str:
+        allowed = {"basic", "regular", "business", "premium_plus"}
+        key = str(v).strip().lower()
+        if key not in allowed:
+            raise ValueError("Invalid plan_code")
+        return key
+
+    @field_validator("billing_cycle")
+    @classmethod
+    def validate_billing_cycle(cls, v: str) -> str:
+        key = str(v).strip().lower()
+        if key not in {"monthly", "annual"}:
+            raise ValueError("Invalid billing_cycle")
+        return key
 
 
 class BillingEmbeddedCheckoutBody(BaseModel):
@@ -708,6 +763,85 @@ def _sanitize_billing_redirect_url(raw_url: Optional[str], fallback_url: str) ->
     raise HTTPException(status_code=400, detail="Invalid billing redirect URL.")
 
 
+def _append_query_params(url: str, params: dict[str, str]) -> str:
+    parsed = urllib.parse.urlparse(str(url or "").strip())
+    existing = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+    for key, value in params.items():
+        existing.append((str(key), str(value)))
+    return urllib.parse.urlunparse(
+        parsed._replace(query=urllib.parse.urlencode(existing, doseq=True))
+    )
+
+
+def _coupon_grants_lifetime(coupon_code: Optional[str]) -> bool:
+    return str(coupon_code or "").strip() == SPECIAL_COUPON_CODE
+
+
+def _stripe_fetch_checkout_session(session_id: str) -> dict:
+    sid = str(session_id or "").strip()
+    if not sid:
+        raise HTTPException(status_code=400, detail="Checkout session is required.")
+    return _stripe_api_get(
+        f"/v1/checkout/sessions/{urllib.parse.quote(sid, safe='')}",
+        query=[
+            ("expand[]", "subscription"),
+            ("expand[]", "subscription.items.data.price"),
+        ],
+    )
+
+
+def _stripe_verified_precheckout_session(session_id: str, expected_plan_code: Optional[str] = None) -> dict:
+    session = _stripe_fetch_checkout_session(session_id)
+    metadata = session.get("metadata") or {}
+    if str(metadata.get("signup_flow", "")).strip().lower() != "precheckout":
+        raise HTTPException(status_code=400, detail="Invalid billing session.")
+    if str(session.get("status", "")).strip().lower() != "complete":
+        raise HTTPException(status_code=400, detail="Billing setup is not complete yet.")
+
+    plan_code = str(metadata.get("plan_code", "")).strip().lower()
+    if expected_plan_code and plan_code != str(expected_plan_code).strip().lower():
+        raise HTTPException(status_code=400, detail="Billing plan does not match selected plan.")
+
+    subscription_obj = session.get("subscription") or {}
+    if isinstance(subscription_obj, str):
+        subscription_obj = _stripe_api_get(
+            f"/v1/subscriptions/{urllib.parse.quote(subscription_obj, safe='')}",
+            query=[("expand[]", "items.data.price")],
+        )
+    subscription_id = str(subscription_obj.get("id", "") or session.get("subscription", "")).strip()
+    if not subscription_id:
+        raise HTTPException(status_code=400, detail="Stripe subscription was not created.")
+
+    items = ((subscription_obj.get("items", {}) or {}).get("data", []) or [])
+    first_item = items[0] if items else {}
+    price_id = str(((first_item.get("price", {}) or {}).get("id", ""))).strip()
+    customer_email = str(
+        ((session.get("customer_details") or {}).get("email"))
+        or session.get("customer_email")
+        or ""
+    ).strip().lower()
+    customer_id = str(session.get("customer", "")).strip()
+
+    return {
+        "session_id": str(session.get("id", "")).strip(),
+        "plan_code": plan_code,
+        "billing_cycle": str(metadata.get("billing_cycle", "")).strip().lower(),
+        "with_website": str(metadata.get("with_website", "")).strip().lower() in {"1", "true", "yes", "on"},
+        "customer_email": customer_email,
+        "customer_id": customer_id,
+        "subscription_id": subscription_id,
+        "price_id": price_id,
+        "subscription_status": _stripe_status_to_subscription_status(
+            str(subscription_obj.get("status", "")).strip().lower()
+        ),
+        "trial_ends_at": _iso_from_unix_ts(subscription_obj.get("trial_end")),
+        "subscription_started_at": (
+            _iso_from_unix_ts(subscription_obj.get("start_date"))
+            or _iso_from_unix_ts(subscription_obj.get("current_period_start"))
+        ),
+    }
+
+
 def _parse_stripe_signature(sig_header: str) -> tuple[Optional[int], Optional[str]]:
     if not sig_header:
         return None, None
@@ -794,6 +928,28 @@ def health():
 @app.post("/auth/register")
 def register(body: RegisterBody):
     try:
+        is_lifetime_coupon = _coupon_grants_lifetime(body.coupon_code)
+        checkout_info = None
+        if not is_lifetime_coupon:
+            checkout_info = _stripe_verified_precheckout_session(
+                body.checkout_session_id,
+                expected_plan_code=body.plan_code,
+            )
+            if checkout_info.get("customer_email"):
+                body_email = str(body.email or "").strip().lower()
+                if body_email != str(checkout_info["customer_email"]).strip().lower():
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Account email must match the billing email used in checkout.",
+                    )
+            existing_billing_user = User().get_user_by_billing_customer_id(
+                checkout_info.get("customer_id", "")
+            )
+            if existing_billing_user:
+                raise HTTPException(
+                    status_code=400,
+                    detail="This billing session is already linked to an account.",
+                )
         uid = User().register(
             name=body.name,
             pw=body.password,
@@ -802,6 +958,19 @@ def register(body: RegisterBody):
             coupon_code=body.coupon_code or "",
             plan_code=body.plan_code,
         )
+        if checkout_info:
+            User().update_billing_subscription(
+                user_id=uid,
+                plan_code=body.plan_code,
+                subscription_status=checkout_info.get("subscription_status") or "trial",
+                trial_ends_at=checkout_info.get("trial_ends_at") or "",
+                subscription_started_at=checkout_info.get("subscription_started_at") or "",
+                subscription_ends_at="",
+                billing_provider="stripe",
+                billing_customer_id=checkout_info.get("customer_id") or "",
+                billing_subscription_id=checkout_info.get("subscription_id") or "",
+                billing_price_id=checkout_info.get("price_id") or "",
+            )
         profile = User().get_user_by_id(uid) or {}
         subscription = _build_subscription_payload(profile)
         profile_payload = _build_profile_payload(profile)
@@ -1004,6 +1173,163 @@ def billing_config(
         "configured_plans": sorted(configured_plans),
         "configured_price_keys": configured_price_keys,
         "prices": plan_price_ids,
+    }
+
+
+@app.post("/billing/precheckout")
+def billing_precheckout(body: BillingPrecheckoutBody):
+    plan_code = str(body.plan_code).strip().lower()
+    billing_cycle = str(body.billing_cycle).strip().lower()
+    if _coupon_grants_lifetime(body.coupon_code):
+        return {
+            "ok": True,
+            "skip_checkout": True,
+            "lifetime_access": True,
+        }
+
+    price_id = _stripe_price_for_plan(plan_code, bool(body.with_website), billing_cycle=billing_cycle)
+    if not price_id:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Stripe price not configured for plan '{plan_code}' ({billing_cycle}).",
+        )
+
+    success_url = _sanitize_billing_redirect_url(body.success_url, BILLING_SUCCESS_URL)
+    cancel_url = _sanitize_billing_redirect_url(body.cancel_url, BILLING_CANCEL_URL)
+    success_url = _append_query_params(
+        success_url,
+        {
+            "mode": "signup",
+            "billing": "success",
+            "plan": plan_code,
+            "cycle": billing_cycle,
+            "website": "1" if body.with_website else "0",
+            "checkout_session_id": "{CHECKOUT_SESSION_ID}",
+        },
+    )
+    cancel_url = _append_query_params(
+        cancel_url,
+        {
+            "plan": plan_code,
+            "cycle": billing_cycle,
+            "website": "1" if body.with_website else "0",
+        },
+    )
+
+    form = {
+        "mode": "subscription",
+        "payment_method_collection": "always",
+        "success_url": success_url,
+        "cancel_url": cancel_url,
+        "allow_promotion_codes": "true",
+        "metadata[signup_flow]": "precheckout",
+        "metadata[plan_code]": plan_code,
+        "metadata[billing_cycle]": billing_cycle,
+        "metadata[with_website]": "1" if body.with_website else "0",
+        "line_items[0][price]": price_id,
+        "line_items[0][quantity]": "1",
+    }
+    if BILLING_TRIAL_DAYS > 0:
+        form["subscription_data[trial_period_days]"] = str(int(BILLING_TRIAL_DAYS))
+        form["subscription_data[trial_settings][end_behavior][missing_payment_method]"] = "cancel"
+
+    out = _stripe_api_request("/v1/checkout/sessions", form)
+    checkout_url = str(out.get("url", "")).strip()
+    if not checkout_url:
+        raise HTTPException(status_code=503, detail="Stripe checkout session did not return URL.")
+    return {
+        "ok": True,
+        "skip_checkout": False,
+        "session_id": str(out.get("id", "")).strip(),
+        "url": checkout_url,
+    }
+
+
+@app.post("/billing/precheckout/embedded")
+def billing_precheckout_embedded(body: BillingPrecheckoutEmbeddedBody):
+    plan_code = str(body.plan_code).strip().lower()
+    billing_cycle = str(body.billing_cycle).strip().lower()
+    if _coupon_grants_lifetime(body.coupon_code):
+        return {
+            "ok": True,
+            "skip_checkout": True,
+            "lifetime_access": True,
+            "trial_days": int(BILLING_TRIAL_DAYS),
+        }
+
+    if not STRIPE_PUBLISHABLE_KEY:
+        raise HTTPException(status_code=503, detail="Stripe embedded checkout is not configured.")
+
+    email = str(body.email or "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required for billing setup.")
+
+    price_id = _stripe_price_for_plan(plan_code, bool(body.with_website), billing_cycle=billing_cycle)
+    if not price_id:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Stripe price not configured for plan '{plan_code}' ({billing_cycle}).",
+        )
+
+    return_url = _sanitize_billing_redirect_url(body.return_url, BILLING_RETURN_URL)
+    return_url = _append_query_params(
+        return_url,
+        {
+            "mode": "signup",
+            "billing": "success",
+            "plan": plan_code,
+            "cycle": billing_cycle,
+            "website": "1" if body.with_website else "0",
+            "checkout_session_id": "{CHECKOUT_SESSION_ID}",
+        },
+    )
+
+    form = {
+        "mode": "subscription",
+        "ui_mode": "embedded",
+        "payment_method_collection": "always",
+        "return_url": return_url,
+        "allow_promotion_codes": "true",
+        "customer_email": email,
+        "metadata[signup_flow]": "precheckout",
+        "metadata[plan_code]": plan_code,
+        "metadata[billing_cycle]": billing_cycle,
+        "metadata[with_website]": "1" if body.with_website else "0",
+        "line_items[0][price]": price_id,
+        "line_items[0][quantity]": "1",
+    }
+    if BILLING_TRIAL_DAYS > 0:
+        form["subscription_data[trial_period_days]"] = str(int(BILLING_TRIAL_DAYS))
+        form["subscription_data[trial_settings][end_behavior][missing_payment_method]"] = "cancel"
+
+    out = _stripe_api_request("/v1/checkout/sessions", form)
+    session_id = str(out.get("id", "")).strip()
+    client_secret = str(out.get("client_secret", "")).strip()
+    if not client_secret:
+        raise HTTPException(status_code=503, detail="Stripe embedded checkout did not return client_secret.")
+    return {
+        "ok": True,
+        "skip_checkout": False,
+        "session_id": session_id,
+        "client_secret": client_secret,
+        "publishable_key": STRIPE_PUBLISHABLE_KEY,
+        "trial_days": int(BILLING_TRIAL_DAYS),
+    }
+
+
+@app.get("/billing/precheckout/session")
+def billing_precheckout_session(
+    session_id: str,
+    plan_code: Optional[str] = None,
+):
+    info = _stripe_verified_precheckout_session(session_id, expected_plan_code=plan_code)
+    return {
+        "ok": True,
+        "session_id": info["session_id"],
+        "plan_code": info["plan_code"],
+        "billing_cycle": info["billing_cycle"],
+        "with_website": bool(info["with_website"]),
+        "customer_email": info["customer_email"],
     }
 
 
