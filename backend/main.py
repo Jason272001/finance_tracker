@@ -343,6 +343,14 @@ class AccountUpdateBody(BaseModel):
         return key
 
 
+class AccountTransferBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    user_id: int
+    from_account_id: int
+    to_account_id: int
+    amount: float = Field(gt=0.0, le=10_000_000.0)
+
+
 class TxUpdateBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     user_id: int
@@ -1822,6 +1830,26 @@ def delete_account_post(
         user_id=user_id,
         authorization=authorization,
     )
+
+
+@app.post("/accounts/transfer")
+def transfer_between_accounts(
+    body: AccountTransferBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_user(request, authorization, body.user_id)
+    if int(body.from_account_id) == int(body.to_account_id):
+        raise HTTPException(status_code=400, detail="Source and destination accounts must be different.")
+    ok = Account().transfer(
+        from_account_id=body.from_account_id,
+        to_account_id=body.to_account_id,
+        amount=body.amount,
+        user_id=body.user_id,
+    )
+    if not ok:
+        raise HTTPException(status_code=400, detail="Transfer failed.")
+    return {"ok": True}
 
 
 @app.get("/transactions")

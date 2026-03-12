@@ -98,10 +98,18 @@ const I18N = {
     account: "Account",
     category: "Category",
     note: "Note",
+    select_category: "Select Category",
     add_account: "Add Account",
     update_account: "Update Account",
     add_tx: "Add Transaction",
     update_tx: "Update Transaction",
+    transfer_title: "Money Transfer",
+    transfer_hint: "Move money between accounts without counting it as income or expense.",
+    transfer_from: "From Account",
+    transfer_to: "To Account",
+    transfer_amount: "Transfer Amount",
+    transfer_button: "Transfer Money",
+    transfer_success: "Transfer completed successfully.",
     cancel_edit: "Cancel Edit",
     edit: "Edit",
     delete: "Delete",
@@ -537,14 +545,17 @@ function applyLanguage(lang) {
   setText("txColCategory", "category");
   setText("txColNote", "note");
   setText("txColActions", "actions");
+  setText("transferTitle", "transfer_title");
+  setText("transferHint", "transfer_hint");
+  setText("btnTransferMoney", "transfer_button");
 
   if ($("accName")) $("accName").placeholder = t("account_name");
   if ($("accGroup")) $("accGroup").placeholder = t("group");
   if ($("accBal")) $("accBal").placeholder = t("balance");
   if ($("catName")) $("catName").placeholder = t("category_name");
   if ($("txAmount")) $("txAmount").placeholder = t("amount");
-  if ($("txCategory")) $("txCategory").placeholder = t("category");
   if ($("txNote")) $("txNote").placeholder = t("note");
+  if ($("transferAmount")) $("transferAmount").placeholder = t("transfer_amount");
   setPricingHint("", false);
   if ($("profileUsername")) $("profileUsername").placeholder = t("profile_username");
   if ($("profileEmail")) $("profileEmail").placeholder = "name@example.com";
@@ -564,6 +575,7 @@ function applyLanguage(lang) {
   resetTxForm();
   renderProfile();
   renderAccountsTable();
+  renderCategories();
   renderTransactions();
   renderSubscription();
   applyTheme(state.theme);
@@ -743,9 +755,92 @@ function renderProfile() {
   if ($("topLogo")) $("topLogo").src = img;
 }
 
+function categoryNames() {
+  const seen = new Map();
+  state.categories.forEach((c) => {
+    const name = String(c.category_name || "").trim();
+    if (name && !seen.has(name.toLowerCase())) seen.set(name.toLowerCase(), name);
+  });
+  state.tx.forEach((tx) => {
+    const name = String(tx.category || "").trim();
+    if (name && !seen.has(name.toLowerCase())) seen.set(name.toLowerCase(), name);
+  });
+  return [...seen.values()].sort((a, b) => a.localeCompare(b));
+}
+
+function populateCategorySelect(selectedValue = null) {
+  const sel = $("txCategory");
+  if (!sel) return;
+  const current = String(selectedValue === null ? (sel.value || "") : selectedValue).trim();
+  sel.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = t("select_category");
+  sel.appendChild(placeholder);
+  categoryNames().forEach((name) => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+  if (current) {
+    const exists = [...sel.options].some((opt) => opt.value === current);
+    if (!exists) {
+      const opt = document.createElement("option");
+      opt.value = current;
+      opt.textContent = current;
+      sel.appendChild(opt);
+    }
+    sel.value = current;
+  } else {
+    sel.value = "";
+  }
+}
+
+function populateTransferAccountSelects(selectedFrom = null, selectedTo = null) {
+  const fromSel = $("transferFromAccount");
+  const toSel = $("transferToAccount");
+  if (!fromSel || !toSel) return;
+  const currentFrom = String(selectedFrom === null ? (fromSel.value || "") : selectedFrom);
+  const currentTo = String(selectedTo === null ? (toSel.value || "") : selectedTo);
+  fromSel.innerHTML = "";
+  toSel.innerHTML = "";
+
+  const fromPlaceholder = document.createElement("option");
+  fromPlaceholder.value = "";
+  fromPlaceholder.textContent = t("transfer_from");
+  fromSel.appendChild(fromPlaceholder);
+
+  const toPlaceholder = document.createElement("option");
+  toPlaceholder.value = "";
+  toPlaceholder.textContent = t("transfer_to");
+  toSel.appendChild(toPlaceholder);
+
+  const rows = [...state.accounts].sort((a, b) => String(a.account_name).localeCompare(String(b.account_name)));
+  rows.forEach((a) => {
+    const fromOpt = document.createElement("option");
+    fromOpt.value = a.account_id;
+    fromOpt.textContent = a.account_name;
+    fromSel.appendChild(fromOpt);
+
+    const toOpt = document.createElement("option");
+    toOpt.value = a.account_id;
+    toOpt.textContent = a.account_name;
+    toSel.appendChild(toOpt);
+  });
+
+  if (currentFrom && [...fromSel.options].some((opt) => opt.value === currentFrom)) {
+    fromSel.value = currentFrom;
+  }
+  if (currentTo && [...toSel.options].some((opt) => opt.value === currentTo)) {
+    toSel.value = currentTo;
+  }
+}
+
 function renderAccountsTable() {
   const tbody = $("accountsRows");
   const sel = $("txAccount");
+  const currentTxAccount = String(sel.value || "");
   tbody.innerHTML = "";
   sel.innerHTML = "";
   const labels = [t("account_name"), t("type"), t("balance"), t("actions")];
@@ -782,6 +877,10 @@ function renderAccountsTable() {
     opt.textContent = a.account_name;
     sel.appendChild(opt);
   });
+  if (currentTxAccount && [...sel.options].some((opt) => opt.value === currentTxAccount)) {
+    sel.value = currentTxAccount;
+  }
+  populateTransferAccountSelects();
 }
 
 function renderCategories() {
@@ -792,6 +891,7 @@ function renderCategories() {
     chip.textContent = String(c.category_name || "");
     box.appendChild(chip);
   });
+  populateCategorySelect();
 }
 
 function renderTransactions() {
@@ -884,7 +984,7 @@ function beginEditTransaction(tx) {
   $("txType").value = String(tx.type || "expense");
   $("txAmount").value = String(Number(tx.amount || 0));
   $("txAccount").value = String(tx.account_id || "");
-  $("txCategory").value = String(tx.category || "");
+  populateCategorySelect(String(tx.category || ""));
   $("txNote").value = String(tx.note || "");
   $("btnAddTx").textContent = t("update_tx");
   $("btnCancelTx").classList.remove("hidden");
@@ -895,11 +995,17 @@ function resetTxForm() {
   state.editingTxId = 0;
   $("txType").value = "income";
   $("txAmount").value = "";
-  $("txCategory").value = "";
+  populateCategorySelect("");
   $("txNote").value = "";
   $("btnAddTx").textContent = t("add_tx");
   $("btnCancelTx").textContent = t("cancel_edit");
   $("btnCancelTx").classList.add("hidden");
+}
+
+function resetTransferForm() {
+  if ($("transferFromAccount")) $("transferFromAccount").value = "";
+  if ($("transferToAccount")) $("transferToAccount").value = "";
+  if ($("transferAmount")) $("transferAmount").value = "";
 }
 
 async function deleteTransaction(tx) {
@@ -1431,6 +1537,41 @@ window.addEventListener("load", async () => {
     }
   };
   $("btnCancelTx").onclick = resetTxForm;
+  if ($("btnTransferMoney")) {
+    $("btnTransferMoney").onclick = async () => {
+      try {
+        const fromAccountId = Number($("transferFromAccount").value || 0);
+        const toAccountId = Number($("transferToAccount").value || 0);
+        const amount = Number($("transferAmount").value || 0);
+        if (!fromAccountId || !toAccountId) {
+          notify("Please choose both source and destination accounts.");
+          return;
+        }
+        if (fromAccountId === toAccountId) {
+          notify("Source and destination accounts must be different.");
+          return;
+        }
+        if (!(amount > 0)) {
+          notify("Transfer amount must be greater than zero.");
+          return;
+        }
+        await api("/accounts/transfer", {
+          method: "POST",
+          body: JSON.stringify({
+            user_id: state.userId,
+            from_account_id: fromAccountId,
+            to_account_id: toAccountId,
+            amount,
+          }),
+        });
+        resetTransferForm();
+        await refreshAll();
+        setStatus("health", t("transfer_success"));
+      } catch (e) {
+        notify(`Transfer failed: ${errMessage(e)}`);
+      }
+    };
+  }
 
   $("btnApplySummary").onclick = () => {
     applyTxRange();
