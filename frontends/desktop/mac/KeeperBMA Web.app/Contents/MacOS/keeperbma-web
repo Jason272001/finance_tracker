@@ -1,5 +1,5 @@
 #!/bin/bash
-URL="https://jason272001.github.io/finance_tracker/frontends/web/"
+URL="https://keeperbma.com/"
 if [ -d "/Applications/Google Chrome.app" ]; then
   open -na "/Applications/Google Chrome.app" --args --app="$URL" --new-window
 elif [ -d "/Applications/Microsoft Edge.app" ]; then

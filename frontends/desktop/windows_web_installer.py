@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 APP_NAME = "KeeperBMA"
-DEFAULT_URL = "https://jason272001.github.io/finance_tracker/frontends/web/"
+DEFAULT_URL = "https://keeperbma.com/"
 
 
 def _find_browser():

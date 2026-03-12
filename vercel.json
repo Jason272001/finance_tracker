@@ -1,0 +1,100 @@
+{
+  "cleanUrls": false,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "upgrade-insecure-requests; block-all-mixed-content"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=31536000; includeSubDomains; preload"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/auth",
+      "destination": "/auth.html"
+    },
+    {
+      "source": "/plans",
+      "destination": "/plans.html"
+    },
+    {
+      "source": "/settings",
+      "destination": "/settings.html"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/index.html",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/auth.html",
+      "destination": "/auth",
+      "permanent": true
+    },
+    {
+      "source": "/plans.html",
+      "destination": "/plans",
+      "permanent": true
+    },
+    {
+      "source": "/settings.html",
+      "destination": "/settings",
+      "permanent": true
+    },
+    {
+      "source": "/frontends/web",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/frontends/web/",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/frontends/web/index.html",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/frontends/web/auth.html",
+      "destination": "/auth",
+      "permanent": true
+    },
+    {
+      "source": "/frontends/web/plans.html",
+      "destination": "/plans",
+      "permanent": true
+    },
+    {
+      "source": "/frontends/web/settings.html",
+      "destination": "/settings",
+      "permanent": true
+    }
+  ]
+}

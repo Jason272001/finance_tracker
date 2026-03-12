@@ -12,7 +12,7 @@ What it does:
 - Opens app in dedicated app-style window (`--app=...`) using Chrome/Edge
 
 Default URL:
-- `https://jason272001.github.io/finance_tracker/frontends/web/`
+- `https://keeperbma.com/`
 
 ## macOS
 

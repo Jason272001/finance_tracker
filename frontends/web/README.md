@@ -1,27 +1,38 @@
 # KeeperBMA Web Frontend
 
-Static web client for the Render backend API.
+Static web client for the KeeperBMA backend API.
 
 ## Files
 - `index.html`
+- `auth.html`
+- `plans.html`
+- `settings.html`
 - `styles.css`
 - `web.js`
+- `auth.js`
+- `plans.js`
+- `settings.js`
 
 ## API Base URL
 Default:
-- `https://keeperbma-backend.onrender.com`
+- `https://api.keeperbma.com`
 
-You can change it from the `Config` card in the UI.
+## Host on Vercel
+1. Import this repo into Vercel.
+2. Framework preset: `Other`.
+3. Root directory: repo root.
+4. Build command: leave empty.
+5. Output directory: leave empty.
+6. Deploy.
 
-## Host on GitHub Pages
-1. Push repo to GitHub.
-2. In GitHub repo:
-   - `Settings` -> `Pages`
-   - `Source`: `Deploy from a branch`
-   - Branch: `master` (or `main`), folder: `/frontends/web`
-3. Save.
-4. Open generated Pages URL.
+## Domain
+- Add `keeperbma.com` as the production domain in Vercel.
+- Point DNS to Vercel instead of GitHub Pages.
+- `vercel.json` already handles:
+  - security headers
+  - redirects from old `/frontends/web/...` URLs
+  - clean routes for `/`, `/auth`, `/plans`, and `/settings`
 
 ## Notes
-- Backend must be live on Render.
-- CORS is enabled in backend (`allow_origins=["*"]`), so browser requests are allowed.
+- Backend must remain live separately.
+- Fix Stripe `STRIPE_PRICE_*` env vars on the backend before testing billing.
