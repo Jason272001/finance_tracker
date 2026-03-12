@@ -11,6 +11,7 @@ const state = {
   signupSkipBilling: false,
   billingReady: false,
   billingTrialDays: 60,
+  signupBillingError: "",
   precheckoutSessionId: "",
   precheckoutEmail: "",
   stripe: null,
@@ -107,6 +108,7 @@ function destroySignupEmbeddedCheckout() {
 function clearSignupBillingState({ clearSkip = true, clearEmail = false, clearStatus = false } = {}) {
   destroySignupEmbeddedCheckout();
   state.billingReady = false;
+  state.signupBillingError = "";
   state.precheckoutSessionId = "";
   if (clearEmail) state.precheckoutEmail = "";
   localStorage.removeItem(PRECHECKOUT_SESSION_KEY);
@@ -198,10 +200,12 @@ function renderSignupGate() {
   }
   gate.classList.remove("hidden");
   if (state.signupSkipBilling) {
+    state.signupBillingError = "";
     gate.textContent = authT("billing_lifetime");
     return;
   }
   if (state.billingReady) {
+    state.signupBillingError = "";
     gate.textContent = authT("billing_ready");
     return;
   }
@@ -227,6 +231,8 @@ function renderSignupBillingPanel() {
     setSignupBillingStatus(authT("billing_lifetime"));
   } else if (state.billingReady) {
     setSignupBillingStatus(authT("billing_ready"));
+  } else if (state.signupBillingError) {
+    setSignupBillingStatus(state.signupBillingError);
   } else if (!isValidEmail($("authEmail")?.value || "")) {
     setSignupBillingStatus(authT("billing_email_required"));
   } else if (!state.embeddedCheckout) {
@@ -248,6 +254,7 @@ async function loadSignupBillingForm() {
   }
 
   clearSignupBillingState({ clearSkip: true, clearEmail: false, clearStatus: true });
+  state.signupBillingError = "";
   setSignupBillingStatus(authT("billing_loading"));
 
   const couponRaw = String(localStorage.getItem(SIGNUP_COUPON_KEY) || "").trim().slice(0, 64);
@@ -274,6 +281,7 @@ async function loadSignupBillingForm() {
     if (Boolean(out?.skip_checkout)) {
       state.signupSkipBilling = true;
       state.billingReady = true;
+      state.signupBillingError = "";
       state.precheckoutEmail = email;
       localStorage.setItem(SIGNUP_SKIP_BILLING_KEY, "1");
       renderSignupGate();
@@ -290,6 +298,7 @@ async function loadSignupBillingForm() {
 
     state.signupSkipBilling = false;
     state.billingReady = false;
+    state.signupBillingError = "";
     state.precheckoutEmail = email;
     state.precheckoutSessionId = sessionId;
     localStorage.removeItem(SIGNUP_SKIP_BILLING_KEY);
@@ -306,12 +315,14 @@ async function loadSignupBillingForm() {
         try {
           const checkoutInfo = await verifyPrecheckoutSession(state.precheckoutSessionId, signupPlan);
           state.billingReady = true;
+          state.signupBillingError = "";
           state.precheckoutEmail = String(checkoutInfo?.customer_email || email).trim();
           destroySignupEmbeddedCheckout();
           renderSignupGate();
           renderSignupBillingPanel();
         } catch (e) {
-          setSignupBillingStatus(errMessage(e));
+          state.signupBillingError = errMessage(e);
+          setSignupBillingStatus(state.signupBillingError);
         }
       },
     });
@@ -324,7 +335,8 @@ async function loadSignupBillingForm() {
     renderSignupBillingPanel();
   } catch (e) {
     clearSignupBillingState({ clearSkip: false, clearEmail: false, clearStatus: false });
-    setSignupBillingStatus(errMessage(e));
+    state.signupBillingError = errMessage(e);
+    setSignupBillingStatus(state.signupBillingError);
     renderSignupGate();
     renderSignupBillingPanel();
   }
@@ -364,6 +376,7 @@ function errMessage(e) {
     const text = String(msg || "").trim();
     if (!text) return "Unknown error";
     if (/at least 10 characters/i.test(text)) return "Password must be at least 10 characters.";
+    if (/no such price/i.test(text)) return "Billing is unavailable because Stripe price configuration is invalid. Update the STRIPE_PRICE_* values in Render.";
     return text;
   };
   if (!e) return "Unknown error";
