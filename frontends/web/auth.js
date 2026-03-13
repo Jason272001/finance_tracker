@@ -30,7 +30,7 @@ const ALLOWED_BILLING_CYCLES = new Set(["monthly", "annual"]);
 const DEFAULT_BILLING_CYCLE = "monthly";
 
 const AUTH_I18N = {
-  en: { signin: "Sign In", signup: "Sign Up", recover: "Recover", username: "Username", password: "Password", new_password: "New Password", confirm_password: "Confirm Password", forgot: "Forgot Password?", send_code: "Send Recovery Code", reset_password: "Reset Password", recovery_sent: "Recovery code sent. Check your email.", signup_ok: "Account created successfully. Redirecting to your dashboard...", signup_signin_next: "Account created successfully. Please sign in to continue.", signup_plan_selected: "Selected Plan", choose_plan_first: "Please choose a plan first from Home > Pricing.", plan_basic: "Basic", plan_regular: "Regular", plan_business: "Business", plan_premium_plus: "Premium Plus", plan_diamond: "Diamond", theme: "Theme", light_mode: "Light", dark_mode: "Dark", billing_title: "Billing Information", billing_hint: "Add a payment method now. You will not be charged until your 60-day free trial ends.", billing_load: "Load Secure Billing Form", billing_reset: "Reset Billing", billing_waiting: "Complete billing below before creating your account.", billing_loading: "Loading secure billing form...", billing_email_required: "Enter a valid email first to load billing.", billing_ready: "Billing method saved. You will be charged only after the 60-day free trial ends.", billing_lifetime: "Lifetime coupon verified. Billing is not required." },
+  en: { signin: "Sign In", signup: "Sign Up", recover: "Recover", username: "Username", password: "Password", new_password: "New Password", confirm_password: "Confirm Password", forgot: "Forgot Password?", send_code: "Send Recovery Code", reset_password: "Reset Password", recovery_sent: "Recovery code sent. Check your email.", signup_ok: "Account created successfully. Redirecting to your dashboard...", signup_signin_next: "Account created successfully. Please sign in to continue.", signup_plan_selected: "Selected Plan", choose_plan_first: "Please choose a plan first from Home > Pricing.", plan_basic: "Basic", plan_regular: "Regular", plan_business: "Business", plan_premium_plus: "Premium Plus", plan_diamond: "Diamond", theme: "Theme", light_mode: "Light", dark_mode: "Dark", billing_title: "Billing Information", billing_hint: "Add a payment method now. You will not be charged until your 60-day free trial ends.", billing_waiting: "Complete billing below before creating your account.", billing_loading: "Loading secure billing form...", billing_email_required: "Enter a valid email first to load billing.", billing_ready: "Billing method saved. You will be charged only after the 60-day free trial ends.", billing_lifetime: "Lifetime coupon verified. Billing is not required.", billing_start_from_submit: "Press Sign Up & Submit Payment to load secure billing.", billing_finish_after_payment: "Complete billing below, then press Create Account.", signup_pay: "Sign Up & Submit Payment", signup_finalize: "Create Account" },
   es: { signin: "Iniciar sesion", signup: "Registrarse", recover: "Recuperar", username: "Nombre de usuario", password: "Contrasena", new_password: "Nueva contrasena", confirm_password: "Confirmar contrasena", forgot: "Olvido su contrasena?", send_code: "Enviar codigo", reset_password: "Restablecer", recovery_sent: "Codigo enviado. Revise su correo.", signup_ok: "Cuenta creada correctamente. Redirigiendo al panel...", signup_signin_next: "Cuenta creada correctamente. Inicia sesion para continuar." },
   fr: { signin: "Se connecter", signup: "S'inscrire", recover: "Recuperer", username: "Nom d'utilisateur", password: "Mot de passe", new_password: "Nouveau mot de passe", confirm_password: "Confirmer le mot de passe", forgot: "Mot de passe oublie ?", send_code: "Envoyer le code", reset_password: "Reinitialiser", recovery_sent: "Code envoye. Verifiez votre email.", signup_ok: "Compte cree avec succes. Redirection vers le tableau de bord...", signup_signin_next: "Compte cree avec succes. Connectez-vous pour continuer." },
   de: { signin: "Anmelden", signup: "Registrieren", recover: "Wiederherstellen", username: "Benutzername", password: "Passwort", new_password: "Neues Passwort", confirm_password: "Passwort bestaetigen", forgot: "Passwort vergessen?", send_code: "Code senden", reset_password: "Zuruecksetzen", recovery_sent: "Code gesendet. Bitte E-Mail pruefen.", signup_ok: "Konto erfolgreich erstellt. Weiterleitung zum Dashboard...", signup_signin_next: "Konto erfolgreich erstellt. Bitte melden Sie sich an." },
@@ -165,13 +165,7 @@ function startSignupBillingPolling(planCode, fallbackEmail = "") {
 }
 
 function maybeAutoLoadSignupBilling() {
-  if (state.mode !== "signup") return;
-  if (!state.signupPlan) return;
-  if (state.signupSkipBilling || state.billingReady) return;
-  if (state.precheckoutSessionId || state.embeddedCheckout) return;
-  const email = String($("authEmail")?.value || "").trim();
-  if (!isValidEmail(email)) return;
-  loadSignupBillingForm();
+  return;
 }
 
 function renderSignupPlanBanner() {
@@ -205,8 +199,6 @@ function applyAuthLanguage(lang) {
     const baseHint = authT("billing_hint");
     $("billingPanelHint").textContent = baseHint.replace("60-day", `${state.billingTrialDays}-day`);
   }
-  if ($("btnLoadSignupBilling")) $("btnLoadSignupBilling").textContent = authT("billing_load");
-  if ($("btnResetSignupBilling")) $("btnResetSignupBilling").textContent = authT("billing_reset");
   renderSignupPlanBanner();
   applyTheme(state.theme);
 }
@@ -226,8 +218,14 @@ function renderSignupGate() {
   const ready = Boolean(state.signupSkipBilling || state.billingReady);
   const lockSignup = isSignup && !ready;
   const emailInput = $("authEmail");
+  const submitBtn = $("authSubmit");
 
-  if ($("authSubmit")) $("authSubmit").disabled = lockSignup;
+  if (submitBtn) {
+    submitBtn.disabled = false;
+    if (isSignup) {
+      submitBtn.textContent = ready ? authT("signup_finalize") : authT("signup_pay");
+    }
+  }
 
   if (emailInput) {
     const billingEmail = String(state.precheckoutEmail || "").trim();
@@ -256,13 +254,11 @@ function renderSignupGate() {
     gate.textContent = authT("billing_ready");
     return;
   }
-  gate.textContent = authT("billing_waiting");
+  gate.textContent = state.embeddedCheckout ? authT("billing_finish_after_payment") : authT("billing_start_from_submit");
 }
 
 function renderSignupBillingPanel() {
   const panel = $("signupBillingCard");
-  const loadBtn = $("btnLoadSignupBilling");
-  const resetBtn = $("btnResetSignupBilling");
   const wrap = $("signupEmbeddedCheckoutWrap");
   if (!panel) return;
   const isSignup = state.mode === "signup";
@@ -270,8 +266,6 @@ function renderSignupBillingPanel() {
   panel.classList.toggle("hidden", !(isSignup && hasPlan));
   if (!(isSignup && hasPlan)) return;
 
-  if (loadBtn) loadBtn.classList.toggle("hidden", Boolean(state.billingReady || state.signupSkipBilling));
-  if (resetBtn) resetBtn.classList.toggle("hidden", !(state.billingReady || state.precheckoutSessionId || state.signupSkipBilling));
   if (wrap) wrap.classList.toggle("hidden", !state.embeddedCheckout);
 
   if (state.signupSkipBilling) {
@@ -282,8 +276,10 @@ function renderSignupBillingPanel() {
     setSignupBillingStatus(state.signupBillingError);
   } else if (!isValidEmail($("authEmail")?.value || "")) {
     setSignupBillingStatus(authT("billing_email_required"));
+  } else if (state.embeddedCheckout) {
+    setSignupBillingStatus(authT("billing_finish_after_payment"));
   } else if (!state.embeddedCheckout) {
-    setSignupBillingStatus(authT("billing_waiting"));
+    setSignupBillingStatus(authT("billing_start_from_submit"));
   }
 }
 
@@ -497,14 +493,14 @@ window.addEventListener("load", async () => {
   const billingQueryState = String(q.get("billing") || "").trim().toLowerCase();
   const querySessionId = String(q.get("checkout_session_id") || "").trim();
   const storedPrecheckoutSessionId = String(localStorage.getItem(PRECHECKOUT_SESSION_KEY) || "").trim();
-  const shouldRestorePrecheckoutSession = Boolean(querySessionId || billingQueryState === "success" || billingQueryState === "cancel");
+  const hasExplicitBillingReturn = Boolean(querySessionId || billingQueryState === "success" || billingQueryState === "cancel");
   if (queryPlan) localStorage.setItem(SIGNUP_PLAN_KEY, queryPlan);
   if (queryCycle) localStorage.setItem(BILLING_CYCLE_KEY, queryCycle);
   if (queryWebsiteProvided) localStorage.setItem(SIGNUP_WITH_WEBSITE_KEY, queryWebsite ? "1" : "0");
   if (queryCoupon) localStorage.setItem(SIGNUP_COUPON_KEY, queryCoupon);
   if (querySkipBilling) localStorage.setItem(SIGNUP_SKIP_BILLING_KEY, "1");
   if (querySessionId) localStorage.setItem(PRECHECKOUT_SESSION_KEY, querySessionId);
-  if (!shouldRestorePrecheckoutSession && storedPrecheckoutSessionId) {
+  if (!hasExplicitBillingReturn && storedPrecheckoutSessionId) {
     localStorage.removeItem(PRECHECKOUT_SESSION_KEY);
   }
   state.signupPlan = queryPlan || normalizeSignupPlan(localStorage.getItem(SIGNUP_PLAN_KEY));
@@ -513,13 +509,16 @@ window.addEventListener("load", async () => {
     ? queryWebsite
     : parseBoolFlag(localStorage.getItem(SIGNUP_WITH_WEBSITE_KEY));
   state.signupSkipBilling = querySkipBilling || parseBoolFlag(localStorage.getItem(SIGNUP_SKIP_BILLING_KEY));
-  state.precheckoutSessionId = querySessionId || (shouldRestorePrecheckoutSession ? storedPrecheckoutSessionId : "");
+  state.precheckoutSessionId = querySessionId || (hasExplicitBillingReturn ? storedPrecheckoutSessionId : "");
   if (state.signupPlan !== "premium_plus") state.signupWithWebsite = false;
   const savedLang = String(localStorage.getItem("keeperbma_lang") || "en");
   state.lang = AUTH_I18N[savedLang] ? savedLang : "en";
   state.theme = String(localStorage.getItem("keeperbma_theme") || "light").trim().toLowerCase() === "dark" ? "dark" : "light";
   setMode(q.get("mode") || "signin");
-  if (state.mode === "signup" && state.signupPlan && !state.signupSkipBilling && state.precheckoutSessionId) {
+  if (state.mode === "signup" && !hasExplicitBillingReturn) {
+    clearSignupBillingState({ clearSkip: false, clearEmail: false, clearStatus: true });
+  }
+  if (state.mode === "signup" && hasExplicitBillingReturn && state.signupPlan && !state.signupSkipBilling && state.precheckoutSessionId) {
     try {
       const checkout = await verifyPrecheckoutSession(state.precheckoutSessionId, state.signupPlan);
       state.billingReady = true;
@@ -546,18 +545,6 @@ window.addEventListener("load", async () => {
       applyTheme(state.theme === "dark" ? "light" : "dark");
     };
   }
-  if ($("btnLoadSignupBilling")) {
-    $("btnLoadSignupBilling").onclick = () => {
-      loadSignupBillingForm();
-    };
-  }
-  if ($("btnResetSignupBilling")) {
-    $("btnResetSignupBilling").onclick = () => {
-      clearSignupBillingState({ clearSkip: true, clearEmail: true, clearStatus: true });
-      renderSignupGate();
-      renderSignupBillingPanel();
-    };
-  }
   if ($("authEmail")) {
     $("authEmail").addEventListener("input", () => {
       const currentEmail = String($("authEmail").value || "").trim().toLowerCase();
@@ -567,9 +554,6 @@ window.addEventListener("load", async () => {
       }
       renderSignupGate();
       renderSignupBillingPanel();
-    });
-    $("authEmail").addEventListener("blur", () => {
-      maybeAutoLoadSignupBilling();
     });
   }
   applyAuthLanguage(state.lang);
@@ -625,35 +609,15 @@ window.addEventListener("load", async () => {
           setStatus(authT("choose_plan_first"));
           return;
         }
-        if (!state.signupSkipBilling && !state.billingReady) {
-          if (state.precheckoutSessionId) {
-            try {
-              await confirmSignupBillingSession(signupPlan, $("authEmail").value.trim());
-            } catch (_) {}
-          }
-        }
-        if (!state.signupSkipBilling && !state.billingReady) {
-          setStatus(authT("billing_waiting"));
-          return;
-        }
         const countryCode = $("authCountryCode").value.trim();
         const localPhone = $("authPhoneLocal").value.trim();
         const normalizedLocalPhone = localPhone.replace(/[^\d]/g, "");
-        const couponRaw = String(localStorage.getItem(SIGNUP_COUPON_KEY) || "").trim().slice(0, 64);
-        const payload = {
-          name,
-          email: $("authEmail").value.trim(),
-          phone: `${countryCode} ${normalizedLocalPhone}`.trim(),
-          coupon_code: couponRaw,
-          plan_code: signupPlan,
-          password,
-          checkout_session_id: state.signupSkipBilling ? "" : state.precheckoutSessionId,
-        };
+        const signupEmail = $("authEmail").value.trim();
         if (password !== password2) {
           setStatus("Confirm password does not match.");
           return;
         }
-        if (!payload.email || !countryCode || !normalizedLocalPhone || !payload.password) {
+        if (!signupEmail || !countryCode || !normalizedLocalPhone || !password) {
           setStatus("Username, email, phone, and password are required.");
           return;
         }
@@ -661,6 +625,32 @@ window.addEventListener("load", async () => {
           setStatus("Phone number is too short.");
           return;
         }
+        if (!state.signupSkipBilling && !state.billingReady) {
+          if (!state.embeddedCheckout && !state.precheckoutSessionId) {
+            await loadSignupBillingForm();
+            setStatus(authT("billing_finish_after_payment"));
+            return;
+          }
+          if (state.precheckoutSessionId) {
+            try {
+              await confirmSignupBillingSession(signupPlan, signupEmail);
+            } catch (_) {}
+          }
+        }
+        if (!state.signupSkipBilling && !state.billingReady) {
+          setStatus(authT("billing_waiting"));
+          return;
+        }
+        const couponRaw = String(localStorage.getItem(SIGNUP_COUPON_KEY) || "").trim().slice(0, 64);
+        const payload = {
+          name,
+          email: signupEmail,
+          phone: `${countryCode} ${normalizedLocalPhone}`.trim(),
+          coupon_code: couponRaw,
+          plan_code: signupPlan,
+          password,
+          checkout_session_id: state.signupSkipBilling ? "" : state.precheckoutSessionId,
+        };
         await api("/auth/register", {
           method: "POST",
           body: JSON.stringify(payload),
