@@ -16,6 +16,7 @@ const state = {
   precheckoutEmail: "",
   stripe: null,
   embeddedCheckout: null,
+  billingPollHandle: null,
 };
 
 const SIGNUP_PLAN_KEY = "keeperbma_signup_plan";
@@ -105,7 +106,15 @@ function destroySignupEmbeddedCheckout() {
   if (wrap) wrap.classList.add("hidden");
 }
 
+function stopSignupBillingPolling() {
+  if (state.billingPollHandle) {
+    window.clearInterval(state.billingPollHandle);
+    state.billingPollHandle = null;
+  }
+}
+
 function clearSignupBillingState({ clearSkip = true, clearEmail = false, clearStatus = false } = {}) {
+  stopSignupBillingPolling();
   destroySignupEmbeddedCheckout();
   state.billingReady = false;
   state.signupBillingError = "";
@@ -120,6 +129,39 @@ function clearSignupBillingState({ clearSkip = true, clearEmail = false, clearSt
     $("authEmail").readOnly = false;
   }
   if (clearStatus) setSignupBillingStatus("");
+}
+
+async function confirmSignupBillingSession(planCode, fallbackEmail = "") {
+  const signupPlan = normalizeSignupPlan(planCode || state.signupPlan);
+  const sessionId = String(state.precheckoutSessionId || "").trim();
+  if (!signupPlan || !sessionId) return false;
+
+  const checkoutInfo = await verifyPrecheckoutSession(sessionId, signupPlan);
+  state.billingReady = true;
+  state.signupBillingError = "";
+  state.precheckoutEmail = String(checkoutInfo?.customer_email || fallbackEmail || "").trim();
+  stopSignupBillingPolling();
+  destroySignupEmbeddedCheckout();
+  renderSignupGate();
+  renderSignupBillingPanel();
+  return true;
+}
+
+function startSignupBillingPolling(planCode, fallbackEmail = "") {
+  stopSignupBillingPolling();
+  if (state.signupSkipBilling || state.billingReady) return;
+  if (!String(state.precheckoutSessionId || "").trim()) return;
+
+  state.billingPollHandle = window.setInterval(async () => {
+    try {
+      const ok = await confirmSignupBillingSession(planCode, fallbackEmail);
+      if (ok) {
+        setSignupBillingStatus(authT("billing_ready"));
+      }
+    } catch (_) {
+      // Stripe can take a moment to finalize the embedded checkout session.
+    }
+  }, 2500);
 }
 
 function maybeAutoLoadSignupBilling() {
@@ -308,6 +350,7 @@ async function loadSignupBillingForm() {
     state.precheckoutSessionId = sessionId;
     localStorage.removeItem(SIGNUP_SKIP_BILLING_KEY);
     localStorage.setItem(PRECHECKOUT_SESSION_KEY, sessionId);
+    startSignupBillingPolling(signupPlan, email);
 
     if (typeof window.Stripe !== "function") {
       throw new Error("Stripe.js failed to load.");
@@ -318,13 +361,8 @@ async function loadSignupBillingForm() {
       fetchClientSecret: async () => clientSecret,
       onComplete: async () => {
         try {
-          const checkoutInfo = await verifyPrecheckoutSession(state.precheckoutSessionId, signupPlan);
-          state.billingReady = true;
-          state.signupBillingError = "";
-          state.precheckoutEmail = String(checkoutInfo?.customer_email || email).trim();
-          destroySignupEmbeddedCheckout();
-          renderSignupGate();
-          renderSignupBillingPanel();
+          await confirmSignupBillingSession(signupPlan, email);
+          setSignupBillingStatus(authT("billing_ready"));
         } catch (e) {
           state.signupBillingError = errMessage(e);
           setSignupBillingStatus(state.signupBillingError);
@@ -483,8 +521,7 @@ window.addEventListener("load", async () => {
     } catch (e) {
       state.billingReady = false;
       state.precheckoutEmail = "";
-      localStorage.removeItem(PRECHECKOUT_SESSION_KEY);
-      state.precheckoutSessionId = "";
+      startSignupBillingPolling(state.signupPlan, String($("authEmail")?.value || "").trim());
       if (String(q.get("billing") || "").trim().toLowerCase() === "success" || querySessionId) {
         setStatus(errMessage(e));
       }
@@ -583,6 +620,13 @@ window.addEventListener("load", async () => {
           return;
         }
         if (!state.signupSkipBilling && !state.billingReady) {
+          if (state.precheckoutSessionId) {
+            try {
+              await confirmSignupBillingSession(signupPlan, $("authEmail").value.trim());
+            } catch (_) {}
+          }
+        }
+        if (!state.signupSkipBilling && !state.billingReady) {
           setStatus(authT("billing_waiting"));
           return;
         }
@@ -639,6 +683,8 @@ window.addEventListener("load", async () => {
         localStorage.removeItem(SIGNUP_COUPON_KEY);
         localStorage.removeItem(SIGNUP_SKIP_BILLING_KEY);
         localStorage.removeItem(PRECHECKOUT_SESSION_KEY);
+        stopSignupBillingPolling();
+        destroySignupEmbeddedCheckout();
         state.billingReady = false;
         state.signupSkipBilling = false;
         state.precheckoutSessionId = "";
