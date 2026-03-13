@@ -482,6 +482,7 @@ async function api(path, opts = {}) {
 window.addEventListener("load", async () => {
   const q = new URLSearchParams(window.location.search);
   const explicitMode = String(q.get("mode") || "").trim().toLowerCase();
+  const billingState = String(q.get("billing") || "").trim().toLowerCase();
   const queryPlan = normalizeSignupPlan(q.get("plan"));
   const rawQueryCycle = String(q.get("cycle") || "").trim().toLowerCase();
   const queryCycle = rawQueryCycle ? normalizeBillingCycle(rawQueryCycle) : "";
@@ -526,6 +527,8 @@ window.addEventListener("load", async () => {
     } catch (e) {
       state.billingReady = false;
       state.precheckoutEmail = "";
+      startSignupBillingPolling(state.signupPlan, String($("authEmail")?.value || "").trim());
+      if (billingQueryState === "success" || querySessionId) {
       startSignupBillingPolling(state.signupPlan, String($("authEmail")?.value || "").trim());
       if (billingQueryState === "success" || querySessionId) {
         setStatus(errMessage(e));
