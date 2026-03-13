@@ -494,20 +494,26 @@ window.addEventListener("load", async () => {
   const queryWebsite = parseBoolFlag(queryWebsiteRaw);
   const queryCoupon = String(q.get("coupon") || "").trim();
   const querySkipBilling = parseBoolFlag(q.get("skip_billing"));
+  const billingQueryState = String(q.get("billing") || "").trim().toLowerCase();
   const querySessionId = String(q.get("checkout_session_id") || "").trim();
+  const storedPrecheckoutSessionId = String(localStorage.getItem(PRECHECKOUT_SESSION_KEY) || "").trim();
+  const shouldRestorePrecheckoutSession = Boolean(querySessionId || billingQueryState === "success" || billingQueryState === "cancel");
   if (queryPlan) localStorage.setItem(SIGNUP_PLAN_KEY, queryPlan);
   if (queryCycle) localStorage.setItem(BILLING_CYCLE_KEY, queryCycle);
   if (queryWebsiteProvided) localStorage.setItem(SIGNUP_WITH_WEBSITE_KEY, queryWebsite ? "1" : "0");
   if (queryCoupon) localStorage.setItem(SIGNUP_COUPON_KEY, queryCoupon);
   if (querySkipBilling) localStorage.setItem(SIGNUP_SKIP_BILLING_KEY, "1");
   if (querySessionId) localStorage.setItem(PRECHECKOUT_SESSION_KEY, querySessionId);
+  if (!shouldRestorePrecheckoutSession && storedPrecheckoutSessionId) {
+    localStorage.removeItem(PRECHECKOUT_SESSION_KEY);
+  }
   state.signupPlan = queryPlan || normalizeSignupPlan(localStorage.getItem(SIGNUP_PLAN_KEY));
   state.signupBillingCycle = queryCycle || normalizeBillingCycle(localStorage.getItem(BILLING_CYCLE_KEY));
   state.signupWithWebsite = queryWebsiteProvided
     ? queryWebsite
     : parseBoolFlag(localStorage.getItem(SIGNUP_WITH_WEBSITE_KEY));
   state.signupSkipBilling = querySkipBilling || parseBoolFlag(localStorage.getItem(SIGNUP_SKIP_BILLING_KEY));
-  state.precheckoutSessionId = querySessionId || String(localStorage.getItem(PRECHECKOUT_SESSION_KEY) || "").trim();
+  state.precheckoutSessionId = querySessionId || (shouldRestorePrecheckoutSession ? storedPrecheckoutSessionId : "");
   if (state.signupPlan !== "premium_plus") state.signupWithWebsite = false;
   const savedLang = String(localStorage.getItem("keeperbma_lang") || "en");
   state.lang = AUTH_I18N[savedLang] ? savedLang : "en";
@@ -522,7 +528,7 @@ window.addEventListener("load", async () => {
       state.billingReady = false;
       state.precheckoutEmail = "";
       startSignupBillingPolling(state.signupPlan, String($("authEmail")?.value || "").trim());
-      if (String(q.get("billing") || "").trim().toLowerCase() === "success" || querySessionId) {
+      if (billingQueryState === "success" || querySessionId) {
         setStatus(errMessage(e));
       }
     }
