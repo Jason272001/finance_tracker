@@ -29,10 +29,10 @@ const ALLOWED_BILLING_CYCLES = new Set(["monthly", "annual"]);
 const DEFAULT_BILLING_CYCLE = "monthly";
 
 const AUTH_I18N = {
-  en: { signin: "Sign In", signup: "Sign Up", recover: "Recover", username: "Username", password: "Password", new_password: "New Password", confirm_password: "Confirm Password", forgot: "Forgot Password?", send_code: "Send Recovery Code", reset_password: "Reset Password", recovery_sent: "Recovery code sent. Check your email.", signup_ok: "Sign up successful. Redirecting...", signup_plan_selected: "Selected Plan", choose_plan_first: "Please choose a plan first from Home > Pricing.", plan_basic: "Basic", plan_regular: "Regular", plan_business: "Business", plan_premium_plus: "Premium Plus", plan_diamond: "Diamond", theme: "Theme", light_mode: "Light", dark_mode: "Dark", billing_title: "Billing Information", billing_hint: "Add a payment method now. You will not be charged until your 60-day free trial ends.", billing_load: "Load Secure Billing Form", billing_reset: "Reset Billing", billing_waiting: "Complete billing below before creating your account.", billing_loading: "Loading secure billing form...", billing_email_required: "Enter a valid email first to load billing.", billing_ready: "Billing method saved. You will be charged only after the 60-day free trial ends.", billing_lifetime: "Lifetime coupon verified. Billing is not required." },
-  es: { signin: "Iniciar sesion", signup: "Registrarse", recover: "Recuperar", username: "Nombre de usuario", password: "Contrasena", new_password: "Nueva contrasena", confirm_password: "Confirmar contrasena", forgot: "Olvido su contrasena?", send_code: "Enviar codigo", reset_password: "Restablecer", recovery_sent: "Codigo enviado. Revise su correo.", signup_ok: "Registro exitoso. Redirigiendo..." },
-  fr: { signin: "Se connecter", signup: "S'inscrire", recover: "Recuperer", username: "Nom d'utilisateur", password: "Mot de passe", new_password: "Nouveau mot de passe", confirm_password: "Confirmer le mot de passe", forgot: "Mot de passe oublie ?", send_code: "Envoyer le code", reset_password: "Reinitialiser", recovery_sent: "Code envoye. Verifiez votre email.", signup_ok: "Inscription reussie. Redirection..." },
-  de: { signin: "Anmelden", signup: "Registrieren", recover: "Wiederherstellen", username: "Benutzername", password: "Passwort", new_password: "Neues Passwort", confirm_password: "Passwort bestaetigen", forgot: "Passwort vergessen?", send_code: "Code senden", reset_password: "Zuruecksetzen", recovery_sent: "Code gesendet. Bitte E-Mail pruefen.", signup_ok: "Registrierung erfolgreich. Weiterleitung..." },
+  en: { signin: "Sign In", signup: "Sign Up", recover: "Recover", username: "Username", password: "Password", new_password: "New Password", confirm_password: "Confirm Password", forgot: "Forgot Password?", send_code: "Send Recovery Code", reset_password: "Reset Password", recovery_sent: "Recovery code sent. Check your email.", signup_ok: "Account created successfully. Redirecting to your dashboard...", signup_signin_next: "Account created successfully. Please sign in to continue.", signup_plan_selected: "Selected Plan", choose_plan_first: "Please choose a plan first from Home > Pricing.", plan_basic: "Basic", plan_regular: "Regular", plan_business: "Business", plan_premium_plus: "Premium Plus", plan_diamond: "Diamond", theme: "Theme", light_mode: "Light", dark_mode: "Dark", billing_title: "Billing Information", billing_hint: "Add a payment method now. You will not be charged until your 60-day free trial ends.", billing_load: "Load Secure Billing Form", billing_reset: "Reset Billing", billing_waiting: "Complete billing below before creating your account.", billing_loading: "Loading secure billing form...", billing_email_required: "Enter a valid email first to load billing.", billing_ready: "Billing method saved. You will be charged only after the 60-day free trial ends.", billing_lifetime: "Lifetime coupon verified. Billing is not required." },
+  es: { signin: "Iniciar sesion", signup: "Registrarse", recover: "Recuperar", username: "Nombre de usuario", password: "Contrasena", new_password: "Nueva contrasena", confirm_password: "Confirmar contrasena", forgot: "Olvido su contrasena?", send_code: "Enviar codigo", reset_password: "Restablecer", recovery_sent: "Codigo enviado. Revise su correo.", signup_ok: "Cuenta creada correctamente. Redirigiendo al panel...", signup_signin_next: "Cuenta creada correctamente. Inicia sesion para continuar." },
+  fr: { signin: "Se connecter", signup: "S'inscrire", recover: "Recuperer", username: "Nom d'utilisateur", password: "Mot de passe", new_password: "Nouveau mot de passe", confirm_password: "Confirmer le mot de passe", forgot: "Mot de passe oublie ?", send_code: "Envoyer le code", reset_password: "Reinitialiser", recovery_sent: "Code envoye. Verifiez votre email.", signup_ok: "Compte cree avec succes. Redirection vers le tableau de bord...", signup_signin_next: "Compte cree avec succes. Connectez-vous pour continuer." },
+  de: { signin: "Anmelden", signup: "Registrieren", recover: "Wiederherstellen", username: "Benutzername", password: "Passwort", new_password: "Neues Passwort", confirm_password: "Passwort bestaetigen", forgot: "Passwort vergessen?", send_code: "Code senden", reset_password: "Zuruecksetzen", recovery_sent: "Code gesendet. Bitte E-Mail pruefen.", signup_ok: "Konto erfolgreich erstellt. Weiterleitung zum Dashboard...", signup_signin_next: "Konto erfolgreich erstellt. Bitte melden Sie sich an." },
 };
 
 function authT(key) {
@@ -171,6 +171,11 @@ function applyAuthLanguage(lang) {
 
 function setStatus(msg) {
   $("authStatus").textContent = msg || "";
+}
+
+function disableSubmit(disabled) {
+  const btn = $("authSubmit");
+  if (btn) btn.disabled = Boolean(disabled);
 }
 
 function renderSignupGate() {
@@ -558,6 +563,7 @@ window.addEventListener("load", async () => {
 
   $("authSubmit").onclick = async () => {
     try {
+      disableSubmit(true);
       const name = $("authName").value.trim();
       const password = $("authPass").value;
       const password2 = $("authPassConfirm").value;
@@ -609,11 +615,23 @@ window.addEventListener("load", async () => {
           method: "POST",
           body: JSON.stringify(payload),
         });
-        const out = await api("/auth/login", {
-          method: "POST",
-          body: JSON.stringify({ name: payload.name, password }),
-        });
-        const token = String(out.token || "");
+        setStatus(authT("signup_ok"));
+        let out = null;
+        try {
+          out = await api("/auth/login", {
+            method: "POST",
+            body: JSON.stringify({ name: payload.name, password }),
+          });
+        } catch (loginErr) {
+          setMode("signin");
+          $("authName").value = payload.name;
+          $("authPass").value = "";
+          $("authPassConfirm").value = "";
+          setStatus(authT("signup_signin_next"));
+          disableSubmit(false);
+          return;
+        }
+        const token = String(out?.token || "");
         if (token) localStorage.setItem("keeperbma_token", token);
         localStorage.setItem(BILLING_CYCLE_KEY, normalizeBillingCycle(state.signupBillingCycle));
         localStorage.removeItem(SIGNUP_PLAN_KEY);
@@ -621,9 +639,14 @@ window.addEventListener("load", async () => {
         localStorage.removeItem(SIGNUP_COUPON_KEY);
         localStorage.removeItem(SIGNUP_SKIP_BILLING_KEY);
         localStorage.removeItem(PRECHECKOUT_SESSION_KEY);
-        const isLifetime = Boolean(out.is_lifetime || out.lifetime_access);
-        if (isLifetime) setStatus(authT("signup_ok"));
-        window.location.href = "./index.html?app=1";
+        state.billingReady = false;
+        state.signupSkipBilling = false;
+        state.precheckoutSessionId = "";
+        state.precheckoutEmail = "";
+        const target = "./index.html?app=1&welcome=1";
+        window.setTimeout(() => {
+          window.location.href = target;
+        }, 1200);
         return;
       }
 
@@ -665,6 +688,8 @@ window.addEventListener("load", async () => {
       window.location.href = "./index.html?app=1";
     } catch (e) {
       setStatus(errMessage(e));
+    } finally {
+      disableSubmit(false);
     }
   };
 
