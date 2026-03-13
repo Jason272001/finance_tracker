@@ -269,6 +269,37 @@ body {
 .top-right { display: flex; align-items: center; gap: 10px; }
 .badge { font-size: 1.12rem; font-weight: 600; }
 
+.billing-lock-banner {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.billing-lock-banner.active {
+  border: 1px solid rgba(35, 163, 92, 0.28);
+  background: linear-gradient(135deg, rgba(22, 94, 198, 0.08), rgba(35, 163, 92, 0.08));
+}
+.billing-lock-banner.locked {
+  border: 1px solid rgba(224, 83, 116, 0.28);
+  background: linear-gradient(135deg, rgba(224, 83, 116, 0.12), rgba(193, 120, 25, 0.12));
+}
+.billing-lock-copy {
+  flex: 1 1 auto;
+}
+.billing-lock-copy h2 {
+  margin: 0 0 6px;
+  font-size: 1.35rem;
+}
+.billing-lock-copy p {
+  margin: 0;
+}
+.billing-lock-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 .kpi-grid {
   margin-top: 14px;
   display: grid;
@@ -394,6 +425,9 @@ th { color: var(--muted); font-weight: 700; }
   background: var(--surface);
   padding: 10px;
 }
+.plan-meta > .plan-meta-wide {
+  flex: 1 1 100%;
+}
 .plan-meta strong {
   color: var(--muted);
   display: block;
@@ -497,6 +531,9 @@ th { color: var(--muted); font-weight: 700; }
   .grid { grid-template-columns: 1fr; }
   .span-2 { grid-column: span 1; }
   .plan-switch-grid { grid-template-columns: 1fr; }
+  .billing-lock-banner { flex-direction: column; align-items: stretch; }
+  .billing-lock-actions { justify-content: stretch; }
+  .billing-lock-actions button { width: 100%; }
 }
 @media (max-width: 640px) {
   .page { width: 98vw; margin: 8px auto 16px; }

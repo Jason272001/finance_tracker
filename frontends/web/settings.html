@@ -18,7 +18,7 @@
     }
     document.documentElement.dataset.theme = localStorage.getItem("keeperbma_theme") || "light";
   </script>
-  <link rel="stylesheet" href="./styles.css?v=39" />
+  <link rel="stylesheet" href="./styles.css?v=40" />
   <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
@@ -105,6 +105,11 @@
           <div><strong id="planStatusLabel">Status</strong><div id="planStatusValue">active</div></div>
           <div><strong id="trialEndsLabel">Trial Ends</strong><div id="trialEndsValue">-</div></div>
           <div><strong id="trialDaysLabel">Trial Days Left</strong><div id="trialDaysValue">0</div></div>
+          <div><strong id="billingCycleMetaLabel">Billing Cycle</strong><div id="billingCycleValue">-</div></div>
+          <div><strong id="nextChargeLabel">Next Charge</strong><div id="nextChargeValue">-</div></div>
+          <div><strong id="accessStateLabel">Access</strong><div id="accessStateValue">Active</div></div>
+          <div><strong id="websiteBundleLabel">Website Bundle</strong><div id="websiteBundleValue">No</div></div>
+          <div class="plan-meta-wide"><strong id="accessReasonLabel">Access Reason</strong><div id="accessReasonValue">-</div></div>
         </div>
         <div class="row">
           <label id="changePlanLabel" for="planBtnBasic">Change Plan</label>
@@ -143,6 +148,6 @@
       </section>
     </section>
   </main>
-  <script src="./settings.js?v=9"></script>
+  <script src="./settings.js?v=10"></script>
 </body>
 </html>

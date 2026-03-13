@@ -20,7 +20,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <link rel="stylesheet" href="./styles.css?v=39" />
+  <link rel="stylesheet" href="./styles.css?v=40" />
 </head>
 <body>
   <main class="page">
@@ -132,6 +132,16 @@
           <button id="btnLogout" class="danger">Logout</button>
         </div>
       </header>
+
+      <section id="billingLockCard" class="card billing-lock-banner hidden">
+        <div class="billing-lock-copy">
+          <h2 id="billingLockTitle">Subscription Active</h2>
+          <p id="billingLockMessage" class="muted"></p>
+        </div>
+        <div class="billing-lock-actions">
+          <button id="btnResolveBilling" class="accent">Manage Billing</button>
+        </div>
+      </section>
 
       <section class="kpi-grid">
         <article class="kpi-card">
@@ -286,6 +296,6 @@
     </section>
   </main>
 
-  <script src="./web.js?v=39"></script>
+  <script src="./web.js?v=40"></script>
 </body>
 </html>

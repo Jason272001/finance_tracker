@@ -65,6 +65,9 @@ def _load_users():
         "billing_customer_id",
         "billing_subscription_id",
         "billing_price_id",
+        "billing_cycle",
+        "plan_with_website",
+        "next_charge_at",
     ]
     if DB_IS_SQL:
         df = _read_table("users", user_cols)
@@ -101,6 +104,8 @@ def _load_users():
     df["billing_customer_id"] = df["billing_customer_id"].fillna("").astype(str).str.strip()
     df["billing_subscription_id"] = df["billing_subscription_id"].fillna("").astype(str).str.strip()
     df["billing_price_id"] = df["billing_price_id"].fillna("").astype(str).str.strip()
+    df["billing_cycle"] = df["billing_cycle"].fillna("").astype(str).str.strip().str.lower()
+    df["next_charge_at"] = df["next_charge_at"].fillna("").astype(str).str.strip()
     df["is_lifetime"] = (
         df["is_lifetime"]
         .fillna(False)
@@ -112,6 +117,14 @@ def _load_users():
     df["email_notifications_enabled"] = (
         df["email_notifications_enabled"]
         .fillna(True)
+        .astype(str)
+        .str.strip()
+        .str.lower()
+        .isin({"1", "true", "yes", "y"})
+    )
+    df["plan_with_website"] = (
+        df["plan_with_website"]
+        .fillna(False)
         .astype(str)
         .str.strip()
         .str.lower()
@@ -146,6 +159,9 @@ def _save_users(df):
         "billing_customer_id",
         "billing_subscription_id",
         "billing_price_id",
+        "billing_cycle",
+        "plan_with_website",
+        "next_charge_at",
     ]
     out = df.copy()
     for c in user_cols:
@@ -482,6 +498,9 @@ class User:
                 "billing_customer_id": "",
                 "billing_subscription_id": "",
                 "billing_price_id": "",
+                "billing_cycle": "",
+                "plan_with_website": False,
+                "next_charge_at": "",
             }
             return next_uid, new_row
 
@@ -562,10 +581,19 @@ class User:
             "plan_code": str(row.get("plan_code", "")).strip().lower() or "basic",
             "subscription_status": str(row.get("subscription_status", "")).strip().lower() or "active",
             "trial_ends_at": str(row.get("trial_ends_at", "")).strip(),
+            "subscription_started_at": str(row.get("subscription_started_at", "")).strip(),
+            "subscription_ends_at": str(row.get("subscription_ends_at", "")).strip(),
             "billing_provider": str(row.get("billing_provider", "")).strip().lower(),
             "billing_customer_id": str(row.get("billing_customer_id", "")).strip(),
             "billing_subscription_id": str(row.get("billing_subscription_id", "")).strip(),
             "billing_price_id": str(row.get("billing_price_id", "")).strip(),
+            "billing_cycle": str(row.get("billing_cycle", "")).strip().lower(),
+            "plan_with_website": bool(
+                str(row.get("plan_with_website", ""))
+                .strip()
+                .lower() in {"1", "true", "yes", "y"}
+            ),
+            "next_charge_at": str(row.get("next_charge_at", "")).strip(),
         }
 
     def set_subscription_plan(self, user_id, plan_code):
@@ -626,10 +654,14 @@ class User:
         billing_customer_id=None,
         billing_subscription_id=None,
         billing_price_id=None,
+        billing_cycle=None,
+        plan_with_website=None,
+        next_charge_at=None,
     ):
         uid = int(user_id)
         allowed_plan_codes = {"basic", "regular", "business", "premium_plus", "lifetime"}
         allowed_status = {"trial", "active", "past_due", "canceled", "incomplete", "unpaid"}
+        allowed_cycles = {"", "monthly", "annual"}
 
         def _update(df):
             uid_col = pd.to_numeric(df["user_id"], errors="coerce")
@@ -670,6 +702,18 @@ class User:
 
             if billing_price_id is not None:
                 df.at[i, "billing_price_id"] = str(billing_price_id).strip()
+
+            if billing_cycle is not None:
+                cycle_s = str(billing_cycle).strip().lower()
+                if cycle_s not in allowed_cycles:
+                    raise ValueError("Invalid billing cycle.")
+                df.at[i, "billing_cycle"] = cycle_s
+
+            if plan_with_website is not None:
+                df.at[i, "plan_with_website"] = bool(plan_with_website)
+
+            if next_charge_at is not None:
+                df.at[i, "next_charge_at"] = str(next_charge_at).strip()
 
             return True, df
 
@@ -864,6 +908,13 @@ class User:
             "billing_customer_id": str(row.get("billing_customer_id", "")).strip(),
             "billing_subscription_id": str(row.get("billing_subscription_id", "")).strip(),
             "billing_price_id": str(row.get("billing_price_id", "")).strip(),
+            "billing_cycle": str(row.get("billing_cycle", "")).strip().lower(),
+            "plan_with_website": bool(
+                str(row.get("plan_with_website", ""))
+                .strip()
+                .lower() in {"1", "true", "yes", "y"}
+            ),
+            "next_charge_at": str(row.get("next_charge_at", "")).strip(),
         }
     
 

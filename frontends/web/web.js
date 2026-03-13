@@ -139,6 +139,20 @@ const I18N = {
     update_password: "Update Password",
     profile_saved: "Profile updated successfully.",
     password_updated: "Password updated successfully.",
+    billing_access_active: "Subscription Active",
+    billing_access_locked: "Billing Action Required",
+    billing_manage_action: "Manage Billing",
+    billing_cycle_label: "Billing Cycle",
+    cycle_monthly: "Monthly",
+    cycle_annual: "Annual",
+    next_charge_label: "Next Charge",
+    access_state_label: "Access",
+    access_reason_label: "Access Reason",
+    website_bundle_label: "Website Bundle",
+    access_state_active: "Active",
+    access_state_locked: "Locked",
+    yes: "Yes",
+    no: "No",
   },
   my: {
     language: "ဘာသာစကား",
@@ -704,8 +718,11 @@ async function api(path, opts = {}) {
   throw lastErr || new Error("Network error");
 }
 
-function planLabel(planCode) {
+function planLabel(planCode, withWebsite = false) {
   const key = String(planCode || "").trim().toLowerCase();
+  if (key === "premium_plus" && withWebsite) {
+    return t("plan_diamond");
+  }
   const labels = {
     basic: t("plan_basic"),
     regular: t("plan_regular"),
@@ -717,6 +734,26 @@ function planLabel(planCode) {
   return labels[key] || key || t("plan_basic");
 }
 
+function formatShortDate(value) {
+  const raw = String(value || "").trim();
+  return raw ? raw.slice(0, 10) : "-";
+}
+
+function billingCycleLabel(cycle) {
+  const key = String(cycle || "").trim().toLowerCase();
+  if (key === "annual") return t("cycle_annual");
+  if (key === "monthly") return t("cycle_monthly");
+  return "-";
+}
+
+function hasAppAccess() {
+  return (state.subscription || {}).access_active !== false;
+}
+
+function accessReason() {
+  return String((state.subscription || {}).access_reason || "").trim() || "Subscription inactive. Update billing to continue.";
+}
+
 function renderSubscription() {
   const sub = state.subscription || {};
   const planCode = String(sub.plan_code || "basic").toLowerCase();
@@ -724,8 +761,9 @@ function renderSubscription() {
   const trialEnds = String(sub.trial_ends_at || "");
   const trialDays = Number(sub.trial_days_remaining || 0);
   const isLifetime = Boolean(sub.is_lifetime);
+  const withWebsite = Boolean(sub.plan_with_website);
 
-  if ($("planCodeValue")) $("planCodeValue").textContent = planLabel(planCode);
+  if ($("planCodeValue")) $("planCodeValue").textContent = planLabel(planCode, withWebsite);
   if ($("planStatusValue")) $("planStatusValue").textContent = status;
   if ($("trialEndsValue")) $("trialEndsValue").textContent = trialEnds ? trialEnds.slice(0, 10) : "-";
   if ($("trialDaysValue")) $("trialDaysValue").textContent = String(Math.max(0, trialDays));
@@ -736,6 +774,57 @@ function renderSubscription() {
     btn.classList.toggle("active", btnPlan === planCode);
     btn.disabled = isLifetime;
   });
+  renderBillingLock();
+  syncFinanceLockState();
+}
+
+function renderBillingLock() {
+  const card = $("billingLockCard");
+  if (!card) return;
+  const sub = state.subscription || {};
+  const active = hasAppAccess();
+  const planText = planLabel(sub.plan_code || "basic", Boolean(sub.plan_with_website));
+  const cycleText = billingCycleLabel(sub.billing_cycle);
+  const nextCharge = formatShortDate(sub.next_charge_at || "");
+  const reason = String(sub.access_reason || "").trim();
+  const parts = [`${t("current_plan")}: ${planText}`];
+  if (cycleText !== "-") parts.push(`${t("billing_cycle_label")}: ${cycleText}`);
+  if (nextCharge !== "-") parts.push(`${t("next_charge_label")}: ${nextCharge}`);
+  if (reason) parts.push(reason);
+
+  card.classList.remove("hidden", "active", "locked");
+  card.classList.add(active ? "active" : "locked");
+  if ($("billingLockTitle")) {
+    $("billingLockTitle").textContent = active ? t("billing_access_active") : t("billing_access_locked");
+  }
+  if ($("billingLockMessage")) {
+    $("billingLockMessage").textContent = parts.join(" | ");
+  }
+  if ($("btnResolveBilling")) {
+    $("btnResolveBilling").textContent = t("billing_manage_action");
+  }
+}
+
+function syncFinanceLockState() {
+  const locked = !hasAppAccess();
+  [
+    "accName", "accType", "accGroup", "accBal", "btnAddAccount", "btnCancelAccount",
+    "catName", "btnAddCategory",
+    "txType", "txAmount", "txAccount", "txCategory", "txNote", "btnAddTx", "btnCancelTx",
+    "transferFromAccount", "transferToAccount", "transferAmount", "btnTransferMoney",
+  ].forEach((id) => {
+    const el = $(id);
+    if (el) el.disabled = locked;
+  });
+  document.querySelectorAll("#accountsRows button, #txRows button").forEach((btn) => {
+    btn.disabled = locked;
+  });
+}
+
+function ensureAppAccessOrNotify() {
+  if (hasAppAccess()) return true;
+  notify(accessReason());
+  return false;
 }
 
 function getProfileImageUrl() {
@@ -861,10 +950,12 @@ function renderAccountsTable() {
     const editBtn = document.createElement("button");
     editBtn.className = "secondary";
     editBtn.textContent = t("edit");
+    editBtn.disabled = !hasAppAccess();
     editBtn.onclick = () => beginEditAccount(a);
     const delBtn = document.createElement("button");
     delBtn.className = "danger";
     delBtn.textContent = t("delete");
+    delBtn.disabled = !hasAppAccess();
     delBtn.onclick = () => deleteAccount(a);
     actionTd.appendChild(editBtn);
     actionTd.appendChild(document.createTextNode(" "));
@@ -923,10 +1014,12 @@ function renderTransactions() {
     const editBtn = document.createElement("button");
     editBtn.className = "secondary";
     editBtn.textContent = t("edit");
+    editBtn.disabled = !hasAppAccess();
     editBtn.onclick = () => beginEditTransaction(r);
     const delBtn = document.createElement("button");
     delBtn.className = "danger";
     delBtn.textContent = t("delete");
+    delBtn.disabled = !hasAppAccess();
     delBtn.onclick = () => deleteTransaction(r);
     actionTd.appendChild(editBtn);
     actionTd.appendChild(document.createTextNode(" "));
@@ -937,6 +1030,7 @@ function renderTransactions() {
 }
 
 function beginEditAccount(acc) {
+  if (!ensureAppAccessOrNotify()) return;
   state.editingAccountId = Number(acc.account_id || 0);
   $("accName").value = String(acc.account_name || "");
   $("accType").value = normalizeAccountTypeValue(acc.account_type);
@@ -959,6 +1053,7 @@ function resetAccountForm() {
 }
 
 async function deleteAccount(acc) {
+  if (!ensureAppAccessOrNotify()) return;
   try {
     try {
       await api(`/accounts/${acc.account_id}?user_id=${state.userId}`, {
@@ -980,6 +1075,7 @@ async function deleteAccount(acc) {
 }
 
 function beginEditTransaction(tx) {
+  if (!ensureAppAccessOrNotify()) return;
   state.editingTxId = Number(tx.txn_id || 0);
   $("txType").value = String(tx.type || "expense");
   $("txAmount").value = String(Number(tx.amount || 0));
@@ -1009,6 +1105,7 @@ function resetTransferForm() {
 }
 
 async function deleteTransaction(tx) {
+  if (!ensureAppAccessOrNotify()) return;
   try {
     try {
       await api(`/transactions/${tx.txn_id}?user_id=${state.userId}`, {
@@ -1275,33 +1372,58 @@ async function downloadSummaryPdf() {
 }
 
 async function refreshAll() {
-  const results = await Promise.allSettled([
+  const baseResults = await Promise.allSettled([
     api(`/profile?user_id=${state.userId}`),
+    api(`/billing/subscription?user_id=${state.userId}`),
+  ]);
+
+  const [profileRes, subscriptionRes] = baseResults;
+  state.profile = profileRes.status === "fulfilled" ? (profileRes.value || {}) : (state.profile || {});
+  state.subscription = subscriptionRes.status === "fulfilled" ? (subscriptionRes.value || {}) : (state.subscription || {});
+  if (state.profile && state.profile.name) {
+    state.userName = String(state.profile.name || state.userName || "");
+  }
+
+  renderProfile();
+  renderSubscription();
+
+  if (!hasAppAccess()) {
+    state.accounts = [];
+    state.categories = [];
+    state.tx = [];
+    state.daily = [];
+    state.filteredTx = [];
+    renderAccountsTable();
+    renderCategories();
+    renderTransactions();
+    renderKpisAndCharts();
+    renderDailySummary();
+    setStatus("health", accessReason());
+    return;
+  }
+
+  const results = await Promise.allSettled([
     api(`/accounts?user_id=${state.userId}`),
     api(`/categories?user_id=${state.userId}`),
     api(`/transactions?user_id=${state.userId}`),
     api(`/daily_balances?user_id=${state.userId}`),
   ]);
 
-  const [profileRes, accountsRes, categoriesRes, txRes, dailyRes] = results;
-  state.profile = profileRes.status === "fulfilled" ? (profileRes.value || {}) : (state.profile || {});
-  if (state.profile && state.profile.name) {
-    state.userName = String(state.profile.name || state.userName || "");
-  }
+  const [accountsRes, categoriesRes, txRes, dailyRes] = results;
   state.accounts = accountsRes.status === "fulfilled" ? (accountsRes.value || []) : [];
   state.categories = categoriesRes.status === "fulfilled" ? (categoriesRes.value || []) : [];
   state.tx = txRes.status === "fulfilled" ? (txRes.value || []) : [];
   state.daily = dailyRes.status === "fulfilled" ? (dailyRes.value || []) : [];
   applyTxRange();
 
-  renderProfile();
   renderAccountsTable();
   renderCategories();
   renderTransactions();
   renderKpisAndCharts();
   renderDailySummary();
+  syncFinanceLockState();
 
-  const failures = results.filter((r) => r.status === "rejected");
+  const failures = [...baseResults, ...results].filter((r) => r.status === "rejected");
   if (failures.length > 0) {
     setStatus("health", `Some data failed to load: ${errMessage(failures[0].reason)}`);
   } else {
@@ -1336,6 +1458,7 @@ window.addEventListener("load", async () => {
     };
   });
   if ($("btnOpenSettings")) $("btnOpenSettings").onclick = () => { window.location.href = "./settings.html"; };
+  if ($("btnResolveBilling")) $("btnResolveBilling").onclick = () => { window.location.href = "./settings.html"; };
   if ($("profileImageInput")) {
     $("profileImageInput").onchange = (e) => {
       const file = e.target.files && e.target.files[0];
@@ -1466,6 +1589,7 @@ window.addEventListener("load", async () => {
   };
 
   $("btnAddAccount").onclick = async () => {
+    if (!ensureAppAccessOrNotify()) return;
     try {
       const payload = {
         user_id: state.userId,
@@ -1494,6 +1618,7 @@ window.addEventListener("load", async () => {
   $("btnCancelAccount").onclick = resetAccountForm;
 
   $("btnAddCategory").onclick = async () => {
+    if (!ensureAppAccessOrNotify()) return;
     try {
       await api("/categories", {
         method: "POST",
@@ -1510,6 +1635,7 @@ window.addEventListener("load", async () => {
   };
 
   $("btnAddTx").onclick = async () => {
+    if (!ensureAppAccessOrNotify()) return;
     try {
       const payload = {
         user_id: state.userId,
@@ -1539,6 +1665,7 @@ window.addEventListener("load", async () => {
   $("btnCancelTx").onclick = resetTxForm;
   if ($("btnTransferMoney")) {
     $("btnTransferMoney").onclick = async () => {
+      if (!ensureAppAccessOrNotify()) return;
       try {
         const fromAccountId = Number($("transferFromAccount").value || 0);
         const toAccountId = Number($("transferToAccount").value || 0);
@@ -1613,6 +1740,14 @@ window.addEventListener("load", async () => {
       trial_ends_at: String(session.trial_ends_at || ""),
       trial_days_remaining: Number(session.trial_days_remaining || 0),
       is_lifetime: Boolean(session.is_lifetime || false),
+      subscription_started_at: String(session.subscription_started_at || ""),
+      subscription_ends_at: String(session.subscription_ends_at || ""),
+      billing_cycle: String(session.billing_cycle || ""),
+      plan_with_website: Boolean(session.plan_with_website || false),
+      next_charge_at: String(session.next_charge_at || ""),
+      access_active: session.access_active !== false,
+      access_reason: String(session.access_reason || ""),
+      feature_flags: session.feature_flags || {},
     };
     setScreen(true);
     await refreshAll();

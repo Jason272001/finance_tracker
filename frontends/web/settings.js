@@ -46,6 +46,7 @@ const I18N = {
     plan_regular: "Regular",
     plan_business: "Business",
     plan_premium_plus: "Premium Plus",
+    plan_diamond: "Diamond",
     plan_lifetime: "Lifetime",
     plan_updated: "Plan updated successfully.",
     manage_billing: "Manage Billing",
@@ -71,6 +72,14 @@ const I18N = {
     annual_savings_prefix: "Annual savings vs monthly: ",
     annual_savings_empty: "No annual savings configured yet.",
     annual_switch_hint: "Choose Annual to save more each year.",
+    next_charge: "Next Charge",
+    access_state: "Access",
+    access_reason: "Access Reason",
+    website_bundle: "Website Bundle",
+    yes: "Yes",
+    no: "No",
+    access_active: "Active",
+    access_locked: "Locked",
   },
 };
 
@@ -237,6 +246,11 @@ function applyLanguage(lang) {
   setText("planStatusLabel", "plan_status");
   setText("trialEndsLabel", "trial_ends");
   setText("trialDaysLabel", "trial_days_left");
+  setText("billingCycleMetaLabel", "billing_cycle");
+  setText("nextChargeLabel", "next_charge");
+  setText("accessStateLabel", "access_state");
+  setText("websiteBundleLabel", "website_bundle");
+  setText("accessReasonLabel", "access_reason");
   setText("changePlanLabel", "change_plan");
   setText("planBtnBasic", "plan_basic");
   setText("planBtnRegular", "plan_regular");
@@ -289,8 +303,11 @@ async function api(path, opts = {}) {
   return res.json();
 }
 
-function planLabel(planCode) {
+function planLabel(planCode, withWebsite = false) {
   const key = String(planCode || "").trim().toLowerCase();
+  if (key === "premium_plus" && withWebsite) {
+    return t("plan_diamond");
+  }
   const labels = {
     basic: t("plan_basic"),
     regular: t("plan_regular"),
@@ -299,6 +316,18 @@ function planLabel(planCode) {
     lifetime: t("plan_lifetime"),
   };
   return labels[key] || key || t("plan_basic");
+}
+
+function formatShortDate(value) {
+  const raw = String(value || "").trim();
+  return raw ? raw.slice(0, 10) : "-";
+}
+
+function billingCycleLabel(cycle) {
+  const key = String(cycle || "").trim().toLowerCase();
+  if (key === "annual") return t("cycle_annual");
+  if (key === "monthly") return t("cycle_monthly");
+  return "-";
 }
 
 function getProfileImageUrl() {
@@ -329,12 +358,22 @@ function renderSubscription() {
   const trialEnds = String(sub.trial_ends_at || "");
   const trialDays = Number(sub.trial_days_remaining || 0);
   const isLifetime = Boolean(sub.is_lifetime);
+  const withWebsite = Boolean(sub.plan_with_website);
+  const billingCycle = String(sub.billing_cycle || "").toLowerCase();
+  const nextCharge = String(sub.next_charge_at || "");
+  const accessActive = sub.access_active !== false;
+  const accessReason = String(sub.access_reason || "").trim();
   const hasStripeSub = String(sub.billing_subscription_id || "").trim().length > 0;
 
-  if ($("planCodeValue")) $("planCodeValue").textContent = planLabel(planCode);
+  if ($("planCodeValue")) $("planCodeValue").textContent = planLabel(planCode, withWebsite);
   if ($("planStatusValue")) $("planStatusValue").textContent = status;
-  if ($("trialEndsValue")) $("trialEndsValue").textContent = trialEnds ? trialEnds.slice(0, 10) : "-";
+  if ($("trialEndsValue")) $("trialEndsValue").textContent = formatShortDate(trialEnds);
   if ($("trialDaysValue")) $("trialDaysValue").textContent = String(Math.max(0, trialDays));
+  if ($("billingCycleValue")) $("billingCycleValue").textContent = billingCycleLabel(billingCycle);
+  if ($("nextChargeValue")) $("nextChargeValue").textContent = formatShortDate(nextCharge);
+  if ($("accessStateValue")) $("accessStateValue").textContent = accessActive ? t("access_active") : t("access_locked");
+  if ($("websiteBundleValue")) $("websiteBundleValue").textContent = withWebsite ? t("yes") : t("no");
+  if ($("accessReasonValue")) $("accessReasonValue").textContent = accessReason || "-";
 
   document.querySelectorAll(".plan-btn").forEach((btn) => {
     const btnPlan = String(btn.getAttribute("data-plan") || "").toLowerCase();
@@ -698,6 +737,11 @@ window.addEventListener("load", async () => {
       trial_days_remaining: Number(session.trial_days_remaining || 0),
       is_lifetime: Boolean(session.is_lifetime || false),
       billing_subscription_id: String(session.billing_subscription_id || ""),
+      billing_cycle: String(session.billing_cycle || ""),
+      plan_with_website: Boolean(session.plan_with_website || false),
+      next_charge_at: String(session.next_charge_at || ""),
+      access_active: session.access_active !== false,
+      access_reason: String(session.access_reason || ""),
     };
     renderProfile();
     renderSubscription();

@@ -453,6 +453,85 @@ def _parse_iso_datetime(value: str) -> Optional[datetime]:
         return None
 
 
+def _as_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _stripe_price_metadata(price_id: str) -> dict:
+    pid = str(price_id or "").strip()
+    if not pid:
+        return {}
+    mapping = {
+        STRIPE_PRICE_BASIC: {"plan_code": "basic", "billing_cycle": "monthly", "with_website": False},
+        STRIPE_PRICE_BASIC_ANNUAL: {"plan_code": "basic", "billing_cycle": "annual", "with_website": False},
+        STRIPE_PRICE_REGULAR: {"plan_code": "regular", "billing_cycle": "monthly", "with_website": False},
+        STRIPE_PRICE_REGULAR_ANNUAL: {"plan_code": "regular", "billing_cycle": "annual", "with_website": False},
+        STRIPE_PRICE_BUSINESS: {"plan_code": "business", "billing_cycle": "monthly", "with_website": False},
+        STRIPE_PRICE_BUSINESS_ANNUAL: {"plan_code": "business", "billing_cycle": "annual", "with_website": False},
+        STRIPE_PRICE_PREMIUM_PLUS: {"plan_code": "premium_plus", "billing_cycle": "monthly", "with_website": False},
+        STRIPE_PRICE_PREMIUM_PLUS_ANNUAL: {"plan_code": "premium_plus", "billing_cycle": "annual", "with_website": False},
+        STRIPE_PRICE_PREMIUM_PLUS_WEBSITE: {"plan_code": "premium_plus", "billing_cycle": "monthly", "with_website": True},
+        STRIPE_PRICE_PREMIUM_PLUS_WEBSITE_ANNUAL: {"plan_code": "premium_plus", "billing_cycle": "annual", "with_website": True},
+    }
+    return mapping.get(pid, {})
+
+
+def _subscription_feature_flags(plan_code: str, is_lifetime: bool = False, with_website: bool = False) -> dict:
+    if is_lifetime:
+        return {
+            "manual_tracking": True,
+            "auto_sync": True,
+            "analytics": True,
+            "business_tools": True,
+            "ai_insights": True,
+            "website_bundle": True,
+        }
+    key = str(plan_code or "").strip().lower()
+    return {
+        "manual_tracking": True,
+        "auto_sync": key in {"regular", "business", "premium_plus"},
+        "analytics": key in {"regular", "business", "premium_plus"},
+        "business_tools": key in {"business", "premium_plus"},
+        "ai_insights": key in {"premium_plus"},
+        "website_bundle": bool(with_website),
+    }
+
+
+def _subscription_access_details(
+    status: str,
+    is_lifetime: bool,
+    trial_ends_at: str,
+    subscription_ends_at: str,
+) -> tuple[bool, str]:
+    if is_lifetime:
+        return True, "Lifetime access is active."
+    now_dt = datetime.now(timezone.utc)
+    key = str(status or "").strip().lower()
+    if key == "trial":
+        trial_dt = _as_utc(_parse_iso_datetime(trial_ends_at))
+        if trial_dt and trial_dt > now_dt:
+            return True, f"Free trial active until {trial_dt.date().isoformat()}."
+        return False, "Your free trial has ended. Update billing to continue."
+    if key == "active":
+        return True, "Subscription active."
+    if key == "canceled":
+        end_dt = _as_utc(_parse_iso_datetime(subscription_ends_at))
+        if end_dt and end_dt > now_dt:
+            return True, f"Subscription canceled. Access remains until {end_dt.date().isoformat()}."
+        return False, "Subscription canceled. Reactivate billing to continue."
+    if key == "past_due":
+        return False, "Payment is past due. Update billing to continue."
+    if key == "unpaid":
+        return False, "Subscription is unpaid. Update billing to continue."
+    if key == "incomplete":
+        return False, "Billing setup is incomplete. Complete checkout to continue."
+    return False, "Subscription inactive. Update billing to continue."
+
+
 def _build_subscription_payload(profile: dict) -> dict:
     is_lifetime = bool(profile.get("is_lifetime", False))
     plan_code = str(profile.get("plan_code", "")).strip().lower()
@@ -462,24 +541,51 @@ def _build_subscription_payload(profile: dict) -> dict:
     if not status:
         status = "active" if is_lifetime else "active"
     trial_ends_at = str(profile.get("trial_ends_at", "")).strip()
+    subscription_started_at = str(profile.get("subscription_started_at", "")).strip()
+    subscription_ends_at = str(profile.get("subscription_ends_at", "")).strip()
+    billing_cycle = str(profile.get("billing_cycle", "")).strip().lower()
+    if billing_cycle not in {"monthly", "annual"}:
+        billing_cycle = ""
+    plan_with_website = bool(profile.get("plan_with_website", False))
+    next_charge_at = str(profile.get("next_charge_at", "")).strip()
     trial_days_remaining = 0
     if status == "trial" and trial_ends_at:
-        trial_dt = _parse_iso_datetime(trial_ends_at)
+        trial_dt = _as_utc(_parse_iso_datetime(trial_ends_at))
         if trial_dt is not None:
-            now_dt = datetime.utcnow()
-            delta_s = (trial_dt.replace(tzinfo=None) - now_dt).total_seconds()
+            now_dt = datetime.now(timezone.utc)
+            delta_s = (trial_dt - now_dt).total_seconds()
             if delta_s > 0:
                 trial_days_remaining = max(1, int(math.ceil(delta_s / 86400.0)))
+    if not next_charge_at and status == "trial" and trial_ends_at:
+        next_charge_at = trial_ends_at
+    access_active, access_reason = _subscription_access_details(
+        status=status,
+        is_lifetime=is_lifetime,
+        trial_ends_at=trial_ends_at,
+        subscription_ends_at=subscription_ends_at,
+    )
     return {
         "plan_code": plan_code,
         "subscription_status": status,
         "trial_ends_at": trial_ends_at,
         "trial_days_remaining": int(trial_days_remaining),
         "is_lifetime": is_lifetime,
+        "subscription_started_at": subscription_started_at,
+        "subscription_ends_at": subscription_ends_at,
         "billing_provider": str(profile.get("billing_provider", "")).strip().lower(),
         "billing_customer_id": str(profile.get("billing_customer_id", "")).strip(),
         "billing_subscription_id": str(profile.get("billing_subscription_id", "")).strip(),
         "billing_price_id": str(profile.get("billing_price_id", "")).strip(),
+        "billing_cycle": billing_cycle,
+        "plan_with_website": plan_with_website,
+        "next_charge_at": next_charge_at,
+        "access_active": bool(access_active),
+        "access_reason": access_reason,
+        "feature_flags": _subscription_feature_flags(
+            plan_code=plan_code,
+            is_lifetime=is_lifetime,
+            with_website=plan_with_website,
+        ),
     }
 
 
@@ -576,22 +682,8 @@ def _stripe_price_for_plan(plan_code: str, with_website: bool = False, billing_c
 
 
 def _stripe_plan_from_price(price_id: str) -> Optional[str]:
-    pid = str(price_id or "").strip()
-    if not pid:
-        return None
-    mapping = {
-        STRIPE_PRICE_BASIC: "basic",
-        STRIPE_PRICE_BASIC_ANNUAL: "basic",
-        STRIPE_PRICE_REGULAR: "regular",
-        STRIPE_PRICE_REGULAR_ANNUAL: "regular",
-        STRIPE_PRICE_BUSINESS: "business",
-        STRIPE_PRICE_BUSINESS_ANNUAL: "business",
-        STRIPE_PRICE_PREMIUM_PLUS: "premium_plus",
-        STRIPE_PRICE_PREMIUM_PLUS_ANNUAL: "premium_plus",
-        STRIPE_PRICE_PREMIUM_PLUS_WEBSITE: "premium_plus",
-        STRIPE_PRICE_PREMIUM_PLUS_WEBSITE_ANNUAL: "premium_plus",
-    }
-    return mapping.get(pid)
+    meta = _stripe_price_metadata(price_id)
+    return str(meta.get("plan_code", "")).strip().lower() or None
 
 
 def _stripe_status_to_subscription_status(status: str) -> str:
@@ -822,19 +914,31 @@ def _stripe_verified_precheckout_session(session_id: str, expected_plan_code: Op
 
     items = ((subscription_obj.get("items", {}) or {}).get("data", []) or [])
     first_item = items[0] if items else {}
-    price_id = str(((first_item.get("price", {}) or {}).get("id", ""))).strip()
+    price_obj = first_item.get("price", {}) or {}
+    price_id = str((price_obj.get("id", ""))).strip()
+    derived_meta = _stripe_price_metadata(price_id)
     customer_email = str(
         ((session.get("customer_details") or {}).get("email"))
         or session.get("customer_email")
         or ""
     ).strip().lower()
     customer_id = str(session.get("customer", "")).strip()
+    billing_cycle = str(metadata.get("billing_cycle", "")).strip().lower()
+    if billing_cycle not in {"monthly", "annual"}:
+        billing_cycle = str(derived_meta.get("billing_cycle", "")).strip().lower()
+    plan_with_website = str(metadata.get("with_website", "")).strip().lower() in {"1", "true", "yes", "on"}
+    if not plan_with_website:
+        plan_with_website = bool(derived_meta.get("with_website", False))
+    next_charge_at = (
+        _iso_from_unix_ts(subscription_obj.get("trial_end"))
+        or _iso_from_unix_ts(subscription_obj.get("current_period_end"))
+    )
 
     return {
         "session_id": str(session.get("id", "")).strip(),
-        "plan_code": plan_code,
-        "billing_cycle": str(metadata.get("billing_cycle", "")).strip().lower(),
-        "with_website": str(metadata.get("with_website", "")).strip().lower() in {"1", "true", "yes", "on"},
+        "plan_code": plan_code or str(derived_meta.get("plan_code", "")).strip().lower(),
+        "billing_cycle": billing_cycle,
+        "with_website": bool(plan_with_website),
         "customer_email": customer_email,
         "customer_id": customer_id,
         "subscription_id": subscription_id,
@@ -847,6 +951,7 @@ def _stripe_verified_precheckout_session(session_id: str, expected_plan_code: Op
             _iso_from_unix_ts(subscription_obj.get("start_date"))
             or _iso_from_unix_ts(subscription_obj.get("current_period_start"))
         ),
+        "next_charge_at": next_charge_at,
     }
 
 
@@ -899,6 +1004,20 @@ def _require_user(request: Request, authorization: Optional[str], expected_user_
     token_uid = _verify_token(token)
     if int(token_uid) != int(expected_user_id):
         raise HTTPException(status_code=403, detail="Forbidden user scope")
+
+
+def _require_app_access(request: Request, authorization: Optional[str], expected_user_id: int) -> dict:
+    _require_user(request, authorization, expected_user_id)
+    profile = User().get_user_by_id(expected_user_id) or {}
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found.")
+    subscription = _build_subscription_payload(profile)
+    if not bool(subscription.get("access_active", False)):
+        raise HTTPException(
+            status_code=402,
+            detail=str(subscription.get("access_reason") or "Subscription inactive. Update billing to continue."),
+        )
+    return profile
 
 
 @app.on_event("startup")
@@ -978,6 +1097,9 @@ def register(body: RegisterBody):
                 billing_customer_id=checkout_info.get("customer_id") or "",
                 billing_subscription_id=checkout_info.get("subscription_id") or "",
                 billing_price_id=checkout_info.get("price_id") or "",
+                billing_cycle=checkout_info.get("billing_cycle") or "",
+                plan_with_website=bool(checkout_info.get("with_website")),
+                next_charge_at=checkout_info.get("next_charge_at") or "",
             )
         profile = User().get_user_by_id(uid) or {}
         subscription = _build_subscription_payload(profile)
@@ -1648,6 +1770,11 @@ def update_billing_subscription(
     authorization: Optional[str] = Header(default=None),
 ):
     _require_user(request, authorization, body.user_id)
+    if STRIPE_SECRET_KEY:
+        raise HTTPException(
+            status_code=400,
+            detail="Direct plan updates are disabled. Use the Stripe billing checkout flow.",
+        )
     try:
         User().set_subscription_plan(user_id=body.user_id, plan_code=body.plan_code)
     except ValueError as e:
@@ -1681,6 +1808,45 @@ async def stripe_webhook(
         customer_id = str(data_obj.get("customer", "")).strip()
         subscription_id = str(data_obj.get("subscription", "")).strip()
         plan_code = str(metadata.get("plan_code", "")).strip().lower()
+        billing_cycle = str(metadata.get("billing_cycle", "")).strip().lower()
+        plan_with_website = str(metadata.get("with_website", "")).strip().lower() in {"1", "true", "yes", "on"}
+        subscription_status = "active"
+        trial_ends_at = ""
+        subscription_started_at = datetime.utcnow().isoformat() + "Z"
+        subscription_ends_at = ""
+        billing_price_id = ""
+        next_charge_at = ""
+        if subscription_id:
+            try:
+                sub = _stripe_api_get(
+                    f"/v1/subscriptions/{subscription_id}",
+                    query=[("expand[]", "items.data.price")],
+                )
+                items = ((sub.get("items", {}) or {}).get("data", []) or [])
+                first_item = items[0] if items else {}
+                price_obj = first_item.get("price", {}) or {}
+                billing_price_id = str(price_obj.get("id", "")).strip()
+                derived_meta = _stripe_price_metadata(billing_price_id)
+                if not plan_code:
+                    plan_code = str(derived_meta.get("plan_code", "")).strip().lower()
+                if billing_cycle not in {"monthly", "annual"}:
+                    billing_cycle = str(derived_meta.get("billing_cycle", "")).strip().lower()
+                if not plan_with_website:
+                    plan_with_website = bool(derived_meta.get("with_website", False))
+                subscription_status = _stripe_status_to_subscription_status(str(sub.get("status", "")).strip().lower())
+                trial_ends_at = _iso_from_unix_ts(sub.get("trial_end"))
+                subscription_started_at = (
+                    _iso_from_unix_ts(sub.get("start_date"))
+                    or _iso_from_unix_ts(sub.get("current_period_start"))
+                    or subscription_started_at
+                )
+                subscription_ends_at = _iso_from_unix_ts(sub.get("ended_at") or sub.get("cancel_at"))
+                next_charge_at = (
+                    _iso_from_unix_ts(sub.get("trial_end"))
+                    or _iso_from_unix_ts(sub.get("current_period_end"))
+                )
+            except Exception:
+                logger.exception("Failed to enrich checkout.session.completed subscription %s", subscription_id)
         try:
             uid = int(uid_raw)
         except Exception:
@@ -1689,13 +1855,17 @@ async def stripe_webhook(
             users.update_billing_subscription(
                 user_id=uid,
                 plan_code=plan_code or None,
-                subscription_status="active",
-                trial_ends_at="",
-                subscription_started_at=datetime.utcnow().isoformat() + "Z",
-                subscription_ends_at="",
+                subscription_status=subscription_status,
+                trial_ends_at=trial_ends_at,
+                subscription_started_at=subscription_started_at,
+                subscription_ends_at=subscription_ends_at,
                 billing_provider="stripe",
                 billing_customer_id=customer_id or None,
                 billing_subscription_id=subscription_id or None,
+                billing_price_id=billing_price_id or None,
+                billing_cycle=billing_cycle or None,
+                plan_with_website=plan_with_website,
+                next_charge_at=next_charge_at or None,
             )
         elif customer_id:
             u = users.get_user_by_billing_customer_id(customer_id)
@@ -1703,12 +1873,17 @@ async def stripe_webhook(
                 users.update_billing_subscription(
                     user_id=int(u["user_id"]),
                     plan_code=plan_code or None,
-                    subscription_status="active",
-                    trial_ends_at="",
-                    subscription_started_at=datetime.utcnow().isoformat() + "Z",
-                    subscription_ends_at="",
+                    subscription_status=subscription_status,
+                    trial_ends_at=trial_ends_at,
+                    subscription_started_at=subscription_started_at,
+                    subscription_ends_at=subscription_ends_at,
                     billing_provider="stripe",
+                    billing_customer_id=customer_id,
                     billing_subscription_id=subscription_id or None,
+                    billing_price_id=billing_price_id or None,
+                    billing_cycle=billing_cycle or None,
+                    plan_with_website=plan_with_website,
+                    next_charge_at=next_charge_at or None,
                 )
 
     elif event_type in {"customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"}:
@@ -1717,10 +1892,25 @@ async def stripe_webhook(
         status = _stripe_status_to_subscription_status(str(data_obj.get("status", "")).strip().lower())
         items = ((data_obj.get("items", {}) or {}).get("data", []) or [])
         first_item = items[0] if items else {}
-        price_id = str(((first_item.get("price", {}) or {}).get("id", ""))).strip()
-        plan_code = _stripe_plan_from_price(price_id)
+        price_obj = first_item.get("price", {}) or {}
+        price_id = str((price_obj.get("id", ""))).strip()
+        price_meta = _stripe_price_metadata(price_id)
+        plan_code = str(price_meta.get("plan_code", "")).strip().lower() or _stripe_plan_from_price(price_id)
+        recurring = price_obj.get("recurring", {}) or {}
+        interval = str(recurring.get("interval", "")).strip().lower()
+        billing_cycle = str(price_meta.get("billing_cycle", "")).strip().lower()
+        if billing_cycle not in {"monthly", "annual"}:
+            if interval == "year":
+                billing_cycle = "annual"
+            elif interval == "month":
+                billing_cycle = "monthly"
+            else:
+                billing_cycle = ""
+        plan_with_website = bool(price_meta.get("with_website", False))
         started_at = _iso_from_unix_ts(data_obj.get("start_date"))
         ended_at = _iso_from_unix_ts(data_obj.get("ended_at") or data_obj.get("cancel_at"))
+        trial_ends_at = _iso_from_unix_ts(data_obj.get("trial_end"))
+        next_charge_at = trial_ends_at or _iso_from_unix_ts(data_obj.get("current_period_end"))
         if status == "canceled" and not ended_at:
             ended_at = _iso_from_unix_ts(data_obj.get("current_period_end"))
 
@@ -1731,13 +1921,16 @@ async def stripe_webhook(
                     user_id=int(u["user_id"]),
                     plan_code=plan_code,
                     subscription_status=status,
-                    trial_ends_at="" if status in {"active", "canceled"} else None,
+                    trial_ends_at=trial_ends_at if status == "trial" else "",
                     subscription_started_at=started_at or None,
                     subscription_ends_at=ended_at if status == "canceled" else "",
                     billing_provider="stripe",
                     billing_customer_id=customer_id,
                     billing_subscription_id=subscription_id or None,
                     billing_price_id=price_id or None,
+                    billing_cycle=billing_cycle or None,
+                    plan_with_website=plan_with_website,
+                    next_charge_at=next_charge_at or "",
                 )
 
     elif event_type == "invoice.payment_failed":
@@ -1755,7 +1948,7 @@ async def stripe_webhook(
 
 @app.get("/accounts")
 def list_accounts(request: Request, user_id: int, authorization: Optional[str] = Header(default=None)):
-    _require_user(request, authorization, user_id)
+    _require_app_access(request, authorization, user_id)
     df = Account().by_user(user_id)
     if df is None or df.empty:
         return []
@@ -1764,7 +1957,7 @@ def list_accounts(request: Request, user_id: int, authorization: Optional[str] =
 
 @app.post("/accounts")
 def create_account(body: AccountCreateBody, request: Request, authorization: Optional[str] = Header(default=None)):
-    _require_user(request, authorization, body.user_id)
+    _require_app_access(request, authorization, body.user_id)
     try:
         aid = Account().add(
             account_name=body.account_name,
@@ -1785,7 +1978,7 @@ def update_account(
     request: Request,
     authorization: Optional[str] = Header(default=None),
 ):
-    _require_user(request, authorization, body.user_id)
+    _require_app_access(request, authorization, body.user_id)
     changes = {}
     if body.account_name is not None:
         changes["account_name"] = body.account_name
@@ -1810,7 +2003,7 @@ def delete_account(
     user_id: int,
     authorization: Optional[str] = Header(default=None),
 ):
-    _require_user(request, authorization, user_id)
+    _require_app_access(request, authorization, user_id)
     ok = Account().delete(account_id=account_id, user_id=user_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Account not found")
@@ -1838,7 +2031,7 @@ def transfer_between_accounts(
     request: Request,
     authorization: Optional[str] = Header(default=None),
 ):
-    _require_user(request, authorization, body.user_id)
+    _require_app_access(request, authorization, body.user_id)
     if int(body.from_account_id) == int(body.to_account_id):
         raise HTTPException(status_code=400, detail="Source and destination accounts must be different.")
     ok = Account().transfer(
@@ -1854,7 +2047,7 @@ def transfer_between_accounts(
 
 @app.get("/transactions")
 def list_transactions(request: Request, user_id: int, authorization: Optional[str] = Header(default=None)):
-    _require_user(request, authorization, user_id)
+    _require_app_access(request, authorization, user_id)
     df = Transaction().by_user(user_id)
     if df is None or df.empty:
         return []
@@ -1863,7 +2056,7 @@ def list_transactions(request: Request, user_id: int, authorization: Optional[st
 
 @app.post("/transactions")
 def create_transaction(body: TxCreateBody, request: Request, authorization: Optional[str] = Header(default=None)):
-    _require_user(request, authorization, body.user_id)
+    _require_app_access(request, authorization, body.user_id)
     try:
         txn_id = Transaction().add(
             t_type=body.tx_type,
@@ -1885,7 +2078,7 @@ def update_transaction(
     request: Request,
     authorization: Optional[str] = Header(default=None),
 ):
-    _require_user(request, authorization, body.user_id)
+    _require_app_access(request, authorization, body.user_id)
     changes = {}
     if body.tx_type is not None:
         changes["type"] = body.tx_type
@@ -1912,7 +2105,7 @@ def delete_transaction(
     user_id: int,
     authorization: Optional[str] = Header(default=None),
 ):
-    _require_user(request, authorization, user_id)
+    _require_app_access(request, authorization, user_id)
     ok = Transaction().delete(txn_id=txn_id, user_id=user_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Transaction not found")
@@ -1936,7 +2129,7 @@ def delete_transaction_post(
 
 @app.get("/categories")
 def list_categories(request: Request, user_id: int, authorization: Optional[str] = Header(default=None)):
-    _require_user(request, authorization, user_id)
+    _require_app_access(request, authorization, user_id)
     try:
         cat = Category()
         cat.ensure_default_categories(user_id)
@@ -1952,7 +2145,7 @@ def list_categories(request: Request, user_id: int, authorization: Optional[str]
 
 @app.post("/categories")
 def create_category(body: CategoryCreateBody, request: Request, authorization: Optional[str] = Header(default=None)):
-    _require_user(request, authorization, body.user_id)
+    _require_app_access(request, authorization, body.user_id)
     try:
         cid = Category().add(category_name=body.category_name, user_id=body.user_id)
         return {"ok": True, "category_id": int(cid)}
@@ -1962,7 +2155,7 @@ def create_category(body: CategoryCreateBody, request: Request, authorization: O
 
 @app.get("/daily_balances")
 def list_daily_balances(request: Request, user_id: int, authorization: Optional[str] = Header(default=None)):
-    _require_user(request, authorization, user_id)
+    _require_app_access(request, authorization, user_id)
     df = DailyBalance().by_user(user_id)
     if df is None or df.empty:
         return []
