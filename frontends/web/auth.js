@@ -529,8 +529,6 @@ window.addEventListener("load", async () => {
       state.precheckoutEmail = "";
       startSignupBillingPolling(state.signupPlan, String($("authEmail")?.value || "").trim());
       if (billingQueryState === "success" || querySessionId) {
-      startSignupBillingPolling(state.signupPlan, String($("authEmail")?.value || "").trim());
-      if (billingQueryState === "success" || querySessionId) {
         setStatus(errMessage(e));
       }
     }
