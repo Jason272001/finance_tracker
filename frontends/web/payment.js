@@ -163,7 +163,7 @@ function renderContext(data) {
   $("paymentTrialValue").textContent = statusLabel("trial", data.trial_status);
   $("paymentMessageValue").textContent = data.message || paymentT("subtitle");
   if (data.already_active) {
-    disablePaymentButton(true);
+    disablePaymentButton(false);
     $("btnPaymentContinue").textContent = paymentT("to_login");
     $("btnPaymentContinue").onclick = () => {
       window.location.href = "./auth?mode=signin&payment=success";
@@ -229,9 +229,6 @@ window.addEventListener("load", async () => {
   if ($("paymentThemeToggle")) {
     $("paymentThemeToggle").onclick = () => applyTheme(state.theme === "dark" ? "light" : "dark");
   }
-  $("btnPaymentLogin").onclick = () => {
-    window.location.href = "./auth?mode=signin";
-  };
 
   if (!state.token) {
     setStatus("Payment link is invalid or expired.", "error");
