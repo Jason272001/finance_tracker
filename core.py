@@ -19,6 +19,7 @@ except Exception:
 
 DATA_DIR = "data"
 USERS_CSV = os.path.join(DATA_DIR, "users.csv")
+ADMIN1957_PATH = os.path.join(DATA_DIR, "admin_1957.csv")
 T_PATH=os.path.join(DATA_DIR,"transactions.csv")
 A_PATH=os.path.join(DATA_DIR,"accounts.csv")
 D_PATH=os.path.join(DATA_DIR,"daily_balances.csv")
@@ -970,6 +971,224 @@ class User:
                 .lower() in {"1", "true", "yes", "y"}
             ),
             "next_charge_at": str(row.get("next_charge_at", "")).strip(),
+        }
+
+    def list_all(self):
+        users = _load_users().copy()
+        users["user_id"] = pd.to_numeric(users["user_id"], errors="coerce")
+        users = users.dropna(subset=["user_id"]).sort_values("user_id")
+        out = []
+        for _, row in users.iterrows():
+            out.append(
+                {
+                    "user_id": int(row["user_id"]),
+                    "name": str(row.get("name", "")).strip(),
+                    "email": str(row.get("email", "")).strip(),
+                    "phone": str(row.get("phone", "")).strip(),
+                    "is_lifetime": bool(row.get("is_lifetime", False)),
+                    "payment_status": str(row.get("payment_status", "")).strip().lower() or "active",
+                    "trial_status": str(row.get("trial_status", "")).strip().lower() or "inactive",
+                    "email_notifications_enabled": bool(row.get("email_notifications_enabled", True)),
+                    "created_at": str(row.get("created_at", "")).strip(),
+                    "plan_code": str(row.get("plan_code", "")).strip().lower() or "basic",
+                    "subscription_status": str(row.get("subscription_status", "")).strip().lower() or "active",
+                    "trial_ends_at": str(row.get("trial_ends_at", "")).strip(),
+                    "subscription_started_at": str(row.get("subscription_started_at", "")).strip(),
+                    "subscription_ends_at": str(row.get("subscription_ends_at", "")).strip(),
+                    "billing_provider": str(row.get("billing_provider", "")).strip().lower(),
+                    "billing_customer_id": str(row.get("billing_customer_id", "")).strip(),
+                    "billing_subscription_id": str(row.get("billing_subscription_id", "")).strip(),
+                    "billing_price_id": str(row.get("billing_price_id", "")).strip(),
+                    "billing_cycle": str(row.get("billing_cycle", "")).strip().lower(),
+                    "plan_with_website": bool(row.get("plan_with_website", False)),
+                    "next_charge_at": str(row.get("next_charge_at", "")).strip(),
+                }
+            )
+        return out
+
+
+class Admin1957:
+    cols = ["id", "name", "email", "phone", "password", "position", "created_at"]
+
+    def __init__(self, path=ADMIN1957_PATH):
+        self.path = path
+        self.table = "admin_1957"
+        self.admin_id = None
+        self.name = None
+        if not DB_IS_SQL:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            if not os.path.exists(self.path):
+                pd.DataFrame(columns=self.cols).to_csv(self.path, index=False)
+
+    def _load(self):
+        if DB_IS_SQL:
+            df = _read_table(self.table, self.cols)
+        else:
+            if not os.path.exists(self.path):
+                os.makedirs(os.path.dirname(self.path), exist_ok=True)
+                pd.DataFrame(columns=self.cols).to_csv(self.path, index=False)
+            df = pd.read_csv(self.path)
+        for c in self.cols:
+            if c not in df.columns:
+                df[c] = ""
+        df["id"] = pd.to_numeric(df["id"], errors="coerce")
+        df["name"] = df["name"].fillna("").astype(str)
+        df["email"] = df["email"].fillna("").astype(str)
+        df["phone"] = df["phone"].fillna("").astype(str)
+        df["password"] = df["password"].fillna("").astype(str)
+        df["position"] = df["position"].fillna("").astype(str)
+        df["created_at"] = df["created_at"].fillna("").astype(str)
+        return df[self.cols]
+
+    def _save(self, df):
+        out = df.copy()
+        for c in self.cols:
+            if c not in out.columns:
+                out[c] = ""
+        out = out[self.cols]
+        if DB_IS_SQL:
+            _write_table(self.table, out)
+        else:
+            _atomic_write_csv(self.path, out)
+
+    def _next_id(self, df):
+        if df.empty:
+            return 1
+        series = pd.to_numeric(df["id"], errors="coerce").dropna()
+        return 1 if series.empty else int(series.max()) + 1
+
+    def _normalize_email(self, email):
+        return str(email or "").strip().lower()
+
+    def _normalize_phone(self, phone):
+        digits = re.sub(r"\D", "", str(phone or ""))
+        if len(digits) < 7:
+            raise ValueError("Phone format is invalid.")
+        return digits
+
+    def count(self):
+        return int(len(self._load()))
+
+    def list_all(self):
+        df = self._load().copy()
+        df = df.dropna(subset=["id"]).sort_values("id")
+        out = []
+        for _, row in df.iterrows():
+            out.append(
+                {
+                    "id": int(row["id"]),
+                    "name": str(row.get("name", "")).strip(),
+                    "email": str(row.get("email", "")).strip(),
+                    "phone": str(row.get("phone", "")).strip(),
+                    "position": str(row.get("position", "")).strip(),
+                    "created_at": str(row.get("created_at", "")).strip(),
+                }
+            )
+        return out
+
+    def register(self, name=None, email=None, phone=None, password=None, position=None):
+        name_s = str(name or "").strip()
+        email_s = self._normalize_email(email)
+        phone_s = self._normalize_phone(phone)
+        pw_s = str(password or "")
+        position_s = str(position or "").strip()
+
+        if not name_s:
+            raise ValueError("Name is required.")
+        if not email_s or "@" not in email_s:
+            raise ValueError("Email format is invalid.")
+        if len(pw_s) < 7:
+            raise ValueError("Password must be at least 7 characters.")
+        if not position_s:
+            raise ValueError("Position is required.")
+
+        def _register(df):
+            name_col = df["name"].astype(str).str.strip().str.lower()
+            email_col = df["email"].astype(str).str.strip().str.lower()
+            phone_col = df["phone"].astype(str).str.replace(r"\D", "", regex=True)
+            if (name_col == name_s.lower()).any():
+                raise ValueError("Admin username already exists.")
+            if (email_col == email_s).any():
+                raise ValueError("Admin email already exists.")
+            if (phone_col == phone_s).any():
+                raise ValueError("Admin phone already exists.")
+
+            new_row = pd.DataFrame(
+                [
+                    {
+                        "id": self._next_id(df),
+                        "name": name_s,
+                        "email": email_s,
+                        "phone": phone_s,
+                        "password": _hash_password(pw_s),
+                        "position": position_s,
+                        "created_at": datetime.utcnow().isoformat(timespec="seconds"),
+                    }
+                ]
+            )
+            out = pd.concat([df, new_row], ignore_index=True)
+            return int(new_row.iloc[0]["id"]), out
+
+        if DB_IS_SQL:
+            df = self._load()
+            admin_id, out = _register(df)
+            self._save(out)
+        else:
+            with _file_lock(self.path):
+                df = self._load()
+                admin_id, out = _register(df)
+                self._save(out)
+        return self.get_admin_by_id(admin_id)
+
+    def login(self, identifier, password):
+        ident_s = str(identifier or "").strip()
+        key = ident_s.lower()
+        pw_s = str(password or "")
+        if not ident_s or not pw_s:
+            return False
+
+        df = self._load()
+        name_col = df["name"].astype(str).str.strip()
+        email_col = df["email"].astype(str).str.strip().str.lower()
+        phone_digits = re.sub(r"\D", "", ident_s)
+        phone_col = df["phone"].astype(str).str.replace(r"\D", "", regex=True)
+        candidates = df[
+            (name_col == ident_s)
+            | (email_col == key)
+            | ((phone_digits != "") & (phone_col == phone_digits))
+        ]
+        if candidates.empty:
+            return False
+
+        for idx, row in candidates.iterrows():
+            ok, needs_upgrade = _verify_password(str(row.get("password", "")), pw_s)
+            if not ok:
+                continue
+            self.admin_id = int(row["id"])
+            self.name = str(row.get("name", "")).strip()
+            if needs_upgrade:
+                df.at[idx, "password"] = _hash_password(pw_s)
+                self._save(df)
+            return True
+        return False
+
+    def get_admin_by_id(self, admin_id):
+        try:
+            aid = int(admin_id)
+        except Exception:
+            return None
+        df = self._load()
+        hit = df[pd.to_numeric(df["id"], errors="coerce") == aid]
+        if hit.empty:
+            return None
+        row = hit.iloc[0]
+        return {
+            "id": int(row["id"]),
+            "name": str(row.get("name", "")).strip(),
+            "email": str(row.get("email", "")).strip(),
+            "phone": str(row.get("phone", "")).strip(),
+            "position": str(row.get("position", "")).strip(),
+            "created_at": str(row.get("created_at", "")).strip(),
         }
     
 

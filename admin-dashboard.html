@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KeeperBMA Admin Dashboard</title>
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; block-all-mixed-content" />
+  <link rel="icon" type="image/png" href="./assets/keeperbma-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script>
+    if (window.location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(window.location.hostname)) {
+      window.location.replace(`https://${window.location.host}${window.location.pathname}${window.location.search}${window.location.hash}`);
+    }
+    document.documentElement.dataset.theme = localStorage.getItem("keeperbma_theme") || "light";
+  </script>
+  <link rel="stylesheet" href="./frontends/web/styles.css?v=43" />
+</head>
+<body>
+  <main class="page admin-dashboard-page">
+    <header class="landing-nav admin-toolbar">
+      <div class="brand-row">
+        <img class="brand-logo small" src="./assets/keeperbma-icon.png" alt="KeeperBMA" />
+        <div>
+          <h1>KeeperBMA Admin</h1>
+          <p id="adminWhoami" class="muted admin-toolbar-note"></p>
+        </div>
+      </div>
+      <div class="landing-links">
+        <div class="theme-switch compact">
+          <span id="adminThemeLabel">Theme</span>
+          <button id="adminThemeToggle" type="button" class="theme-toggle" aria-pressed="false">
+            <span class="theme-toggle-thumb" aria-hidden="true"></span>
+          </button>
+        </div>
+        <button id="adminRefreshBtn" type="button">Refresh</button>
+        <button id="adminLogoutBtn" class="secondary" type="button">Logout</button>
+      </div>
+    </header>
+
+    <section class="kpi-grid">
+      <article class="kpi-card"><h3>Admins</h3><p id="metricAdmins">0</p></article>
+      <article class="kpi-card income"><h3>Users</h3><p id="metricUsers">0</p></article>
+      <article class="kpi-card expense"><h3>Accounts</h3><p id="metricAccounts">0</p></article>
+      <article class="kpi-card debt"><h3>Transactions</h3><p id="metricTransactions">0</p></article>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>User Update</h2>
+        <p class="muted">Select a user below to edit profile and billing access.</p>
+        <input id="adminSelectedUserId" type="hidden" />
+        <label for="adminEditName">Name</label>
+        <input id="adminEditName" placeholder="User name" />
+        <label for="adminEditEmail">Email</label>
+        <input id="adminEditEmail" type="email" placeholder="name@example.com" />
+        <label for="adminEditPhone">Phone</label>
+        <input id="adminEditPhone" placeholder="Phone" />
+        <div class="row">
+          <label><input id="adminEditEmailNotifications" type="checkbox" /> Email Notifications</label>
+          <label><input id="adminEditPlanWebsite" type="checkbox" /> Website Bundle</label>
+        </div>
+        <div class="row">
+          <select id="adminEditPlanCode">
+            <option value="">Plan</option>
+            <option value="basic">Basic</option>
+            <option value="regular">Regular</option>
+            <option value="business">Business</option>
+            <option value="premium_plus">Premium Plus</option>
+            <option value="lifetime">Lifetime</option>
+          </select>
+          <select id="adminEditSubscriptionStatus">
+            <option value="">Subscription Status</option>
+            <option value="trial">trial</option>
+            <option value="active">active</option>
+            <option value="past_due">past_due</option>
+            <option value="canceled">canceled</option>
+            <option value="incomplete">incomplete</option>
+            <option value="unpaid">unpaid</option>
+          </select>
+        </div>
+        <div class="row">
+          <select id="adminEditPaymentStatus">
+            <option value="">Payment Status</option>
+            <option value="pending">pending</option>
+            <option value="active">active</option>
+          </select>
+          <select id="adminEditTrialStatus">
+            <option value="">Trial Status</option>
+            <option value="pending">pending</option>
+            <option value="active">active</option>
+            <option value="inactive">inactive</option>
+          </select>
+          <select id="adminEditBillingCycle">
+            <option value="">Billing Cycle</option>
+            <option value="monthly">monthly</option>
+            <option value="annual">annual</option>
+          </select>
+        </div>
+        <button id="adminSaveUserBtn" type="button">Save User</button>
+        <p id="adminDashboardStatus" class="muted"></p>
+      </article>
+
+      <article class="card">
+        <h2>Admins</h2>
+        <div class="table-scroll"><table id="adminAdminsTable" class="mobile-stack"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Position</th><th>Created</th></tr></thead><tbody></tbody></table></div>
+      </article>
+
+      <article class="card span-2">
+        <h2>Users</h2>
+        <div class="table-scroll"><table id="adminUsersTable" class="mobile-stack"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Plan</th><th>Subscription</th><th>Payment</th><th>Trial</th><th>Action</th></tr></thead><tbody></tbody></table></div>
+      </article>
+
+      <article class="card span-2">
+        <h2>Accounts</h2>
+        <div class="table-scroll"><table id="adminAccountsTable" class="mobile-stack"><thead><tr><th>ID</th><th>User</th><th>Name</th><th>Type</th><th>Balance</th></tr></thead><tbody></tbody></table></div>
+      </article>
+
+      <article class="card span-2">
+        <h2>Transactions</h2>
+        <div class="table-scroll"><table id="adminTransactionsTable" class="mobile-stack"><thead><tr><th>ID</th><th>User</th><th>Date</th><th>Type</th><th>Amount</th><th>Account</th><th>Category</th><th>Note</th></tr></thead><tbody></tbody></table></div>
+      </article>
+
+      <article class="card">
+        <h2>Categories</h2>
+        <div class="table-scroll"><table id="adminCategoriesTable" class="mobile-stack"><thead><tr><th>ID</th><th>User</th><th>Name</th><th>Type</th><th>Auto</th></tr></thead><tbody></tbody></table></div>
+      </article>
+
+      <article class="card">
+        <h2>Daily Balances</h2>
+        <div class="table-scroll"><table id="adminDailyBalancesTable" class="mobile-stack"><thead><tr><th>ID</th><th>User</th><th>Date</th><th>Income</th><th>Expense</th><th>Net</th><th>Snapshot</th></tr></thead><tbody></tbody></table></div>
+      </article>
+    </section>
+  </main>
+
+  <script src="./frontends/web/admin-dashboard.js?v=2"></script>
+</body>
+</html>

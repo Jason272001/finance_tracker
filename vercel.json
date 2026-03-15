@@ -38,6 +38,60 @@
       ]
     },
     {
+      "source": "/admin-login.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/admin-register.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/admin-dashboard.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/frontends/web/admin-login.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/frontends/web/admin-register.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/frontends/web/admin-dashboard.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
       "source": "/frontends/web/styles.css",
       "headers": [
         {
@@ -110,6 +164,18 @@
     {
       "source": "/settings",
       "destination": "/settings.html"
+    },
+    {
+      "source": "/kmak/1957/1965/a/login",
+      "destination": "/admin-login.html"
+    },
+    {
+      "source": "/kmak/1957/1965/a/register",
+      "destination": "/admin-register.html"
+    },
+    {
+      "source": "/kmak/1957/1965/a/dashboard",
+      "destination": "/admin-dashboard.html"
     }
   ],
   "redirects": [
@@ -136,6 +202,21 @@
     {
       "source": "/settings.html",
       "destination": "/settings",
+      "permanent": true
+    },
+    {
+      "source": "/admin-login.html",
+      "destination": "/kmak/1957/1965/a/login",
+      "permanent": true
+    },
+    {
+      "source": "/admin-register.html",
+      "destination": "/kmak/1957/1965/a/register",
+      "permanent": true
+    },
+    {
+      "source": "/admin-dashboard.html",
+      "destination": "/kmak/1957/1965/a/dashboard",
       "permanent": true
     },
     {

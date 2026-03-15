@@ -608,6 +608,38 @@ th { color: var(--muted); font-weight: 700; }
   color: #d14343;
   font-weight: 700;
 }
+.admin-shell-page {
+  max-width: 1400px;
+}
+.admin-auth-shell {
+  max-width: 760px;
+  margin: 22px auto 0;
+}
+.admin-auth-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.admin-toolbar {
+  margin-bottom: 18px;
+}
+.admin-toolbar-note {
+  margin: 4px 0 0;
+}
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+.error-text {
+  color: #d14343;
+  font-weight: 700;
+}
+.success-text {
+  color: #1f9d5a;
+  font-weight: 700;
+}
 
 @media (max-width: 1080px) {
   .kpi-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
@@ -630,6 +662,7 @@ th { color: var(--muted); font-weight: 700; }
   .billing-lock-actions { justify-content: stretch; }
   .billing-lock-actions button { width: 100%; }
   .payment-summary-grid { grid-template-columns: 1fr; }
+  .admin-auth-shell { max-width: 100%; }
 }
 @media (max-width: 640px) {
   .page { width: 98vw; margin: 8px auto 16px; }
@@ -652,6 +685,8 @@ th { color: var(--muted); font-weight: 700; }
   .landing-hero h2 { font-size: 1.4rem; }
   .landing-cta { flex-direction: column; }
   .landing-cta button { width: 100%; }
+  .admin-auth-links { flex-direction: column; }
+  .admin-auth-links a { width: 100%; }
   .feature-grid, .price-grid { grid-template-columns: 1fr; }
   .plan-grid { grid-template-columns: 1fr; }
   table.mobile-stack thead { display: none; }

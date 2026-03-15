@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
-from core import Account, Category, DailyBalance, SPECIAL_COUPON_CODE, Transaction, User
+from core import Account, Admin1957, Category, DailyBalance, SPECIAL_COUPON_CODE, Transaction, User
 
 
 app = FastAPI(title="KeeperBMA Backend", version="1.1.0")
@@ -28,6 +28,7 @@ TOKEN_TTL_SECONDS = int(os.getenv("API_TOKEN_TTL_SECONDS", "1800"))  # 30 minute
 PENDING_PAYMENT_TOKEN_TTL_SECONDS = int(os.getenv("PENDING_PAYMENT_TOKEN_TTL_SECONDS", "2592000"))  # 30 days
 STRICT_TOKEN_SECRET = str(os.getenv("STRICT_TOKEN_SECRET", "1")).strip().lower() in {"1", "true", "yes"}
 SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "keeperbma_session")
+ADMIN_SESSION_COOKIE_NAME = os.getenv("ADMIN_SESSION_COOKIE_NAME", "keeperbma_admin_session")
 logger = logging.getLogger("keeperbma.api")
 SMTP_HOST = str(os.getenv("SMTP_HOST", "")).strip()
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
@@ -126,6 +127,87 @@ class LoginBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     name: str = Field(min_length=1, max_length=80)
     password: str
+
+
+class AdminRegisterBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: str = Field(min_length=1, max_length=80)
+    email: str = Field(min_length=3, max_length=200)
+    phone: str = Field(min_length=7, max_length=40)
+    password: str = Field(min_length=7, max_length=200)
+    position: str = Field(min_length=1, max_length=80)
+
+
+class AdminLoginBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    identifier: str = Field(min_length=1, max_length=200)
+    password: str = Field(min_length=1, max_length=200)
+
+
+class AdminUserUpdateBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=80)
+    email: Optional[str] = Field(default=None, min_length=3, max_length=200)
+    phone: Optional[str] = Field(default=None, min_length=7, max_length=40)
+    email_notifications_enabled: Optional[bool] = None
+    plan_code: Optional[str] = Field(default=None, min_length=1, max_length=40)
+    subscription_status: Optional[str] = Field(default=None, min_length=1, max_length=40)
+    payment_status: Optional[str] = Field(default=None, min_length=1, max_length=20)
+    trial_status: Optional[str] = Field(default=None, min_length=1, max_length=20)
+    billing_cycle: Optional[str] = Field(default=None, min_length=1, max_length=20)
+    plan_with_website: Optional[bool] = None
+
+    @field_validator("plan_code")
+    @classmethod
+    def validate_plan_code(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        allowed = {"basic", "regular", "business", "premium_plus", "lifetime"}
+        key = str(v).strip().lower()
+        if key not in allowed:
+            raise ValueError("Invalid plan_code")
+        return key
+
+    @field_validator("subscription_status")
+    @classmethod
+    def validate_subscription_status(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        allowed = {"trial", "active", "past_due", "canceled", "incomplete", "unpaid"}
+        key = str(v).strip().lower()
+        if key not in allowed:
+            raise ValueError("Invalid subscription_status")
+        return key
+
+    @field_validator("payment_status")
+    @classmethod
+    def validate_payment_status(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        key = str(v).strip().lower()
+        if key not in {"pending", "active"}:
+            raise ValueError("Invalid payment_status")
+        return key
+
+    @field_validator("trial_status")
+    @classmethod
+    def validate_trial_status(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        key = str(v).strip().lower()
+        if key not in {"pending", "active", "inactive"}:
+            raise ValueError("Invalid trial_status")
+        return key
+
+    @field_validator("billing_cycle")
+    @classmethod
+    def validate_billing_cycle(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        key = str(v).strip().lower()
+        if key not in {"monthly", "annual"}:
+            raise ValueError("Invalid billing_cycle")
+        return key
 
 
 class RecoveryRequestBody(BaseModel):
@@ -408,6 +490,17 @@ def _issue_token(user_id: int, ttl_seconds: int = TOKEN_TTL_SECONDS) -> str:
     return f"{payload}.{sig}"
 
 
+def _issue_admin_token(admin_id: int, ttl_seconds: int = TOKEN_TTL_SECONDS) -> str:
+    exp = int(time.time()) + int(ttl_seconds)
+    payload = f"admin.{int(admin_id)}.{exp}"
+    sig = hmac.new(
+        TOKEN_SECRET.encode("utf-8"),
+        payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return f"{payload}.{sig}"
+
+
 def _hash_recovery_code(email: str, code: str) -> str:
     payload = f"{str(email).strip().lower()}::{str(code).strip()}"
     return hmac.new(
@@ -465,6 +558,29 @@ def _verify_token(token: str) -> int:
     if int(time.time()) > exp:
         raise HTTPException(status_code=401, detail="Token expired")
     return uid
+
+
+def _verify_admin_token(token: str) -> int:
+    parts = str(token or "").split(".")
+    if len(parts) != 4 or parts[0] != "admin":
+        raise HTTPException(status_code=401, detail="Invalid admin token format")
+    _, aid_s, exp_s, sig = parts
+    try:
+        aid = int(aid_s)
+        exp = int(exp_s)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid admin token payload")
+    payload = f"admin.{aid}.{exp}"
+    expected_sig = hmac.new(
+        TOKEN_SECRET.encode("utf-8"),
+        payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    if not hmac.compare_digest(sig, expected_sig):
+        raise HTTPException(status_code=401, detail="Invalid admin token signature")
+    if int(time.time()) > exp:
+        raise HTTPException(status_code=401, detail="Admin token expired")
+    return aid
 
 
 def _issue_pending_payment_token(user_id: int, ttl_seconds: int = PENDING_PAYMENT_TOKEN_TTL_SECONDS) -> str:
@@ -1113,6 +1229,55 @@ def _require_app_access(request: Request, authorization: Optional[str], expected
     return profile
 
 
+def _extract_admin_token(request: Request, authorization: Optional[str]) -> str:
+    cookie_token = request.cookies.get(ADMIN_SESSION_COOKIE_NAME)
+    if cookie_token:
+        return cookie_token
+    if authorization and authorization.startswith("Bearer "):
+        return authorization.split(" ", 1)[1].strip()
+    raise HTTPException(status_code=401, detail="Missing admin auth token")
+
+
+def _require_admin(request: Request, authorization: Optional[str] = None) -> dict:
+    token = _extract_admin_token(request, authorization)
+    admin_id = _verify_admin_token(token)
+    admin = Admin1957().get_admin_by_id(admin_id)
+    if not admin:
+        raise HTTPException(status_code=401, detail="Admin session is invalid.")
+    return admin
+
+
+def _build_admin_payload(admin: dict) -> dict:
+    return {
+        "id": int(admin.get("id", 0) or 0),
+        "name": str(admin.get("name", "")).strip(),
+        "email": str(admin.get("email", "")).strip(),
+        "phone": str(admin.get("phone", "")).strip(),
+        "position": str(admin.get("position", "")).strip(),
+        "created_at": str(admin.get("created_at", "")).strip(),
+    }
+
+
+def _records_from_frame(df) -> list[dict]:
+    if df is None:
+        return []
+    safe = df.copy()
+    safe = safe.where(safe.notna(), "")
+    records = []
+    for _, row in safe.iterrows():
+        item = {}
+        for col in safe.columns:
+            value = row[col]
+            if hasattr(value, "item"):
+                try:
+                    value = value.item()
+                except Exception:
+                    pass
+            item[str(col)] = value
+        records.append(item)
+    return records
+
+
 @app.on_event("startup")
 def _startup_checks() -> None:
     if TOKEN_SECRET == "change-me-in-render":
@@ -1332,6 +1497,169 @@ def auth_session(request: Request, authorization: Optional[str] = Header(default
         "profile_image_url": profile_payload.get("profile_image_url", ""),
         "lifetime_access": bool(subscription.get("is_lifetime", False)),
         **subscription,
+    }
+
+
+@app.post("/admin1957/register")
+def admin1957_register(
+    body: AdminRegisterBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    admins = Admin1957()
+    if admins.count() > 0:
+        _require_admin(request, authorization)
+    try:
+        admin = admins.register(
+            name=body.name,
+            email=body.email,
+            phone=body.phone,
+            password=body.password,
+            position=body.position,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True, "admin": _build_admin_payload(admin)}
+
+
+@app.post("/admin1957/login")
+def admin1957_login(body: AdminLoginBody, response: Response):
+    admins = Admin1957()
+    if not admins.login(body.identifier, body.password):
+        raise HTTPException(status_code=401, detail="Invalid admin credentials")
+    admin = admins.get_admin_by_id(int(admins.admin_id)) or {}
+    token = _issue_admin_token(int(admins.admin_id))
+    response.set_cookie(
+        key=ADMIN_SESSION_COOKIE_NAME,
+        value=token,
+        max_age=TOKEN_TTL_SECONDS,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/",
+    )
+    return {
+        "ok": True,
+        "admin": _build_admin_payload(admin),
+        "token": token,
+        "session_minutes": TOKEN_TTL_SECONDS // 60,
+    }
+
+
+@app.post("/admin1957/logout")
+def admin1957_logout(response: Response):
+    response.delete_cookie(
+        key=ADMIN_SESSION_COOKIE_NAME,
+        path="/",
+        secure=True,
+        samesite="none",
+    )
+    return {"ok": True}
+
+
+@app.get("/admin1957/session")
+def admin1957_session(request: Request, authorization: Optional[str] = Header(default=None)):
+    admin = _require_admin(request, authorization)
+    return {"ok": True, "admin": _build_admin_payload(admin)}
+
+
+@app.get("/admin1957/dashboard")
+def admin1957_dashboard(request: Request, authorization: Optional[str] = Header(default=None)):
+    admin = _require_admin(request, authorization)
+    users_model = User()
+    accounts_model = Account()
+    tx_model = Transaction()
+    categories_model = Category()
+    daily_model = DailyBalance()
+    admins_model = Admin1957()
+
+    users = users_model.list_all()
+    accounts = _records_from_frame(accounts_model._load())
+    transactions = _records_from_frame(tx_model._load())
+    categories = _records_from_frame(categories_model._load())
+    daily_balances = _records_from_frame(daily_model._load())
+    admins = admins_model.list_all()
+
+    return {
+        "ok": True,
+        "admin": _build_admin_payload(admin),
+        "metrics": {
+            "admins": len(admins),
+            "users": len(users),
+            "accounts": len(accounts),
+            "transactions": len(transactions),
+            "categories": len(categories),
+            "daily_balances": len(daily_balances),
+        },
+        "admins": admins,
+        "users": users,
+        "accounts": accounts,
+        "transactions": transactions,
+        "categories": categories,
+        "daily_balances": daily_balances,
+    }
+
+
+@app.put("/admin1957/users/{user_id}")
+def admin1957_update_user(
+    user_id: int,
+    body: AdminUserUpdateBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_admin(request, authorization)
+    users_model = User()
+    try:
+        if any(
+            value is not None
+            for value in [
+                body.name,
+                body.email,
+                body.phone,
+                body.email_notifications_enabled,
+            ]
+        ):
+            users_model.update_profile(
+                user_id,
+                name=body.name,
+                email=body.email,
+                phone=body.phone,
+                email_notifications_enabled=body.email_notifications_enabled,
+            )
+
+        if any(
+            value is not None
+            for value in [
+                body.plan_code,
+                body.subscription_status,
+                body.payment_status,
+                body.trial_status,
+                body.billing_cycle,
+                body.plan_with_website,
+            ]
+        ):
+            users_model.update_billing_subscription(
+                user_id,
+                plan_code=body.plan_code,
+                subscription_status=body.subscription_status,
+                payment_status=body.payment_status,
+                trial_status=body.trial_status,
+                billing_cycle=body.billing_cycle,
+                plan_with_website=body.plan_with_website,
+            )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    profile = users_model.get_user_by_id(user_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found.")
+    return {
+        "ok": True,
+        "user": {
+            "user_id": int(profile["user_id"]),
+            **_build_profile_payload(profile),
+            **_build_subscription_payload(profile),
+        },
     }
 
 

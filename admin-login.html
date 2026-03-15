@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KeeperBMA Admin Login</title>
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; block-all-mixed-content" />
+  <link rel="icon" type="image/png" href="./assets/keeperbma-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script>
+    if (window.location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(window.location.hostname)) {
+      window.location.replace(`https://${window.location.host}${window.location.pathname}${window.location.search}${window.location.hash}`);
+    }
+    document.documentElement.dataset.theme = localStorage.getItem("keeperbma_theme") || "light";
+  </script>
+  <link rel="stylesheet" href="./frontends/web/styles.css?v=43" />
+</head>
+<body>
+  <main class="page admin-shell-page">
+    <header class="landing-nav">
+      <div class="brand-row">
+        <img class="brand-logo small" src="./assets/keeperbma-icon.png" alt="KeeperBMA" />
+        <h1>KeeperBMA Admin</h1>
+      </div>
+      <div class="landing-links">
+        <div class="theme-switch compact">
+          <span id="adminThemeLabel">Theme</span>
+          <button id="adminThemeToggle" type="button" class="theme-toggle" aria-pressed="false">
+            <span class="theme-toggle-thumb" aria-hidden="true"></span>
+          </button>
+        </div>
+        <a href="/">Home</a>
+      </div>
+    </header>
+
+    <section class="auth-shell admin-auth-shell">
+      <div class="card auth-card">
+        <h2>Admin Login</h2>
+        <p class="muted">Use your admin name, email, or phone number to access the admin dashboard.</p>
+
+        <label for="adminIdentifier">Identifier</label>
+        <input id="adminIdentifier" placeholder="Admin name, email, or phone" />
+
+        <label for="adminPassword">Password</label>
+        <input id="adminPassword" type="password" placeholder="Password" />
+
+        <button id="adminLoginSubmit" class="primary full" type="button">Sign In</button>
+        <p id="adminLoginStatus" class="muted"></p>
+
+        <div class="admin-auth-links">
+          <a href="/kmak/1957/1965/a/register">Create Admin</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="./frontends/web/admin-login.js?v=2"></script>
+</body>
+</html>
