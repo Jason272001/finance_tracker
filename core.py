@@ -1525,6 +1525,28 @@ class Category:
         out["is_auto"] = out["is_auto"].astype(bool)
         return out
 
+    def visible_by_user(self, user_id):
+        df = self.by_user(user_id)
+        if df.empty:
+            return df
+
+        # Older versions auto-seeded the hard-coded defaults for every user.
+        # Hide those unused seeded rows so each user mainly sees categories they
+        # explicitly created, while still keeping account-linked auto categories.
+        default_keys = {str(name).strip().lower() for name in self.default_categories}
+        names = df["category_name"].astype(str).str.strip().str.lower()
+        mask_seeded_default = names.isin(default_keys) & (~df["is_auto"].astype(bool))
+        if not mask_seeded_default.any():
+            return df
+
+        used_keys = set()
+        tx_df = Transaction().by_user(user_id)
+        if tx_df is not None and not tx_df.empty and "category" in tx_df.columns:
+            used_keys = set(tx_df["category"].astype(str).str.strip().str.lower())
+
+        mask_keep = (~mask_seeded_default) | names.isin(used_keys)
+        return df[mask_keep].copy()
+
     def _name_exists(self, user_id, category_name, exclude_category_id=None):
         df = self.by_user(user_id)
         if df.empty:

@@ -412,8 +412,7 @@ else:
 
 TYPE_LIST = ["income", "expense"]
 ct.sync_auto_from_accounts(u.uid)
-ct.ensure_default_categories(u.uid)
-cat_df = ct.by_user(u.uid)
+cat_df = ct.visible_by_user(u.uid)
 CAT_LIST = []
 if not cat_df.empty:
     CAT_LIST = list(dict.fromkeys(cat_df["category_name"].astype(str).tolist()))

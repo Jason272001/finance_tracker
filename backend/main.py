@@ -2402,9 +2402,8 @@ def list_categories(request: Request, user_id: int, authorization: Optional[str]
     _require_app_access(request, authorization, user_id)
     try:
         cat = Category()
-        cat.ensure_default_categories(user_id)
         cat.sync_auto_from_accounts(user_id)
-        df = cat.by_user(user_id)
+        df = cat.visible_by_user(user_id)
         if df is None or df.empty:
             return []
         return df.fillna("").to_dict(orient="records")
