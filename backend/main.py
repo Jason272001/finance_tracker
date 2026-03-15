@@ -944,6 +944,14 @@ def _append_query_params(url: str, params: dict[str, str]) -> str:
     )
 
 
+def _append_query_params_preserve_checkout_id(url: str, params: dict[str, str]) -> str:
+    out = _append_query_params(url, params)
+    return out.replace(
+        urllib.parse.quote("{CHECKOUT_SESSION_ID}", safe=""),
+        "{CHECKOUT_SESSION_ID}",
+    )
+
+
 def _payment_page_base_url() -> str:
     parsed = urllib.parse.urlparse(_sanitize_billing_redirect_url(BILLING_RETURN_URL, BILLING_RETURN_URL))
     return urllib.parse.urlunparse((parsed.scheme, parsed.netloc, "/payment", "", "", ""))
@@ -955,7 +963,7 @@ def _payment_page_url(token: str, billing: Optional[str] = None, session_id: Opt
         params["billing"] = str(billing).strip()
     if session_id:
         params["checkout_session_id"] = str(session_id).strip()
-    return _append_query_params(_payment_page_base_url(), params)
+    return _append_query_params_preserve_checkout_id(_payment_page_base_url(), params)
 
 
 def _coupon_grants_lifetime(coupon_code: Optional[str]) -> bool:

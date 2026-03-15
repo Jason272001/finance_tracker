@@ -240,8 +240,22 @@ window.addEventListener("load", async () => {
   }
 
   try {
-    await loadContext();
+    const context = await loadContext();
+    const invalidPlaceholderSession =
+      !sessionId ||
+      sessionId === "{CHECKOUT_SESSION_ID}" ||
+      sessionId.includes("{CHECKOUT_SESSION_ID}");
+    if (context.already_active) {
+      if (billingState === "success") {
+        setStatus(paymentT("activated"), "success");
+      }
+      return;
+    }
     if (billingState === "success" && sessionId) {
+      if (invalidPlaceholderSession) {
+        setStatus("Stripe return link is missing the checkout session id. Please try signing in. If your account is not active yet, reopen payment and submit billing once more.", "warning");
+        return;
+      }
       await activatePayment(sessionId);
       return;
     }
