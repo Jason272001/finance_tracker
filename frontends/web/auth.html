@@ -18,8 +18,7 @@
     }
     document.documentElement.dataset.theme = localStorage.getItem("keeperbma_theme") || "light";
   </script>
-  <link rel="stylesheet" href="./styles.css?v=40" />
-  <script src="https://js.stripe.com/v3/"></script>
+  <link rel="stylesheet" href="./styles.css?v=42" />
 </head>
 <body>
   <main class="page">
@@ -46,7 +45,7 @@
           <option value="fr">French</option>
           <option value="de">German</option>
         </select>
-        <a href="./index.html">Home</a>
+        <a data-auth-home href="./index.html">Home</a>
       </div>
     </header>
 
@@ -59,13 +58,13 @@
 
       <section class="card auth-card">
         <div id="signupPlanBanner" class="muted hidden"></div>
-        <div id="billingGateMsg" class="muted hidden"></div>
         <label for="authName" id="labelName">Username</label>
         <input id="authName" placeholder="Username" />
+
         <div id="signupFields" class="hidden">
-          <label for="authEmail">Email</label>
+          <label for="authEmail" id="labelEmail">Email</label>
           <input id="authEmail" type="email" placeholder="name@example.com" />
-          <label>Phone</label>
+          <label id="labelPhone">Phone</label>
           <div class="row phone-row">
             <select id="authCountryCode">
               <option value="+1">+1 (US)</option>
@@ -79,39 +78,45 @@
             </select>
             <input id="authPhoneLocal" placeholder="Phone number" />
           </div>
-          <section id="signupBillingCard" class="billing-panel">
-            <div class="billing-panel-head">
-              <div>
-                <h3 id="billingPanelTitle">Billing Information</h3>
-                <p id="billingPanelHint" class="muted">Add a payment method now. You will not be charged until your 60-day free trial ends.</p>
-              </div>
-            </div>
-            <p id="signupBillingStatus" class="muted"></p>
-            <div id="signupEmbeddedCheckoutWrap" class="hidden">
-              <div id="signupEmbeddedCheckoutContainer"></div>
-            </div>
-          </section>
+          <p id="signupInfoHint" class="muted auth-inline-note">Your account will be created first. Payment information is added on the next page. You will not be charged until the free trial period ends.</p>
         </div>
+
         <div id="recoverFields" class="hidden">
           <label for="recoverEmail">Email</label>
           <input id="recoverEmail" type="email" placeholder="name@example.com" />
-          <button id="btnSendCode" class="secondary full">Send Recovery Code</button>
+          <button id="btnSendCode" class="secondary full" type="button">Send Recovery Code</button>
           <label for="recoverCode">Recovery Code</label>
           <input id="recoverCode" placeholder="6-digit code from email" />
         </div>
+
         <label for="authPass" id="labelPassword">Password</label>
         <input id="authPass" type="password" placeholder="Password" />
+
         <div id="confirmWrap" class="hidden">
           <label for="authPassConfirm" id="labelConfirmPassword">Confirm Password</label>
           <input id="authPassConfirm" type="password" placeholder="Confirm Password" />
         </div>
-        <button id="btnForgot" class="secondary full">Forgot Password?</button>
-        <button id="authSubmit" class="primary full">Sign In</button>
+
+        <button id="btnForgot" class="secondary full" type="button">Forgot Password?</button>
+        <button id="authSubmit" class="primary full" type="button">Sign In</button>
         <p id="authStatus" class="muted"></p>
       </section>
     </section>
   </main>
 
-  <script src="./auth.js?v=26"></script>
+  <div id="pendingPaymentModal" class="modal-backdrop hidden">
+    <section id="pendingPaymentBackdrop" class="modal-card" role="dialog" aria-modal="true" aria-labelledby="pendingPaymentTitle">
+      <div class="modal-body" onclick="event.stopPropagation()">
+        <h3 id="pendingPaymentTitle">Payment information is required to activate your account.</h3>
+        <p id="pendingPaymentMessage" class="muted"></p>
+        <div class="modal-actions">
+          <button id="pendingPaymentAction" class="primary" type="button">Add Payment Information</button>
+          <button id="pendingPaymentClose" class="secondary" type="button">Close</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="./auth.js?v=31"></script>
 </body>
 </html>

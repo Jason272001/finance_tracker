@@ -52,6 +52,8 @@ def _load_users():
         "phone",
         "password",
         "is_lifetime",
+        "payment_status",
+        "trial_status",
         "email_notifications_enabled",
         "profile_image_url",
         "coupon_code",
@@ -81,6 +83,8 @@ def _load_users():
         if c not in df.columns:
             if c in {"is_lifetime"}:
                 df[c] = False
+            elif c in {"payment_status", "trial_status"}:
+                df[c] = ""
             elif c == "email_notifications_enabled":
                 df[c] = True
             else:
@@ -90,6 +94,8 @@ def _load_users():
     df["email"] = df["email"].fillna("").astype(str)
     df["phone"] = df["phone"].fillna("").astype(str)
     df["password"] = df["password"].fillna("").astype(str)
+    df["payment_status"] = df["payment_status"].fillna("").astype(str).str.strip().str.lower()
+    df["trial_status"] = df["trial_status"].fillna("").astype(str).str.strip().str.lower()
     df["profile_image_url"] = df["profile_image_url"].fillna("").astype(str)
     df["coupon_code"] = df["coupon_code"].fillna("").astype(str)
     df["created_at"] = df["created_at"].fillna("").astype(str)
@@ -132,9 +138,13 @@ def _load_users():
     )
     df.loc[df["plan_code"] == "", "plan_code"] = "basic"
     df.loc[df["subscription_status"] == "", "subscription_status"] = "active"
+    df.loc[df["payment_status"] == "", "payment_status"] = "active"
+    df.loc[df["trial_status"] == "", "trial_status"] = "inactive"
     lifetime_mask = df["is_lifetime"] == True
     df.loc[lifetime_mask, "plan_code"] = "lifetime"
     df.loc[lifetime_mask, "subscription_status"] = "active"
+    df.loc[lifetime_mask, "payment_status"] = "active"
+    df.loc[lifetime_mask, "trial_status"] = "active"
     return df[user_cols]
 
 
@@ -146,6 +156,8 @@ def _save_users(df):
         "phone",
         "password",
         "is_lifetime",
+        "payment_status",
+        "trial_status",
         "email_notifications_enabled",
         "profile_image_url",
         "coupon_code",
@@ -168,6 +180,8 @@ def _save_users(df):
         if c not in out.columns:
             if c in {"is_lifetime"}:
                 out[c] = False
+            elif c in {"payment_status", "trial_status"}:
+                out[c] = ""
             elif c == "email_notifications_enabled":
                 out[c] = True
             else:
@@ -422,7 +436,17 @@ class User:
         self._login_attempts[key] = rec
         return False
 
-    def register(self, name=None, pw=None, email=None, phone=None, coupon_code="", plan_code=None):
+    def register(
+        self,
+        name=None,
+        pw=None,
+        email=None,
+        phone=None,
+        coupon_code="",
+        plan_code=None,
+        billing_cycle="",
+        plan_with_website=False,
+    ):
         # Backward compatible: legacy caller passes (name, pw).
         if pw is None:
             pw = ""
@@ -468,15 +492,24 @@ class User:
             uid_col = pd.to_numeric(u["user_id"], errors="coerce").dropna()
             next_uid = 1 if uid_col.empty else int(uid_col.max()) + 1
             now_iso = datetime.utcnow().isoformat() + "Z"
+            billing_cycle_s = str(billing_cycle or "").strip().lower()
+            if billing_cycle_s not in {"monthly", "annual"}:
+                billing_cycle_s = ""
+            plan_with_website_b = bool(plan_with_website)
+
             if bool(is_lifetime):
                 plan_code = "lifetime"
                 subscription_status = "active"
+                payment_status = "active"
+                trial_status = "active"
                 trial_ends_at = ""
                 subscription_started_at = now_iso
             else:
                 plan_code = plan_s
-                subscription_status = "trial"
-                trial_ends_at = (datetime.utcnow() + timedelta(days=DEFAULT_TRIAL_DAYS)).isoformat() + "Z"
+                subscription_status = "incomplete"
+                payment_status = "pending"
+                trial_status = "pending"
+                trial_ends_at = ""
                 subscription_started_at = ""
             new_row = {
                 "user_id": int(next_uid),
@@ -485,6 +518,8 @@ class User:
                 "phone": phone_s,
                 "password": _hash_password(pw_s),
                 "is_lifetime": bool(is_lifetime),
+                "payment_status": payment_status,
+                "trial_status": trial_status,
                 "email_notifications_enabled": True,
                 "profile_image_url": "",
                 "coupon_code": coupon_s,
@@ -498,8 +533,8 @@ class User:
                 "billing_customer_id": "",
                 "billing_subscription_id": "",
                 "billing_price_id": "",
-                "billing_cycle": "",
-                "plan_with_website": False,
+                "billing_cycle": billing_cycle_s,
+                "plan_with_website": plan_with_website_b,
                 "next_charge_at": "",
             }
             return next_uid, new_row
@@ -577,6 +612,8 @@ class User:
                 .strip()
                 .lower() in {"1", "true", "yes", "y"}
             ),
+            "payment_status": str(row.get("payment_status", "")).strip().lower() or "active",
+            "trial_status": str(row.get("trial_status", "")).strip().lower() or "inactive",
             "profile_image_url": str(row.get("profile_image_url", "")).strip(),
             "plan_code": str(row.get("plan_code", "")).strip().lower() or "basic",
             "subscription_status": str(row.get("subscription_status", "")).strip().lower() or "active",
@@ -657,11 +694,15 @@ class User:
         billing_cycle=None,
         plan_with_website=None,
         next_charge_at=None,
+        payment_status=None,
+        trial_status=None,
     ):
         uid = int(user_id)
         allowed_plan_codes = {"basic", "regular", "business", "premium_plus", "lifetime"}
         allowed_status = {"trial", "active", "past_due", "canceled", "incomplete", "unpaid"}
         allowed_cycles = {"", "monthly", "annual"}
+        allowed_payment_status = {"pending", "active"}
+        allowed_trial_status = {"pending", "active", "inactive"}
 
         def _update(df):
             uid_col = pd.to_numeric(df["user_id"], errors="coerce")
@@ -681,6 +722,18 @@ class User:
                 if status_s not in allowed_status:
                     raise ValueError("Invalid subscription status.")
                 df.at[i, "subscription_status"] = status_s
+
+            if payment_status is not None:
+                payment_s = str(payment_status).strip().lower()
+                if payment_s not in allowed_payment_status:
+                    raise ValueError("Invalid payment status.")
+                df.at[i, "payment_status"] = payment_s
+
+            if trial_status is not None:
+                trial_s = str(trial_status).strip().lower()
+                if trial_s not in allowed_trial_status:
+                    raise ValueError("Invalid trial status.")
+                df.at[i, "trial_status"] = trial_s
 
             if trial_ends_at is not None:
                 df.at[i, "trial_ends_at"] = str(trial_ends_at).strip()
@@ -896,6 +949,8 @@ class User:
                 .strip()
                 .lower() in {"1", "true", "yes", "y"}
             ),
+            "payment_status": str(row.get("payment_status", "")).strip().lower() or "active",
+            "trial_status": str(row.get("trial_status", "")).strip().lower() or "inactive",
             "profile_image_url": str(row.get("profile_image_url", "")).strip(),
             "coupon_code": str(row.get("coupon_code", "")).strip(),
             "created_at": str(row.get("created_at", "")).strip(),

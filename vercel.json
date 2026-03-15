@@ -2,15 +2,6 @@
   "cleanUrls": false,
   "headers": [
     {
-      "source": "/auth",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-store, max-age=0"
-        }
-      ]
-    },
-    {
       "source": "/auth.html",
       "headers": [
         {
@@ -20,7 +11,52 @@
       ]
     },
     {
+      "source": "/auth",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/payment.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/payment",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/frontends/web/styles.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
       "source": "/frontends/web/auth.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/frontends/web/payment.js",
       "headers": [
         {
           "key": "Cache-Control",
@@ -68,6 +104,10 @@
       "destination": "/plans.html"
     },
     {
+      "source": "/payment",
+      "destination": "/payment.html"
+    },
+    {
       "source": "/settings",
       "destination": "/settings.html"
     }
@@ -86,6 +126,11 @@
     {
       "source": "/plans.html",
       "destination": "/plans",
+      "permanent": true
+    },
+    {
+      "source": "/payment.html",
+      "destination": "/payment",
       "permanent": true
     },
     {
@@ -116,6 +161,11 @@
     {
       "source": "/frontends/web/plans.html",
       "destination": "/plans",
+      "permanent": true
+    },
+    {
+      "source": "/frontends/web/payment.html",
+      "destination": "/payment",
       "permanent": true
     },
     {

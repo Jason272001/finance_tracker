@@ -513,6 +513,101 @@ th { color: var(--muted); font-weight: 700; }
   background: var(--card-bg);
   padding: 8px;
 }
+.auth-inline-note {
+  margin: 2px 0 0;
+}
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 15, 30, 0.58);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 80;
+}
+.modal-card {
+  width: min(520px, 100%);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+.modal-body {
+  padding: 18px;
+}
+.modal-body h3 {
+  margin: 0 0 10px;
+  color: var(--heading);
+}
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.modal-actions button {
+  width: auto;
+  min-width: 180px;
+}
+.payment-shell {
+  max-width: 920px;
+}
+.payment-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 18px;
+}
+.payment-card h2 {
+  margin: 0;
+}
+.payment-card p {
+  margin: 0;
+}
+.payment-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 12px;
+}
+.payment-summary-item,
+.payment-message-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 12px;
+}
+.payment-summary-item strong,
+.payment-message-card p {
+  display: block;
+  margin-top: 6px;
+}
+.payment-summary-label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.payment-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.payment-actions button {
+  width: auto;
+  min-width: 220px;
+}
+#paymentStatus[data-kind="success"] {
+  color: #1f9d5a;
+  font-weight: 700;
+}
+#paymentStatus[data-kind="warning"] {
+  color: #c77f14;
+  font-weight: 700;
+}
+#paymentStatus[data-kind="error"] {
+  color: #d14343;
+  font-weight: 700;
+}
 
 @media (max-width: 1080px) {
   .kpi-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
@@ -534,6 +629,7 @@ th { color: var(--muted); font-weight: 700; }
   .billing-lock-banner { flex-direction: column; align-items: stretch; }
   .billing-lock-actions { justify-content: stretch; }
   .billing-lock-actions button { width: 100%; }
+  .payment-summary-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .page { width: 98vw; margin: 8px auto 16px; }
@@ -548,6 +644,8 @@ th { color: var(--muted); font-weight: 700; }
   button { width: 100%; }
   td button { width: auto; }
   .top-right button { width: auto; }
+  .modal-actions button,
+  .payment-actions button { width: 100%; min-width: 0; }
   .lang-select { width: 100%; min-width: 0; }
   .landing-links { width: 100%; gap: 8px; }
   .landing-links a { font-size: 1.15rem; }

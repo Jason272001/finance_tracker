@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KeeperBMA - Payment</title>
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; block-all-mixed-content" />
+  <link rel="icon" type="image/png" href="../../assets/keeperbma-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script>
+    if (
+      window.location.protocol === "http:" &&
+      !["localhost", "127.0.0.1"].includes(window.location.hostname)
+    ) {
+      window.location.replace(`https://${window.location.host}${window.location.pathname}${window.location.search}${window.location.hash}`);
+    }
+    document.documentElement.dataset.theme = localStorage.getItem("keeperbma_theme") || "light";
+  </script>
+  <link rel="stylesheet" href="./styles.css?v=42" />
+</head>
+<body>
+  <main class="page payment-shell">
+    <header class="landing-nav">
+      <div class="brand-row">
+        <img class="brand-logo small" src="../../assets/keeperbma-icon.png" alt="KeeperBMA" />
+        <h1>KeeperBMA</h1>
+      </div>
+      <div class="landing-links">
+        <div class="theme-switch compact">
+          <span id="paymentThemeLabel">Theme</span>
+          <button id="paymentThemeToggle" type="button" class="theme-toggle" aria-pressed="false">
+            <span class="theme-toggle-thumb" aria-hidden="true"></span>
+          </button>
+        </div>
+        <label for="paymentLangSelect">Language</label>
+        <select id="paymentLangSelect" class="lang-select">
+          <option value="en">English</option>
+          <option value="my">Myanmar</option>
+          <option value="ar">Arabic</option>
+          <option value="ja">Japanese</option>
+          <option value="zh">Chinese</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+        </select>
+        <a data-payment-home href="./index.html">Home</a>
+      </div>
+    </header>
+
+    <section class="card payment-card">
+      <h2 id="paymentTitle">Payment Information</h2>
+      <p id="paymentSubtitle" class="muted">Add billing details to activate your account. You will not be charged until the free trial period ends.</p>
+
+      <div class="payment-summary-grid">
+        <article class="payment-summary-item">
+          <span id="labelPlan" class="payment-summary-label">Plan</span>
+          <strong id="paymentPlanValue">-</strong>
+        </article>
+        <article class="payment-summary-item">
+          <span id="labelCycle" class="payment-summary-label">Billing Cycle</span>
+          <strong id="paymentCycleValue">-</strong>
+        </article>
+        <article class="payment-summary-item">
+          <span id="labelEmail" class="payment-summary-label">Email</span>
+          <strong id="paymentEmailValue">-</strong>
+        </article>
+        <article class="payment-summary-item">
+          <span id="labelPhone" class="payment-summary-label">Phone</span>
+          <strong id="paymentPhoneValue">-</strong>
+        </article>
+        <article class="payment-summary-item">
+          <span id="labelPaymentStatus" class="payment-summary-label">Payment Status</span>
+          <strong id="paymentStatusValue">-</strong>
+        </article>
+        <article class="payment-summary-item">
+          <span id="labelTrialStatus" class="payment-summary-label">Trial Status</span>
+          <strong id="paymentTrialValue">-</strong>
+        </article>
+      </div>
+
+      <section class="payment-message-card">
+        <span id="labelMessage" class="payment-summary-label">Message</span>
+        <p id="paymentMessageValue" class="muted">-</p>
+      </section>
+
+      <div class="payment-actions">
+        <button id="btnPaymentContinue" class="primary" type="button">Add Payment Information</button>
+        <button id="btnPaymentLogin" class="secondary" type="button">Go To Login</button>
+      </div>
+      <p id="paymentStatus" class="muted"></p>
+    </section>
+  </main>
+
+  <script src="./payment.js?v=2"></script>
+</body>
+</html>

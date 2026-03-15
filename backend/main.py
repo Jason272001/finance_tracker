@@ -25,6 +25,7 @@ from core import Account, Category, DailyBalance, SPECIAL_COUPON_CODE, Transacti
 app = FastAPI(title="KeeperBMA Backend", version="1.1.0")
 TOKEN_SECRET = os.getenv("API_TOKEN_SECRET", "change-me-in-render")
 TOKEN_TTL_SECONDS = int(os.getenv("API_TOKEN_TTL_SECONDS", "1800"))  # 30 minutes
+PENDING_PAYMENT_TOKEN_TTL_SECONDS = int(os.getenv("PENDING_PAYMENT_TOKEN_TTL_SECONDS", "2592000"))  # 30 days
 STRICT_TOKEN_SECRET = str(os.getenv("STRICT_TOKEN_SECRET", "1")).strip().lower() in {"1", "true", "yes"}
 SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "keeperbma_session")
 logger = logging.getLogger("keeperbma.api")
@@ -100,7 +101,8 @@ class RegisterBody(BaseModel):
     password: str = Field(min_length=10, max_length=200)
     coupon_code: Optional[str] = Field(default="", max_length=64)
     plan_code: str = Field(min_length=1, max_length=40)
-    checkout_session_id: Optional[str] = Field(default="", max_length=255)
+    billing_cycle: str = Field(default="monthly", min_length=1, max_length=20)
+    with_website: bool = False
 
     @field_validator("plan_code")
     @classmethod
@@ -109,6 +111,14 @@ class RegisterBody(BaseModel):
         key = str(v).strip().lower()
         if key not in allowed:
             raise ValueError("Invalid plan_code")
+        return key
+
+    @field_validator("billing_cycle")
+    @classmethod
+    def validate_billing_cycle(cls, v: str) -> str:
+        key = str(v).strip().lower()
+        if key not in {"monthly", "annual"}:
+            raise ValueError("Invalid billing_cycle")
         return key
 
 
@@ -235,6 +245,22 @@ class BillingPrecheckoutEmbeddedBody(BaseModel):
         if key not in {"monthly", "annual"}:
             raise ValueError("Invalid billing_cycle")
         return key
+
+
+class PendingPaymentTokenBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    token: str = Field(min_length=10, max_length=2000)
+
+
+class PendingPaymentCheckoutBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    token: str = Field(min_length=10, max_length=2000)
+
+
+class PendingPaymentActivateBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    token: str = Field(min_length=10, max_length=2000)
+    session_id: str = Field(min_length=4, max_length=255)
 
 
 class BillingEmbeddedCheckoutBody(BaseModel):
@@ -441,6 +467,40 @@ def _verify_token(token: str) -> int:
     return uid
 
 
+def _issue_pending_payment_token(user_id: int, ttl_seconds: int = PENDING_PAYMENT_TOKEN_TTL_SECONDS) -> str:
+    exp = int(time.time()) + int(ttl_seconds)
+    payload = f"pending.{int(user_id)}.{exp}"
+    sig = hmac.new(
+        TOKEN_SECRET.encode("utf-8"),
+        payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return f"{payload}.{sig}"
+
+
+def _verify_pending_payment_token(token: str) -> int:
+    parts = str(token or "").split(".")
+    if len(parts) != 4 or parts[0] != "pending":
+        raise HTTPException(status_code=401, detail="Invalid pending payment token.")
+    _, uid_s, exp_s, sig = parts
+    try:
+        uid = int(uid_s)
+        exp = int(exp_s)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid pending payment token.")
+    payload = f"pending.{uid}.{exp}"
+    expected_sig = hmac.new(
+        TOKEN_SECRET.encode("utf-8"),
+        payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    if not hmac.compare_digest(sig, expected_sig):
+        raise HTTPException(status_code=401, detail="Invalid pending payment token.")
+    if int(time.time()) > exp:
+        raise HTTPException(status_code=401, detail="Pending payment token expired.")
+    return uid
+
+
 def _parse_iso_datetime(value: str) -> Optional[datetime]:
     s = str(value or "").strip()
     if not s:
@@ -540,6 +600,12 @@ def _build_subscription_payload(profile: dict) -> dict:
     status = str(profile.get("subscription_status", "")).strip().lower()
     if not status:
         status = "active" if is_lifetime else "active"
+    payment_status = str(profile.get("payment_status", "")).strip().lower()
+    if not payment_status:
+        payment_status = "active" if is_lifetime else "active"
+    trial_status = str(profile.get("trial_status", "")).strip().lower()
+    if not trial_status:
+        trial_status = "active" if is_lifetime else "inactive"
     trial_ends_at = str(profile.get("trial_ends_at", "")).strip()
     subscription_started_at = str(profile.get("subscription_started_at", "")).strip()
     subscription_ends_at = str(profile.get("subscription_ends_at", "")).strip()
@@ -564,9 +630,14 @@ def _build_subscription_payload(profile: dict) -> dict:
         trial_ends_at=trial_ends_at,
         subscription_ends_at=subscription_ends_at,
     )
+    if not is_lifetime and payment_status != "active":
+        access_active = False
+        access_reason = "Payment information is required to activate your account. You will not be charged until the trial period ends."
     return {
         "plan_code": plan_code,
         "subscription_status": status,
+        "payment_status": payment_status,
+        "trial_status": trial_status,
         "trial_ends_at": trial_ends_at,
         "trial_days_remaining": int(trial_days_remaining),
         "is_lifetime": is_lifetime,
@@ -873,6 +944,20 @@ def _append_query_params(url: str, params: dict[str, str]) -> str:
     )
 
 
+def _payment_page_base_url() -> str:
+    parsed = urllib.parse.urlparse(_sanitize_billing_redirect_url(BILLING_RETURN_URL, BILLING_RETURN_URL))
+    return urllib.parse.urlunparse((parsed.scheme, parsed.netloc, "/payment", "", "", ""))
+
+
+def _payment_page_url(token: str, billing: Optional[str] = None, session_id: Optional[str] = None) -> str:
+    params = {"token": str(token or "").strip()}
+    if billing:
+        params["billing"] = str(billing).strip()
+    if session_id:
+        params["checkout_session_id"] = str(session_id).strip()
+    return _append_query_params(_payment_page_base_url(), params)
+
+
 def _coupon_grants_lifetime(coupon_code: Optional[str]) -> bool:
     return str(coupon_code or "").strip() == SPECIAL_COUPON_CODE
 
@@ -1056,27 +1141,6 @@ def health():
 def register(body: RegisterBody):
     try:
         is_lifetime_coupon = _coupon_grants_lifetime(body.coupon_code)
-        checkout_info = None
-        if not is_lifetime_coupon:
-            checkout_info = _stripe_verified_precheckout_session(
-                body.checkout_session_id,
-                expected_plan_code=body.plan_code,
-            )
-            if checkout_info.get("customer_email"):
-                body_email = str(body.email or "").strip().lower()
-                if body_email != str(checkout_info["customer_email"]).strip().lower():
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Account email must match the billing email used in checkout.",
-                    )
-            existing_billing_user = User().get_user_by_billing_customer_id(
-                checkout_info.get("customer_id", "")
-            )
-            if existing_billing_user:
-                raise HTTPException(
-                    status_code=400,
-                    detail="This billing session is already linked to an account.",
-                )
         uid = User().register(
             name=body.name,
             pw=body.password,
@@ -1084,26 +1148,17 @@ def register(body: RegisterBody):
             phone=body.phone,
             coupon_code=body.coupon_code or "",
             plan_code=body.plan_code,
+            billing_cycle=body.billing_cycle,
+            plan_with_website=body.with_website,
         )
-        if checkout_info:
-            User().update_billing_subscription(
-                user_id=uid,
-                plan_code=body.plan_code,
-                subscription_status=checkout_info.get("subscription_status") or "trial",
-                trial_ends_at=checkout_info.get("trial_ends_at") or "",
-                subscription_started_at=checkout_info.get("subscription_started_at") or "",
-                subscription_ends_at="",
-                billing_provider="stripe",
-                billing_customer_id=checkout_info.get("customer_id") or "",
-                billing_subscription_id=checkout_info.get("subscription_id") or "",
-                billing_price_id=checkout_info.get("price_id") or "",
-                billing_cycle=checkout_info.get("billing_cycle") or "",
-                plan_with_website=bool(checkout_info.get("with_website")),
-                next_charge_at=checkout_info.get("next_charge_at") or "",
-            )
         profile = User().get_user_by_id(uid) or {}
         subscription = _build_subscription_payload(profile)
         profile_payload = _build_profile_payload(profile)
+        payment_token = ""
+        payment_url = ""
+        if not bool(subscription.get("is_lifetime", False)):
+            payment_token = _issue_pending_payment_token(uid)
+            payment_url = _payment_page_url(payment_token)
         return {
             "ok": True,
             "user_id": uid,
@@ -1113,6 +1168,9 @@ def register(body: RegisterBody):
             "email_notifications_enabled": bool(profile_payload.get("email_notifications_enabled", True)),
             "profile_image_url": profile_payload.get("profile_image_url", ""),
             "lifetime_access": bool(subscription.get("is_lifetime", False)),
+            "payment_required": not bool(subscription.get("is_lifetime", False)),
+            "payment_token": payment_token,
+            "payment_url": payment_url,
             **subscription,
         }
     except ValueError as e:
@@ -1128,6 +1186,17 @@ def login(body: LoginBody, response: Response):
     profile = User().get_user_by_id(int(u.uid)) or {}
     subscription = _build_subscription_payload(profile)
     profile_payload = _build_profile_payload(profile)
+    if not bool(subscription.get("is_lifetime", False)) and str(subscription.get("payment_status", "")).strip().lower() != "active":
+        payment_token = _issue_pending_payment_token(int(u.uid))
+        return JSONResponse(
+            status_code=403,
+            content={
+                "detail": "Payment information is required to activate your account. You will not be charged until the trial period ends.",
+                "payment_required": True,
+                "payment_status": str(subscription.get("payment_status", "")).strip().lower() or "pending",
+                "payment_url": _payment_page_url(payment_token),
+            },
+        )
     token = _issue_token(int(u.uid))
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
@@ -1303,6 +1372,192 @@ def billing_config(
         "configured_plans": sorted(configured_plans),
         "configured_price_keys": configured_price_keys,
         "prices": plan_price_ids,
+    }
+
+
+@app.post("/billing/pending/context")
+def billing_pending_context(body: PendingPaymentTokenBody):
+    user_id = _verify_pending_payment_token(body.token)
+    profile = User().get_user_by_id(user_id) or {}
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found.")
+    subscription = _build_subscription_payload(profile)
+    return {
+        "ok": True,
+        "user_id": int(user_id),
+        "name": str(profile.get("name", "")).strip(),
+        "email": str(profile.get("email", "")).strip(),
+        "phone": str(profile.get("phone", "")).strip(),
+        "plan_code": str(subscription.get("plan_code", "")).strip().lower(),
+        "billing_cycle": str(subscription.get("billing_cycle", "")).strip().lower() or "monthly",
+        "plan_with_website": bool(subscription.get("plan_with_website", False)),
+        "payment_status": str(subscription.get("payment_status", "")).strip().lower() or "pending",
+        "trial_status": str(subscription.get("trial_status", "")).strip().lower() or "pending",
+        "trial_days": int(BILLING_TRIAL_DAYS),
+        "already_active": bool(subscription.get("payment_status") == "active"),
+        "message": "You will not be charged until the free trial period ends.",
+    }
+
+
+@app.post("/billing/pending/checkout")
+def billing_pending_checkout(body: PendingPaymentCheckoutBody):
+    user_id = _verify_pending_payment_token(body.token)
+    profile = User().get_user_by_id(user_id) or {}
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found.")
+    subscription = _build_subscription_payload(profile)
+    if bool(subscription.get("is_lifetime", False)):
+        return {"ok": True, "already_active": True, "payment_required": False}
+    if str(subscription.get("payment_status", "")).strip().lower() == "active":
+        return {"ok": True, "already_active": True, "payment_required": False}
+
+    plan_code = str(subscription.get("plan_code", "")).strip().lower() or "basic"
+    billing_cycle = str(subscription.get("billing_cycle", "")).strip().lower() or "monthly"
+    with_website = bool(subscription.get("plan_with_website", False))
+    price_id = _stripe_price_for_plan(plan_code, with_website, billing_cycle=billing_cycle)
+    if not price_id:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Stripe price not configured for plan '{plan_code}' ({billing_cycle}).",
+        )
+
+    success_url = _payment_page_url(body.token, billing="success", session_id="{CHECKOUT_SESSION_ID}")
+    cancel_url = _payment_page_url(body.token, billing="cancel")
+    email = str(profile.get("email", "")).strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="User email is required for billing.")
+    customer_id = str(profile.get("billing_customer_id", "")).strip()
+    existing_subscription_id = str(profile.get("billing_subscription_id", "")).strip()
+    subscription_status = str(profile.get("subscription_status", "")).strip().lower()
+    apply_trial = bool(
+        BILLING_TRIAL_DAYS > 0
+        and not existing_subscription_id
+        and subscription_status in {"", "trial", "incomplete", "canceled"}
+    )
+
+    form = {
+        "mode": "subscription",
+        "payment_method_collection": "always",
+        "success_url": success_url,
+        "cancel_url": cancel_url,
+        "allow_promotion_codes": "true",
+        "client_reference_id": str(user_id),
+        "metadata[signup_flow]": "pending_payment",
+        "metadata[user_id]": str(user_id),
+        "metadata[plan_code]": plan_code,
+        "metadata[billing_cycle]": billing_cycle,
+        "metadata[with_website]": "1" if with_website else "0",
+        "line_items[0][price]": price_id,
+        "line_items[0][quantity]": "1",
+    }
+    if customer_id:
+        form["customer"] = customer_id
+    else:
+        form["customer_email"] = email
+    if apply_trial:
+        form["subscription_data[trial_period_days]"] = str(int(BILLING_TRIAL_DAYS))
+        form["subscription_data[trial_settings][end_behavior][missing_payment_method]"] = "cancel"
+
+    out = _stripe_api_request("/v1/checkout/sessions", form)
+    checkout_url = str(out.get("url", "")).strip()
+    session_id = str(out.get("id", "")).strip()
+    if not checkout_url or not session_id:
+        raise HTTPException(status_code=503, detail="Stripe checkout session did not return URL.")
+    return {
+        "ok": True,
+        "url": checkout_url,
+        "session_id": session_id,
+        "trial_days": int(BILLING_TRIAL_DAYS),
+        "message": "You will not be charged until the free trial period ends.",
+    }
+
+
+@app.post("/billing/pending/activate")
+def billing_pending_activate(body: PendingPaymentActivateBody):
+    user_id = _verify_pending_payment_token(body.token)
+    profile = User().get_user_by_id(user_id) or {}
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found.")
+    if bool(profile.get("is_lifetime", False)):
+        return {"ok": True, "already_active": True, "login_url": "/auth?mode=signin"}
+
+    session = _stripe_fetch_checkout_session(body.session_id)
+    metadata = session.get("metadata") or {}
+    if str(metadata.get("signup_flow", "")).strip().lower() != "pending_payment":
+        raise HTTPException(status_code=400, detail="Invalid payment session.")
+    if str(session.get("status", "")).strip().lower() != "complete":
+        raise HTTPException(status_code=400, detail="Payment setup is not complete yet.")
+
+    try:
+        session_user_id = int(metadata.get("user_id") or session.get("client_reference_id") or 0)
+    except Exception:
+        session_user_id = 0
+    if session_user_id != int(user_id):
+        raise HTTPException(status_code=403, detail="Payment session does not match this user.")
+
+    customer_id = str(session.get("customer", "")).strip()
+    existing_billing_user = User().get_user_by_billing_customer_id(customer_id) if customer_id else None
+    if existing_billing_user and int(existing_billing_user.get("user_id", 0)) != int(user_id):
+        raise HTTPException(status_code=400, detail="This Stripe customer is already linked to another account.")
+
+    subscription_obj = session.get("subscription") or {}
+    if isinstance(subscription_obj, str):
+        subscription_obj = _stripe_api_get(
+            f"/v1/subscriptions/{urllib.parse.quote(subscription_obj, safe='')}",
+            query=[("expand[]", "items.data.price")],
+        )
+    subscription_id = str(subscription_obj.get("id", "") or session.get("subscription", "")).strip()
+    if not subscription_id:
+        raise HTTPException(status_code=400, detail="Stripe subscription was not created.")
+
+    items = ((subscription_obj.get("items", {}) or {}).get("data", []) or [])
+    first_item = items[0] if items else {}
+    price_obj = first_item.get("price", {}) or {}
+    price_id = str(price_obj.get("id", "")).strip()
+    price_meta = _stripe_price_metadata(price_id)
+    plan_code = str(metadata.get("plan_code", "")).strip().lower() or str(price_meta.get("plan_code", "")).strip().lower()
+    billing_cycle = str(metadata.get("billing_cycle", "")).strip().lower()
+    if billing_cycle not in {"monthly", "annual"}:
+        billing_cycle = str(price_meta.get("billing_cycle", "")).strip().lower()
+    with_website = str(metadata.get("with_website", "")).strip().lower() in {"1", "true", "yes", "on"}
+    if not with_website:
+        with_website = bool(price_meta.get("with_website", False))
+    subscription_status = _stripe_status_to_subscription_status(str(subscription_obj.get("status", "")).strip().lower())
+    trial_ends_at = _iso_from_unix_ts(subscription_obj.get("trial_end"))
+    subscription_started_at = (
+        _iso_from_unix_ts(subscription_obj.get("start_date"))
+        or _iso_from_unix_ts(subscription_obj.get("current_period_start"))
+        or datetime.utcnow().isoformat() + "Z"
+    )
+    subscription_ends_at = _iso_from_unix_ts(subscription_obj.get("ended_at") or subscription_obj.get("cancel_at"))
+    next_charge_at = trial_ends_at or _iso_from_unix_ts(subscription_obj.get("current_period_end"))
+    if subscription_status not in {"trial", "active"}:
+        subscription_status = "trial" if trial_ends_at else "active"
+
+    User().update_billing_subscription(
+        user_id=user_id,
+        plan_code=plan_code or None,
+        subscription_status=subscription_status,
+        trial_ends_at=trial_ends_at or "",
+        subscription_started_at=subscription_started_at or "",
+        subscription_ends_at=subscription_ends_at or "",
+        billing_provider="stripe",
+        billing_customer_id=customer_id or "",
+        billing_subscription_id=subscription_id or "",
+        billing_price_id=price_id or "",
+        billing_cycle=billing_cycle or "",
+        plan_with_website=with_website,
+        next_charge_at=next_charge_at or "",
+        payment_status="active",
+        trial_status="active",
+    )
+    return {
+        "ok": True,
+        "user_id": int(user_id),
+        "payment_status": "active",
+        "trial_status": "active",
+        "login_url": "/auth?mode=signin&payment=success",
+        "message": "Payment information saved. You will not be charged until the free trial period ends.",
     }
 
 
@@ -1866,6 +2121,8 @@ async def stripe_webhook(
                 billing_cycle=billing_cycle or None,
                 plan_with_website=plan_with_website,
                 next_charge_at=next_charge_at or None,
+                payment_status="active",
+                trial_status="active",
             )
         elif customer_id:
             u = users.get_user_by_billing_customer_id(customer_id)
@@ -1884,6 +2141,8 @@ async def stripe_webhook(
                     billing_cycle=billing_cycle or None,
                     plan_with_website=plan_with_website,
                     next_charge_at=next_charge_at or None,
+                    payment_status="active",
+                    trial_status="active",
                 )
 
     elif event_type in {"customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"}:
@@ -1931,6 +2190,8 @@ async def stripe_webhook(
                     billing_cycle=billing_cycle or None,
                     plan_with_website=plan_with_website,
                     next_charge_at=next_charge_at or "",
+                    payment_status="active" if status in {"trial", "active"} else None,
+                    trial_status="active" if status in {"trial", "active"} else ("inactive" if status == "canceled" else None),
                 )
 
     elif event_type == "invoice.payment_failed":
@@ -1941,6 +2202,7 @@ async def stripe_webhook(
                 users.update_billing_subscription(
                     user_id=int(u["user_id"]),
                     subscription_status="past_due",
+                    payment_status="active",
                 )
 
     return {"ok": True}
