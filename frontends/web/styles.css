@@ -645,6 +645,9 @@ th { color: var(--muted); font-weight: 700; }
   width: 100%;
   overflow-x: auto;
 }
+.table-search {
+  margin: 0 0 10px;
+}
 .error-text {
   color: #d14343;
   font-weight: 700;
@@ -784,3 +787,4 @@ th { color: var(--muted); font-weight: 700; }
   .top-logo { width: 36px; height: 36px; }
   .badge { font-size: 0.86rem; }
 }
+

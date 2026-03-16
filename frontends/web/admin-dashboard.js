@@ -4,6 +4,14 @@ const state = {
   theme: "light",
   admin: null,
   dashboard: null,
+  filters: {
+    admins: "",
+    users: "",
+    accounts: "",
+    transactions: "",
+    categories: "",
+    dailyBalances: "",
+  },
 };
 
 class ApiError extends Error {
@@ -72,6 +80,12 @@ function rowCell(label, value, extraClass = "") {
   return `<td data-label="${escapeHtml(label)}" class="${extraClass}">${value}</td>`;
 }
 
+function filterItems(items, key, toSearchText) {
+  const needle = String(state.filters[key] || "").trim().toLowerCase();
+  if (!needle) return items;
+  return items.filter((item) => String(toSearchText(item) || "").toLowerCase().includes(needle));
+}
+
 function permissions() {
   const explicit = state.admin?.permissions;
   if (explicit) return explicit;
@@ -120,7 +134,11 @@ function renderAdmins() {
   const tbody = $("adminAdminsTable")?.querySelector("tbody");
   if (!tbody) return;
   const canManageAdmins = Boolean(permissions().can_manage_admins);
-  const rows = (state.dashboard?.admins || []).map((admin) => {
+  const rows = filterItems(
+    state.dashboard?.admins || [],
+    "admins",
+    (admin) => [admin.id, admin.name, admin.email, admin.phone, admin.position, admin.created_at].join(" ")
+  ).map((admin) => {
     const action = canManageAdmins
       ? `<button type="button" class="secondary admin-edit-admin" data-admin-id="${escapeHtml(admin.id)}">Edit</button>`
       : "<span class=\"muted\">-</span>";
@@ -146,7 +164,20 @@ function renderUsers() {
   const tbody = $("adminUsersTable")?.querySelector("tbody");
   if (!tbody) return;
   const canManageUsers = Boolean(permissions().can_manage_users);
-  const rows = (state.dashboard?.users || []).map((user) => {
+  const rows = filterItems(
+    state.dashboard?.users || [],
+    "users",
+    (user) => [
+      user.user_id,
+      user.name,
+      user.email,
+      user.phone,
+      user.plan_code,
+      user.subscription_status,
+      user.payment_status,
+      user.trial_status,
+    ].join(" ")
+  ).map((user) => {
     const action = canManageUsers
       ? `<button type="button" class="secondary admin-edit-user" data-user-id="${escapeHtml(user.user_id)}">Edit</button>`
       : "<span class=\"muted\">Read only</span>";
@@ -173,7 +204,17 @@ function renderUsers() {
 function renderAccounts() {
   const tbody = $("adminAccountsTable")?.querySelector("tbody");
   if (!tbody) return;
-  const rows = (state.dashboard?.accounts || []).map((account) => `
+  const rows = filterItems(
+    state.dashboard?.accounts || [],
+    "accounts",
+    (account) => [
+      account.account_id,
+      lookupUserName(account.user_id),
+      account.account_name,
+      account.account_type,
+      account.balance,
+    ].join(" ")
+  ).map((account) => `
     <tr>
       ${rowCell("ID", escapeHtml(account.account_id))}
       ${rowCell("User", lookupUserName(account.user_id))}
@@ -189,7 +230,23 @@ function renderTransactions() {
   const tbody = $("adminTransactionsTable")?.querySelector("tbody");
   if (!tbody) return;
   const accounts = state.dashboard?.accounts || [];
-  const rows = (state.dashboard?.transactions || []).map((tx) => {
+  const rows = filterItems(
+    state.dashboard?.transactions || [],
+    "transactions",
+    (tx) => {
+      const account = accounts.find((a) => Number(a.account_id) === Number(tx.account_id));
+      return [
+        tx.txn_id,
+        lookupUserName(tx.user_id),
+        tx.date,
+        tx.type,
+        tx.amount,
+        account?.account_name || tx.account_id,
+        tx.category,
+        tx.note,
+      ].join(" ");
+    }
+  ).map((tx) => {
     const account = accounts.find((a) => Number(a.account_id) === Number(tx.account_id));
     return `
       <tr>
@@ -210,7 +267,18 @@ function renderTransactions() {
 function renderCategories() {
   const tbody = $("adminCategoriesTable")?.querySelector("tbody");
   if (!tbody) return;
-  const rows = (state.dashboard?.categories || []).map((category) => `
+  const rows = filterItems(
+    state.dashboard?.categories || [],
+    "categories",
+    (category) => [
+      category.category_id,
+      lookupUserName(category.user_id),
+      category.name,
+      category.type,
+      category.is_auto,
+      category.account_linked,
+    ].join(" ")
+  ).map((category) => `
     <tr>
       ${rowCell("ID", escapeHtml(category.category_id))}
       ${rowCell("User", lookupUserName(category.user_id))}
@@ -225,7 +293,19 @@ function renderCategories() {
 function renderDailyBalances() {
   const tbody = $("adminDailyBalancesTable")?.querySelector("tbody");
   if (!tbody) return;
-  const rows = (state.dashboard?.daily_balances || []).map((item) => `
+  const rows = filterItems(
+    state.dashboard?.daily_balances || [],
+    "dailyBalances",
+    (item) => [
+      item.dailyb_id,
+      lookupUserName(item.user_id),
+      item.date,
+      item.income,
+      item.expense,
+      item.net,
+      item.snapshot,
+    ].join(" ")
+  ).map((item) => `
     <tr>
       ${rowCell("ID", escapeHtml(item.dailyb_id))}
       ${rowCell("User", lookupUserName(item.user_id))}
@@ -288,6 +368,16 @@ function renderDashboard() {
   renderDailyBalances();
 }
 
+function bindTableSearch(inputId, key) {
+  const input = $(inputId);
+  if (!input) return;
+  input.value = state.filters[key] || "";
+  input.oninput = () => {
+    state.filters[key] = input.value || "";
+    renderDashboard();
+  };
+}
+
 async function loadDashboard() {
   const session = await api("/admin1957/session");
   state.admin = session.admin || null;
@@ -299,6 +389,12 @@ async function loadDashboard() {
 window.addEventListener("load", async () => {
   applyTheme(localStorage.getItem("keeperbma_theme") || "light");
   $("adminThemeToggle").onclick = () => applyTheme(state.theme === "dark" ? "light" : "dark");
+  bindTableSearch("adminAdminsSearch", "admins");
+  bindTableSearch("adminUsersSearch", "users");
+  bindTableSearch("adminAccountsSearch", "accounts");
+  bindTableSearch("adminTransactionsSearch", "transactions");
+  bindTableSearch("adminCategoriesSearch", "categories");
+  bindTableSearch("adminDailyBalancesSearch", "dailyBalances");
 
   $("adminRefreshBtn").onclick = async () => {
     try {
