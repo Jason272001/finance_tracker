@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>KeeperBMA Admin Dashboard</title>
   <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; block-all-mixed-content" />
-  <link rel="icon" type="image/png" href="./assets/keeperbma-icon.png" />
+  <link rel="icon" type="image/png" href="/assets/keeperbma-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -15,13 +15,13 @@
     }
     document.documentElement.dataset.theme = localStorage.getItem("keeperbma_theme") || "light";
   </script>
-  <link rel="stylesheet" href="./frontends/web/styles.css?v=43" />
+  <link rel="stylesheet" href="/frontends/web/styles.css?v=44" />
 </head>
 <body>
   <main class="page admin-dashboard-page">
     <header class="landing-nav admin-toolbar">
       <div class="brand-row">
-        <img class="brand-logo small" src="./assets/keeperbma-icon.png" alt="KeeperBMA" />
+        <img class="brand-logo small" src="/assets/keeperbma-icon.png" alt="KeeperBMA" />
         <div>
           <h1>KeeperBMA Admin</h1>
           <p id="adminWhoami" class="muted admin-toolbar-note"></p>
@@ -160,6 +160,6 @@
     </section>
   </main>
 
-  <script src="./frontends/web/admin-dashboard.js?v=3"></script>
+  <script src="/frontends/web/admin-dashboard.js?v=4"></script>
 </body>
 </html>

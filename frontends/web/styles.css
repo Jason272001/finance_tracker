@@ -142,6 +142,19 @@ body {
 }
 .tab.active { color: var(--primary-start); border-bottom-color: var(--primary-start); }
 .auth-card { display: flex; flex-direction: column; gap: 10px; }
+.password-field {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.password-field input {
+  flex: 1 1 auto;
+}
+.password-toggle-btn {
+  width: auto;
+  min-width: 88px;
+  white-space: nowrap;
+}
 .full { width: 100%; }
 #signupPlanBanner {
   border: 1px solid var(--border);
@@ -674,6 +687,13 @@ th { color: var(--muted); font-weight: 700; }
   .kpi-grid { grid-template-columns: 1fr; }
   .kpi-card p { font-size: 1.35rem; }
   .row > * { flex: 1 1 100%; min-width: 0; }
+  .password-field {
+    flex-direction: column;
+  }
+  .password-toggle-btn {
+    width: 100%;
+    min-width: 0;
+  }
   button { width: 100%; }
   td button { width: auto; }
   .top-right button { width: auto; }

@@ -49,9 +49,22 @@ function setStatus(message, isError = false) {
   el.classList.toggle("success-text", !isError && Boolean(message));
 }
 
+function bindPasswordToggle(inputId, buttonId) {
+  const input = $(inputId);
+  const button = $(buttonId);
+  if (!input || !button) return;
+  button.onclick = () => {
+    const reveal = input.type === "password";
+    input.type = reveal ? "text" : "password";
+    button.textContent = reveal ? "Hide" : "Show";
+    button.setAttribute("aria-pressed", String(reveal));
+  };
+}
+
 window.addEventListener("load", async () => {
   applyTheme(localStorage.getItem("keeperbma_theme") || "light");
   $("adminThemeToggle").onclick = () => applyTheme(state.theme === "dark" ? "light" : "dark");
+  bindPasswordToggle("adminPassword", "adminPasswordToggle");
 
   $("adminRegisterSubmit").onclick = async () => {
     try {
