@@ -331,6 +331,33 @@ function loadAdminIntoForm(adminId) {
   setAdminStatus(`Editing admin ${admin.name || admin.email || admin.id}`);
 }
 
+function bindPasswordToggle(inputId, buttonId) {
+  const input = $(inputId);
+  const button = $(buttonId);
+  if (!input || !button) return;
+  button.onclick = () => {
+    const reveal = input.type === "password";
+    input.type = reveal ? "text" : "password";
+    button.textContent = reveal ? "Hide" : "Show";
+    button.setAttribute("aria-pressed", String(reveal));
+  };
+}
+
+function clearAdminCreateForm() {
+  if ($("adminCreateName")) $("adminCreateName").value = "";
+  if ($("adminCreateEmail")) $("adminCreateEmail").value = "";
+  if ($("adminCreatePhone")) $("adminCreatePhone").value = "";
+  if ($("adminCreatePosition")) $("adminCreatePosition").value = "owner";
+  if ($("adminCreatePassword")) $("adminCreatePassword").value = "";
+  const password = $("adminCreatePassword");
+  const toggle = $("adminCreatePasswordToggle");
+  if (password) password.type = "password";
+  if (toggle) {
+    toggle.textContent = "Show";
+    toggle.setAttribute("aria-pressed", "false");
+  }
+}
+
 function loadUserIntoForm(userId) {
   const user = (state.dashboard?.users || []).find((item) => Number(item.user_id) === Number(userId));
   if (!user) return;
@@ -356,7 +383,7 @@ function renderDashboard() {
   $("metricTransactions").textContent = String(metrics.transactions || 0);
   if ($("adminWhoami")) {
     const admin = state.admin || {};
-    $("adminWhoami").textContent = `${admin.name || "Admin"} • ${admin.position || ""}`.trim();
+    $("adminWhoami").textContent = `${admin.name || "Admin"} - ${admin.position || ""}`.trim();
   }
   setAdminEditorVisibility();
   setUserEditorState();
@@ -389,6 +416,7 @@ async function loadDashboard() {
 window.addEventListener("load", async () => {
   applyTheme(localStorage.getItem("keeperbma_theme") || "light");
   $("adminThemeToggle").onclick = () => applyTheme(state.theme === "dark" ? "light" : "dark");
+  bindPasswordToggle("adminCreatePassword", "adminCreatePasswordToggle");
   bindTableSearch("adminAdminsSearch", "admins");
   bindTableSearch("adminUsersSearch", "users");
   bindTableSearch("adminAccountsSearch", "accounts");
@@ -487,6 +515,36 @@ window.addEventListener("load", async () => {
     };
   }
 
+  const createAdminBtn = $("adminCreateAdminBtn");
+  if (createAdminBtn) {
+    createAdminBtn.onclick = async () => {
+      try {
+        if (!permissions().can_manage_admins) {
+          setAdminStatus("Only owners can manage admins.", true);
+          return;
+        }
+        const name = $("adminCreateName").value.trim();
+        const email = $("adminCreateEmail").value.trim();
+        const phone = $("adminCreatePhone").value.trim();
+        const position = $("adminCreatePosition").value || "";
+        const password = $("adminCreatePassword").value || "";
+        if (!name || !email || !phone || !position || !password) {
+          setAdminStatus("Fill in all create-admin fields first.", true);
+          return;
+        }
+        await api("/admin1957/register", {
+          method: "POST",
+          body: JSON.stringify({ name, email, phone, position, password }),
+        });
+        clearAdminCreateForm();
+        await loadDashboard();
+        setAdminStatus("Admin created successfully.");
+      } catch (error) {
+        setAdminStatus(error.message || "Failed to create admin.", true);
+      }
+    };
+  }
+
   const deleteAdminBtn = $("adminDeleteAdminBtn");
   if (deleteAdminBtn) {
     deleteAdminBtn.onclick = async () => {
@@ -552,3 +610,4 @@ window.addEventListener("load", async () => {
     window.location.replace("/kmak/1957/1965/a/login");
   }
 });
+

@@ -170,10 +170,6 @@
       "destination": "/admin-login.html"
     },
     {
-      "source": "/kmak/1957/1965/a/register",
-      "destination": "/admin-register.html"
-    },
-    {
       "source": "/kmak/1957/1965/a/dashboard",
       "destination": "/admin-dashboard.html"
     }
@@ -211,7 +207,12 @@
     },
     {
       "source": "/admin-register.html",
-      "destination": "/kmak/1957/1965/a/register",
+      "destination": "/kmak/1957/1965/a/login",
+      "permanent": true
+    },
+    {
+      "source": "/kmak/1957/1965/a/register",
+      "destination": "/kmak/1957/1965/a/login",
       "permanent": true
     },
     {

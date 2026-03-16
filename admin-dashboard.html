@@ -49,7 +49,30 @@
     <section class="grid">
       <article id="adminManageCard" class="card">
         <h2>Admin Management</h2>
-        <p class="muted">Owners can update admins, reset admin passwords, and remove admins.</p>
+        <p class="muted">Owners can create admins, update admins, reset admin passwords, and remove admins.</p>
+        <div class="admin-panel-section">
+          <h3>Create Admin</h3>
+          <label for="adminCreateName">Name</label>
+          <input id="adminCreateName" placeholder="Admin name" />
+          <label for="adminCreateEmail">Email</label>
+          <input id="adminCreateEmail" type="email" placeholder="name@example.com" />
+          <label for="adminCreatePhone">Phone</label>
+          <input id="adminCreatePhone" placeholder="Phone number" />
+          <label for="adminCreatePosition">Position</label>
+          <select id="adminCreatePosition">
+            <option value="owner">owner</option>
+            <option value="manager">manager</option>
+            <option value="support">support</option>
+          </select>
+          <label for="adminCreatePassword">Password</label>
+          <div class="password-field">
+            <input id="adminCreatePassword" type="password" placeholder="Password" />
+            <button id="adminCreatePasswordToggle" class="secondary password-toggle-btn" type="button" aria-pressed="false" aria-controls="adminCreatePassword">Show</button>
+          </div>
+          <button id="adminCreateAdminBtn" type="button">Create Admin</button>
+        </div>
+        <hr class="admin-section-divider" />
+        <h3>Edit Admin</h3>
         <input id="adminSelectedAdminId" type="hidden" />
         <label for="adminEditAdminName">Name</label>
         <input id="adminEditAdminName" placeholder="Admin name" />
@@ -166,7 +189,7 @@
     </section>
   </main>
 
-  <script src="/frontends/web/admin-dashboard.js?v=6"></script>
+  <script src="/frontends/web/admin-dashboard.js?v=8"></script>
 </body>
 </html>
 
