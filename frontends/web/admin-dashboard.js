@@ -43,12 +43,20 @@ async function api(path, opts = {}) {
   return payload;
 }
 
-function setStatus(message, isError = false) {
-  const el = $("adminDashboardStatus");
+function setStatus(targetId, message, isError = false) {
+  const el = $(targetId);
   if (!el) return;
   el.textContent = message || "";
   el.classList.toggle("error-text", Boolean(isError));
   el.classList.toggle("success-text", !isError && Boolean(message));
+}
+
+function setDashboardStatus(message, isError = false) {
+  setStatus("adminDashboardStatus", message, isError);
+}
+
+function setAdminStatus(message, isError = false) {
+  setStatus("adminAdminStatus", message, isError);
 }
 
 function escapeHtml(value) {
@@ -64,44 +72,98 @@ function rowCell(label, value, extraClass = "") {
   return `<td data-label="${escapeHtml(label)}" class="${extraClass}">${value}</td>`;
 }
 
+function permissions() {
+  const explicit = state.admin?.permissions;
+  if (explicit) return explicit;
+  const role = String(state.admin?.position || "").trim().toLowerCase();
+  return {
+    can_manage_admins: role === "owner",
+    can_manage_users: role === "owner" || role === "manager",
+    read_only: role === "support",
+  };
+}
+
 function lookupUserName(userId) {
   const users = state.dashboard?.users || [];
   const hit = users.find((u) => Number(u.user_id) === Number(userId));
   return hit ? escapeHtml(hit.name || hit.email || `User ${userId}`) : escapeHtml(String(userId || ""));
 }
 
+function setAdminEditorVisibility() {
+  const canManageAdmins = Boolean(permissions().can_manage_admins);
+  const card = $("adminManageCard");
+  if (card) card.style.display = canManageAdmins ? "block" : "none";
+}
+
+function setUserEditorState() {
+  const canManageUsers = Boolean(permissions().can_manage_users);
+  [
+    "adminEditName",
+    "adminEditEmail",
+    "adminEditPhone",
+    "adminEditEmailNotifications",
+    "adminEditPlanWebsite",
+    "adminEditPlanCode",
+    "adminEditSubscriptionStatus",
+    "adminEditPaymentStatus",
+    "adminEditTrialStatus",
+    "adminEditBillingCycle",
+    "adminSaveUserBtn",
+  ].forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.disabled = !canManageUsers;
+  });
+}
+
 function renderAdmins() {
   const tbody = $("adminAdminsTable")?.querySelector("tbody");
   if (!tbody) return;
-  const rows = (state.dashboard?.admins || []).map((admin) => `
-    <tr>
-      ${rowCell("ID", escapeHtml(admin.id))}
-      ${rowCell("Name", escapeHtml(admin.name))}
-      ${rowCell("Email", escapeHtml(admin.email))}
-      ${rowCell("Phone", escapeHtml(admin.phone))}
-      ${rowCell("Position", escapeHtml(admin.position))}
-      ${rowCell("Created", escapeHtml(admin.created_at))}
-    </tr>
-  `).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="6" data-label="Empty">No admins found.</td></tr>`;
+  const canManageAdmins = Boolean(permissions().can_manage_admins);
+  const rows = (state.dashboard?.admins || []).map((admin) => {
+    const action = canManageAdmins
+      ? `<button type="button" class="secondary admin-edit-admin" data-admin-id="${escapeHtml(admin.id)}">Edit</button>`
+      : "<span class=\"muted\">-</span>";
+    return `
+      <tr>
+        ${rowCell("ID", escapeHtml(admin.id))}
+        ${rowCell("Name", escapeHtml(admin.name))}
+        ${rowCell("Email", escapeHtml(admin.email))}
+        ${rowCell("Phone", escapeHtml(admin.phone))}
+        ${rowCell("Position", escapeHtml(admin.position))}
+        ${rowCell("Created", escapeHtml(admin.created_at))}
+        ${rowCell("Action", action, "table-actions")}
+      </tr>
+    `;
+  }).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="7" data-label="Empty">No admins found.</td></tr>`;
+  tbody.querySelectorAll(".admin-edit-admin").forEach((btn) => {
+    btn.onclick = () => loadAdminIntoForm(Number(btn.dataset.adminId || 0));
+  });
 }
 
 function renderUsers() {
   const tbody = $("adminUsersTable")?.querySelector("tbody");
   if (!tbody) return;
-  const rows = (state.dashboard?.users || []).map((user) => `
-    <tr>
-      ${rowCell("ID", escapeHtml(user.user_id))}
-      ${rowCell("Name", escapeHtml(user.name))}
-      ${rowCell("Email", escapeHtml(user.email))}
-      ${rowCell("Phone", escapeHtml(user.phone))}
-      ${rowCell("Plan", escapeHtml(user.plan_code))}
-      ${rowCell("Subscription", escapeHtml(user.subscription_status))}
-      ${rowCell("Payment", escapeHtml(user.payment_status))}
-      ${rowCell("Trial", escapeHtml(user.trial_status))}
-      ${rowCell("Action", `<button type="button" class="secondary admin-edit-user" data-user-id="${escapeHtml(user.user_id)}">Edit</button>`, "table-actions")}
-    </tr>
-  `).join("");
+  const canManageUsers = Boolean(permissions().can_manage_users);
+  const rows = (state.dashboard?.users || []).map((user) => {
+    const action = canManageUsers
+      ? `<button type="button" class="secondary admin-edit-user" data-user-id="${escapeHtml(user.user_id)}">Edit</button>`
+      : "<span class=\"muted\">Read only</span>";
+    return `
+      <tr>
+        ${rowCell("ID", escapeHtml(user.user_id))}
+        ${rowCell("Name", escapeHtml(user.name))}
+        ${rowCell("Email", escapeHtml(user.email))}
+        ${rowCell("Phone", escapeHtml(user.phone))}
+        ${rowCell("Plan", escapeHtml(user.plan_code))}
+        ${rowCell("Subscription", escapeHtml(user.subscription_status))}
+        ${rowCell("Payment", escapeHtml(user.payment_status))}
+        ${rowCell("Trial", escapeHtml(user.trial_status))}
+        ${rowCell("Action", action, "table-actions")}
+      </tr>
+    `;
+  }).join("");
   tbody.innerHTML = rows || `<tr><td colspan="9" data-label="Empty">No users found.</td></tr>`;
   tbody.querySelectorAll(".admin-edit-user").forEach((btn) => {
     btn.onclick = () => loadUserIntoForm(Number(btn.dataset.userId || 0));
@@ -177,6 +239,18 @@ function renderDailyBalances() {
   tbody.innerHTML = rows || `<tr><td colspan="7" data-label="Empty">No daily balances found.</td></tr>`;
 }
 
+function loadAdminIntoForm(adminId) {
+  const admin = (state.dashboard?.admins || []).find((item) => Number(item.id) === Number(adminId));
+  if (!admin) return;
+  $("adminSelectedAdminId").value = String(admin.id);
+  $("adminEditAdminName").value = admin.name || "";
+  $("adminEditAdminEmail").value = admin.email || "";
+  $("adminEditAdminPhone").value = admin.phone || "";
+  $("adminEditAdminPosition").value = String(admin.position || "owner").toLowerCase();
+  $("adminResetPassword").value = "";
+  setAdminStatus(`Editing admin ${admin.name || admin.email || admin.id}`);
+}
+
 function loadUserIntoForm(userId) {
   const user = (state.dashboard?.users || []).find((item) => Number(item.user_id) === Number(userId));
   if (!user) return;
@@ -191,7 +265,7 @@ function loadUserIntoForm(userId) {
   $("adminEditPaymentStatus").value = user.payment_status || "";
   $("adminEditTrialStatus").value = user.trial_status || "";
   $("adminEditBillingCycle").value = user.billing_cycle || "";
-  setStatus(`Editing user ${user.name || user.email || user.user_id}`);
+  setDashboardStatus(`Editing user ${user.name || user.email || user.user_id}`);
 }
 
 function renderDashboard() {
@@ -204,6 +278,8 @@ function renderDashboard() {
     const admin = state.admin || {};
     $("adminWhoami").textContent = `${admin.name || "Admin"} • ${admin.position || ""}`.trim();
   }
+  setAdminEditorVisibility();
+  setUserEditorState();
   renderAdmins();
   renderUsers();
   renderAccounts();
@@ -223,26 +299,34 @@ async function loadDashboard() {
 window.addEventListener("load", async () => {
   applyTheme(localStorage.getItem("keeperbma_theme") || "light");
   $("adminThemeToggle").onclick = () => applyTheme(state.theme === "dark" ? "light" : "dark");
+
   $("adminRefreshBtn").onclick = async () => {
     try {
-      setStatus("");
+      setDashboardStatus("");
+      setAdminStatus("");
       await loadDashboard();
-      setStatus("Dashboard refreshed.");
+      setDashboardStatus("Dashboard refreshed.");
     } catch (error) {
-      setStatus(error.message || "Failed to refresh dashboard.", true);
+      setDashboardStatus(error.message || "Failed to refresh dashboard.", true);
     }
   };
+
   $("adminLogoutBtn").onclick = async () => {
     try {
       await api("/admin1957/logout", { method: "POST" });
     } catch (_) {}
     window.location.replace("/kmak/1957/1965/a/login");
   };
+
   $("adminSaveUserBtn").onclick = async () => {
     try {
+      if (!permissions().can_manage_users) {
+        setDashboardStatus("Your role is read-only.", true);
+        return;
+      }
       const userId = Number($("adminSelectedUserId").value || 0);
       if (!userId) {
-        setStatus("Select a user first.", true);
+        setDashboardStatus("Select a user first.", true);
         return;
       }
       const payload = {
@@ -266,15 +350,109 @@ window.addEventListener("load", async () => {
       });
       await loadDashboard();
       loadUserIntoForm(userId);
-      setStatus("User updated successfully.");
+      setDashboardStatus("User updated successfully.");
     } catch (error) {
-      setStatus(error.message || "Failed to update user.", true);
+      setDashboardStatus(error.message || "Failed to update user.", true);
     }
   };
 
+  const saveAdminBtn = $("adminSaveAdminBtn");
+  if (saveAdminBtn) {
+    saveAdminBtn.onclick = async () => {
+      try {
+        if (!permissions().can_manage_admins) {
+          setAdminStatus("Only owners can manage admins.", true);
+          return;
+        }
+        const adminId = Number($("adminSelectedAdminId").value || 0);
+        if (!adminId) {
+          setAdminStatus("Select an admin first.", true);
+          return;
+        }
+        const payload = {
+          name: $("adminEditAdminName").value.trim(),
+          email: $("adminEditAdminEmail").value.trim(),
+          phone: $("adminEditAdminPhone").value.trim(),
+          position: $("adminEditAdminPosition").value || null,
+        };
+        Object.keys(payload).forEach((key) => {
+          if (payload[key] === "") payload[key] = null;
+        });
+        await api(`/admin1957/admins/${adminId}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+        await loadDashboard();
+        loadAdminIntoForm(adminId);
+        setAdminStatus("Admin updated successfully.");
+      } catch (error) {
+        setAdminStatus(error.message || "Failed to update admin.", true);
+      }
+    };
+  }
+
+  const deleteAdminBtn = $("adminDeleteAdminBtn");
+  if (deleteAdminBtn) {
+    deleteAdminBtn.onclick = async () => {
+      try {
+        if (!permissions().can_manage_admins) {
+          setAdminStatus("Only owners can manage admins.", true);
+          return;
+        }
+        const adminId = Number($("adminSelectedAdminId").value || 0);
+        if (!adminId) {
+          setAdminStatus("Select an admin first.", true);
+          return;
+        }
+        if (!window.confirm("Delete this admin? This cannot be undone.")) return;
+        await api(`/admin1957/admins/${adminId}`, { method: "DELETE" });
+        $("adminSelectedAdminId").value = "";
+        $("adminEditAdminName").value = "";
+        $("adminEditAdminEmail").value = "";
+        $("adminEditAdminPhone").value = "";
+        $("adminEditAdminPosition").value = "owner";
+        $("adminResetPassword").value = "";
+        await loadDashboard();
+        setAdminStatus("Admin deleted successfully.");
+      } catch (error) {
+        setAdminStatus(error.message || "Failed to delete admin.", true);
+      }
+    };
+  }
+
+  const resetAdminPasswordBtn = $("adminResetAdminPasswordBtn");
+  if (resetAdminPasswordBtn) {
+    resetAdminPasswordBtn.onclick = async () => {
+      try {
+        if (!permissions().can_manage_admins) {
+          setAdminStatus("Only owners can manage admins.", true);
+          return;
+        }
+        const adminId = Number($("adminSelectedAdminId").value || 0);
+        const newPassword = $("adminResetPassword").value || "";
+        if (!adminId) {
+          setAdminStatus("Select an admin first.", true);
+          return;
+        }
+        if (!newPassword) {
+          setAdminStatus("Enter a new password first.", true);
+          return;
+        }
+        await api(`/admin1957/admins/${adminId}/reset-password`, {
+          method: "POST",
+          body: JSON.stringify({ new_password: newPassword }),
+        });
+        $("adminResetPassword").value = "";
+        setAdminStatus("Admin password reset successfully.");
+      } catch (error) {
+        setAdminStatus(error.message || "Failed to reset admin password.", true);
+      }
+    };
+  }
+
   try {
     await loadDashboard();
-  } catch (error) {
+  } catch (_) {
     window.location.replace("/kmak/1957/1965/a/login");
   }
 });

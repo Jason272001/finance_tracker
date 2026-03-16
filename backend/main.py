@@ -144,6 +144,29 @@ class AdminLoginBody(BaseModel):
     password: str = Field(min_length=1, max_length=200)
 
 
+class AdminUpdateBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=80)
+    email: Optional[str] = Field(default=None, min_length=3, max_length=200)
+    phone: Optional[str] = Field(default=None, min_length=7, max_length=40)
+    position: Optional[str] = Field(default=None, min_length=1, max_length=40)
+
+    @field_validator("position")
+    @classmethod
+    def validate_position(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        key = str(v).strip().lower()
+        if key not in {"owner", "manager", "support"}:
+            raise ValueError("Invalid position")
+        return key
+
+
+class AdminResetPasswordBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    new_password: str = Field(min_length=7, max_length=200)
+
+
 class AdminUserUpdateBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     name: Optional[str] = Field(default=None, min_length=1, max_length=80)
@@ -1247,6 +1270,35 @@ def _require_admin(request: Request, authorization: Optional[str] = None) -> dic
     return admin
 
 
+def _admin_position_key(admin_or_position) -> str:
+    if isinstance(admin_or_position, dict):
+        raw = admin_or_position.get("position", "")
+    else:
+        raw = admin_or_position
+    return str(raw or "").strip().lower()
+
+
+def _build_admin_permissions(admin: dict) -> dict:
+    role = _admin_position_key(admin)
+    return {
+        "can_manage_admins": role == "owner",
+        "can_manage_users": role in {"owner", "manager"},
+        "read_only": role == "support",
+    }
+
+
+def _require_admin_roles(
+    request: Request,
+    authorization: Optional[str] = None,
+    allowed_positions: tuple[str, ...] = ("owner",),
+) -> dict:
+    admin = _require_admin(request, authorization)
+    allowed = {str(item).strip().lower() for item in allowed_positions}
+    if _admin_position_key(admin) not in allowed:
+        raise HTTPException(status_code=403, detail="Admin permission denied.")
+    return admin
+
+
 def _build_admin_payload(admin: dict) -> dict:
     return {
         "id": int(admin.get("id", 0) or 0),
@@ -1255,6 +1307,7 @@ def _build_admin_payload(admin: dict) -> dict:
         "phone": str(admin.get("phone", "")).strip(),
         "position": str(admin.get("position", "")).strip(),
         "created_at": str(admin.get("created_at", "")).strip(),
+        "permissions": _build_admin_permissions(admin),
     }
 
 
@@ -1508,7 +1561,7 @@ def admin1957_register(
 ):
     admins = Admin1957()
     if admins.count() > 0:
-        _require_admin(request, authorization)
+        _require_admin_roles(request, authorization, ("owner",))
     try:
         admin = admins.register(
             name=body.name,
@@ -1607,7 +1660,7 @@ def admin1957_update_user(
     request: Request,
     authorization: Optional[str] = Header(default=None),
 ):
-    _require_admin(request, authorization)
+    _require_admin_roles(request, authorization, ("owner", "manager"))
     users_model = User()
     try:
         if any(
@@ -1661,6 +1714,66 @@ def admin1957_update_user(
             **_build_subscription_payload(profile),
         },
     }
+
+
+@app.put("/admin1957/admins/{admin_id}")
+def admin1957_update_admin(
+    admin_id: int,
+    body: AdminUpdateBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    admin = _require_admin_roles(request, authorization, ("owner",))
+    admins_model = Admin1957()
+    try:
+        updated = admins_model.update_admin(
+            admin_id,
+            name=body.name,
+            email=body.email,
+            phone=body.phone,
+            position=body.position,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "ok": True,
+        "admin": _build_admin_payload(updated),
+        "actor": _build_admin_payload(admin),
+    }
+
+
+@app.delete("/admin1957/admins/{admin_id}")
+def admin1957_delete_admin(
+    admin_id: int,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    admin = _require_admin_roles(request, authorization, ("owner",))
+    actor_id = int(admin.get("id", 0) or 0)
+    if actor_id == int(admin_id):
+        raise HTTPException(status_code=400, detail="Use another owner account to remove this admin.")
+    admins_model = Admin1957()
+    try:
+        admins_model.delete_admin(admin_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True}
+
+
+@app.post("/admin1957/admins/{admin_id}/reset-password")
+def admin1957_reset_admin_password(
+    admin_id: int,
+    body: AdminResetPasswordBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_admin_roles(request, authorization, ("owner",))
+    admins_model = Admin1957()
+    try:
+        updated = admins_model.set_password(admin_id, body.new_password)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True, "admin": _build_admin_payload(updated)}
 
 
 @app.get("/billing/plans")

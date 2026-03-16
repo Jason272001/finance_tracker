@@ -1009,6 +1009,7 @@ class User:
 
 class Admin1957:
     cols = ["id", "name", "email", "phone", "password", "position", "created_at"]
+    allowed_positions = {"owner", "manager", "support"}
 
     def __init__(self, path=ADMIN1957_PATH):
         self.path = path
@@ -1066,8 +1067,20 @@ class Admin1957:
             raise ValueError("Phone format is invalid.")
         return digits
 
+    def _normalize_position(self, position):
+        key = str(position or "").strip().lower()
+        if key not in self.allowed_positions:
+            raise ValueError("Position must be owner, manager, or support.")
+        return key
+
     def count(self):
         return int(len(self._load()))
+
+    def count_owners(self):
+        df = self._load()
+        if df.empty:
+            return 0
+        return int((df["position"].astype(str).str.strip().str.lower() == "owner").sum())
 
     def list_all(self):
         df = self._load().copy()
@@ -1099,10 +1112,8 @@ class Admin1957:
             raise ValueError("Email format is invalid.")
         if len(pw_s) < 7:
             raise ValueError("Password must be at least 7 characters.")
-        if not position_s:
-            raise ValueError("Position is required.")
-
         def _register(df):
+            role = "owner" if df.empty else self._normalize_position(position_s)
             name_col = df["name"].astype(str).str.strip().str.lower()
             email_col = df["email"].astype(str).str.strip().str.lower()
             phone_col = df["phone"].astype(str).str.replace(r"\D", "", regex=True)
@@ -1121,7 +1132,7 @@ class Admin1957:
                         "email": email_s,
                         "phone": phone_s,
                         "password": _hash_password(pw_s),
-                        "position": position_s,
+                        "position": role,
                         "created_at": datetime.utcnow().isoformat(timespec="seconds"),
                     }
                 ]
@@ -1139,6 +1150,123 @@ class Admin1957:
                 admin_id, out = _register(df)
                 self._save(out)
         return self.get_admin_by_id(admin_id)
+
+    def update_admin(self, admin_id, name=None, email=None, phone=None, position=None):
+        try:
+            aid = int(admin_id)
+        except Exception:
+            raise ValueError("Admin not found.")
+
+        def _update(df):
+            ids = pd.to_numeric(df["id"], errors="coerce")
+            mask = ids == aid
+            if not mask.any():
+                raise ValueError("Admin not found.")
+
+            idx = df.index[mask][0]
+            current_name = str(df.at[idx, "name"]).strip()
+            current_email = self._normalize_email(df.at[idx, "email"])
+            current_phone = self._normalize_phone(df.at[idx, "phone"])
+            current_position = str(df.at[idx, "position"]).strip().lower()
+
+            next_name = current_name if name is None else str(name or "").strip()
+            next_email = current_email if email is None else self._normalize_email(email)
+            next_phone = current_phone if phone is None else self._normalize_phone(phone)
+            next_position = current_position if position is None else self._normalize_position(position)
+
+            if not next_name:
+                raise ValueError("Name is required.")
+            if not next_email or "@" not in next_email:
+                raise ValueError("Email format is invalid.")
+
+            others = df.loc[~mask].copy()
+            if (others["name"].astype(str).str.strip().str.lower() == next_name.lower()).any():
+                raise ValueError("Admin username already exists.")
+            if (others["email"].astype(str).str.strip().str.lower() == next_email).any():
+                raise ValueError("Admin email already exists.")
+            if (others["phone"].astype(str).str.replace(r"\D", "", regex=True) == next_phone).any():
+                raise ValueError("Admin phone already exists.")
+
+            if current_position == "owner" and next_position != "owner":
+                owner_count = int((df["position"].astype(str).str.strip().str.lower() == "owner").sum())
+                if owner_count <= 1:
+                    raise ValueError("At least one owner must remain.")
+
+            df.at[idx, "name"] = next_name
+            df.at[idx, "email"] = next_email
+            df.at[idx, "phone"] = next_phone
+            df.at[idx, "position"] = next_position
+            return df
+
+        if DB_IS_SQL:
+            df = self._load()
+            out = _update(df)
+            self._save(out)
+        else:
+            with _file_lock(self.path):
+                df = self._load()
+                out = _update(df)
+                self._save(out)
+        return self.get_admin_by_id(aid)
+
+    def delete_admin(self, admin_id):
+        try:
+            aid = int(admin_id)
+        except Exception:
+            raise ValueError("Admin not found.")
+
+        def _delete(df):
+            ids = pd.to_numeric(df["id"], errors="coerce")
+            mask = ids == aid
+            if not mask.any():
+                raise ValueError("Admin not found.")
+            row = df.loc[mask].iloc[0]
+            position = str(row.get("position", "")).strip().lower()
+            if position == "owner":
+                owner_count = int((df["position"].astype(str).str.strip().str.lower() == "owner").sum())
+                if owner_count <= 1:
+                    raise ValueError("At least one owner must remain.")
+            return df.loc[~mask].copy()
+
+        if DB_IS_SQL:
+            df = self._load()
+            out = _delete(df)
+            self._save(out)
+        else:
+            with _file_lock(self.path):
+                df = self._load()
+                out = _delete(df)
+                self._save(out)
+        return True
+
+    def set_password(self, admin_id, new_password):
+        try:
+            aid = int(admin_id)
+        except Exception:
+            raise ValueError("Admin not found.")
+        pw_s = str(new_password or "")
+        if len(pw_s) < 7:
+            raise ValueError("Password must be at least 7 characters.")
+
+        def _set_password(df):
+            ids = pd.to_numeric(df["id"], errors="coerce")
+            mask = ids == aid
+            if not mask.any():
+                raise ValueError("Admin not found.")
+            idx = df.index[mask][0]
+            df.at[idx, "password"] = _hash_password(pw_s)
+            return df
+
+        if DB_IS_SQL:
+            df = self._load()
+            out = _set_password(df)
+            self._save(out)
+        else:
+            with _file_lock(self.path):
+                df = self._load()
+                out = _set_password(df)
+                self._save(out)
+        return self.get_admin_by_id(aid)
 
     def login(self, identifier, password):
         ident_s = str(identifier or "").strip()
