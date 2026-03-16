@@ -273,20 +273,30 @@ function renderCategories() {
     (category) => [
       category.category_id,
       lookupUserName(category.user_id),
-      category.name,
-      category.type,
+      category.name ?? category.category_name,
+      category.type ?? (Number(category.linked_account_id || 0) > 0 ? "account_linked" : "custom"),
       category.is_auto,
       category.account_linked,
     ].join(" ")
-  ).map((category) => `
+  ).map((category) => {
+    const name = category.name ?? category.category_name ?? "";
+    const type = category.type ?? (Number(category.linked_account_id || 0) > 0 ? "account_linked" : "custom");
+    const isAuto = Boolean(
+      category.is_auto === true ||
+      String(category.is_auto || "").toLowerCase() === "true" ||
+      category.account_linked === true ||
+      Number(category.linked_account_id || 0) > 0
+    );
+    return `
     <tr>
       ${rowCell("ID", escapeHtml(category.category_id))}
       ${rowCell("User", lookupUserName(category.user_id))}
-      ${rowCell("Name", escapeHtml(category.name))}
-      ${rowCell("Type", escapeHtml(category.type))}
-      ${rowCell("Auto", escapeHtml(category.is_auto || category.account_linked || ""))}
+      ${rowCell("Name", escapeHtml(name))}
+      ${rowCell("Type", escapeHtml(type))}
+      ${rowCell("Auto", escapeHtml(isAuto ? "true" : "false"))}
     </tr>
-  `).join("");
+  `;
+  }).join("");
   tbody.innerHTML = rows || `<tr><td colspan="5" data-label="Empty">No categories found.</td></tr>`;
 }
 
@@ -297,7 +307,7 @@ function renderDailyBalances() {
     state.dashboard?.daily_balances || [],
     "dailyBalances",
     (item) => [
-      item.dailyb_id,
+      item.dailyb_id ?? item.dailyB_id,
       lookupUserName(item.user_id),
       item.date,
       item.income,
@@ -307,7 +317,7 @@ function renderDailyBalances() {
     ].join(" ")
   ).map((item) => `
     <tr>
-      ${rowCell("ID", escapeHtml(item.dailyb_id))}
+      ${rowCell("ID", escapeHtml(item.dailyb_id ?? item.dailyB_id ?? ""))}
       ${rowCell("User", lookupUserName(item.user_id))}
       ${rowCell("Date", escapeHtml(item.date))}
       ${rowCell("Income", escapeHtml(item.income))}

@@ -1331,6 +1331,120 @@ def _records_from_frame(df) -> list[dict]:
     return records
 
 
+def _coerce_int(value, default=0) -> int:
+    try:
+        if value in ("", None):
+            return default
+        return int(float(value))
+    except Exception:
+        return default
+
+
+def _coerce_float(value, default=0.0) -> float:
+    try:
+        if value in ("", None):
+            return default
+        return float(value)
+    except Exception:
+        return default
+
+
+def _coerce_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().lower() in {"1", "true", "yes", "y"}
+
+
+def _build_admin_category_records(category_rows: list[dict]) -> list[dict]:
+    out = []
+    for row in category_rows or []:
+        linked_account_id = _coerce_int(row.get("linked_account_id"), 0)
+        is_auto = _coerce_bool(row.get("is_auto"))
+        out.append(
+            {
+                "category_id": _coerce_int(row.get("category_id"), 0),
+                "user_id": _coerce_int(row.get("user_id"), 0),
+                "name": str(row.get("category_name", "") or "").strip(),
+                "type": "account_linked" if linked_account_id > 0 else "custom",
+                "is_auto": is_auto,
+                "account_linked": linked_account_id > 0,
+                "linked_account_id": linked_account_id,
+            }
+        )
+    out.sort(key=lambda item: (item["user_id"], item["category_id"]))
+    return out
+
+
+def _build_admin_daily_balance_records(daily_rows: list[dict], transaction_rows: list[dict]) -> list[dict]:
+    grouped: dict[tuple[int, str], dict] = {}
+
+    for row in daily_rows or []:
+        user_id = _coerce_int(row.get("user_id"), 0)
+        date_value = str(row.get("date", "") or "").strip()
+        if user_id <= 0 or not date_value:
+            continue
+        key = (user_id, date_value)
+        item = grouped.setdefault(
+            key,
+            {
+                "dailyb_id": _coerce_int(row.get("dailyB_id"), 0),
+                "user_id": user_id,
+                "date": date_value,
+                "income": 0.0,
+                "expense": 0.0,
+                "net": 0.0,
+                "snapshot": 0.0,
+            },
+        )
+        item["snapshot"] += _coerce_float(row.get("balance"), 0.0)
+        dailyb_id = _coerce_int(row.get("dailyB_id"), 0)
+        if item["dailyb_id"] == 0 or (dailyb_id and dailyb_id < item["dailyb_id"]):
+            item["dailyb_id"] = dailyb_id
+
+    for row in transaction_rows or []:
+        user_id = _coerce_int(row.get("user_id"), 0)
+        date_raw = str(row.get("date", "") or "").strip()
+        if user_id <= 0 or not date_raw:
+            continue
+        date_value = date_raw.split(" ")[0]
+        key = (user_id, date_value)
+        item = grouped.setdefault(
+            key,
+            {
+                "dailyb_id": 0,
+                "user_id": user_id,
+                "date": date_value,
+                "income": 0.0,
+                "expense": 0.0,
+                "net": 0.0,
+                "snapshot": 0.0,
+            },
+        )
+        amount = _coerce_float(row.get("amount"), 0.0)
+        tx_type = str(row.get("type", "") or "").strip().lower()
+        if tx_type == "income":
+            item["income"] += amount
+        elif tx_type == "expense":
+            item["expense"] += amount
+
+    out = []
+    for item in grouped.values():
+        item["net"] = item["income"] - item["expense"]
+        out.append(
+            {
+                "dailyb_id": item["dailyb_id"],
+                "user_id": item["user_id"],
+                "date": item["date"],
+                "income": round(item["income"], 2),
+                "expense": round(item["expense"], 2),
+                "net": round(item["net"], 2),
+                "snapshot": round(item["snapshot"], 2),
+            }
+        )
+    out.sort(key=lambda item: (item["user_id"], item["date"], item["dailyb_id"]))
+    return out
+
+
 @app.on_event("startup")
 def _startup_checks() -> None:
     if TOKEN_SECRET == "change-me-in-render":
@@ -1629,8 +1743,8 @@ def admin1957_dashboard(request: Request, authorization: Optional[str] = Header(
     users = users_model.list_all()
     accounts = _records_from_frame(accounts_model._load())
     transactions = _records_from_frame(tx_model._load())
-    categories = _records_from_frame(categories_model._load())
-    daily_balances = _records_from_frame(daily_model._load())
+    categories = _build_admin_category_records(_records_from_frame(categories_model._load()))
+    daily_balances = _build_admin_daily_balance_records(_records_from_frame(daily_model._load()), transactions)
     admins = admins_model.list_all()
 
     return {
