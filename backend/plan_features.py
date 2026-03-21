@@ -6,6 +6,17 @@ from typing import Dict
 ALLOWED_PLAN_CODES = {"basic", "regular", "business", "premium_plus", "diamond", "lifetime"}
 
 
+LIFETIME_FEATURE_FLAGS = {
+    "manual_tracking": True,
+    "auto_sync": True,
+    "analytics": True,
+    "business_tools": True,
+    "ai_insights": True,
+    "website_bundle": True,
+    "bank_sync": True,
+}
+
+
 def normalize_plan_code(value: str) -> str:
     key = str(value or "").strip().lower()
     if key not in ALLOWED_PLAN_CODES:
@@ -14,25 +25,17 @@ def normalize_plan_code(value: str) -> str:
 
 
 def is_bank_sync_allowed(plan_code: str, is_lifetime: bool = False) -> bool:
-    if is_lifetime:
-        return True
     key = normalize_plan_code(plan_code)
+    if is_lifetime or key == "lifetime":
+        return True
     return key in {"regular", "business", "premium_plus", "diamond"}
 
 
 def feature_flags_for_plan(plan_code: str, is_lifetime: bool = False, with_website: bool = False) -> Dict[str, bool]:
-    if is_lifetime:
-        return {
-            "manual_tracking": True,
-            "auto_sync": True,
-            "analytics": True,
-            "business_tools": True,
-            "ai_insights": True,
-            "website_bundle": True,
-            "bank_sync": True,
-        }
-
     key = normalize_plan_code(plan_code)
+    if is_lifetime or key == "lifetime":
+        return dict(LIFETIME_FEATURE_FLAGS)
+
     is_regular_plus = key in {"regular", "business", "premium_plus", "diamond"}
     is_business_plus = key in {"business", "premium_plus", "diamond"}
     is_premium_plus = key in {"premium_plus", "diamond"}

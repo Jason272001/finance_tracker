@@ -1024,7 +1024,7 @@ function renderBankSync() {
   if (!hasBankSyncAccess()) {
     statusEl.textContent = "Bank sync is locked on your current plan.";
     if (upgradeEl) {
-      upgradeEl.textContent = "Secure bank connection and automatic transaction sync are available on Regular and above.";
+      upgradeEl.textContent = "Secure bank connection and automatic transaction sync are available on Regular and above, including Lifetime.";
       upgradeEl.classList.remove("hidden");
     }
     return;
@@ -1058,12 +1058,93 @@ function renderBankSync() {
   }
 }
 
+function populateTransactionFilterSelects() {
+  const accountSel = $("txFilterAccount");
+  const categorySel = $("txFilterCategory");
+  if (!accountSel || !categorySel) return;
+
+  const currentAccount = String(accountSel.value || "");
+  const currentCategory = String(categorySel.value || "");
+
+  accountSel.innerHTML = "";
+  const accountPlaceholder = document.createElement("option");
+  accountPlaceholder.value = "";
+  accountPlaceholder.textContent = "All Accounts / Cards";
+  accountSel.appendChild(accountPlaceholder);
+
+  [...state.accounts]
+    .sort((a, b) => String(a.account_name || "").localeCompare(String(b.account_name || "")))
+    .forEach((acc) => {
+      const opt = document.createElement("option");
+      opt.value = String(acc.account_id || "");
+      opt.textContent = String(acc.account_name || "");
+      accountSel.appendChild(opt);
+    });
+
+  categorySel.innerHTML = "";
+  const categoryPlaceholder = document.createElement("option");
+  categoryPlaceholder.value = "";
+  categoryPlaceholder.textContent = "All Categories";
+  categorySel.appendChild(categoryPlaceholder);
+
+  categoryNames().forEach((name) => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    categorySel.appendChild(opt);
+  });
+
+  if (currentAccount && [...accountSel.options].some((opt) => opt.value === currentAccount)) {
+    accountSel.value = currentAccount;
+  }
+  if (currentCategory && [...categorySel.options].some((opt) => opt.value === currentCategory)) {
+    categorySel.value = currentCategory;
+  }
+}
+
+function transactionSortValue(tx) {
+  const parsedDate = Date.parse(String(tx.date || ""));
+  if (!Number.isNaN(parsedDate)) return parsedDate;
+  return Number(tx.txn_id || 0);
+}
+
+function getFilteredTransactions() {
+  const accountFilter = String($("txFilterAccount")?.value || "");
+  const dateFilter = String($("txFilterDate")?.value || "");
+  const categoryFilter = String($("txFilterCategory")?.value || "").trim();
+
+  return [...state.tx]
+    .filter((tx) => {
+      if (accountFilter && String(tx.account_id || "") !== accountFilter) return false;
+      if (dateFilter && String(tx.date || "").slice(0, 10) !== dateFilter) return false;
+      if (categoryFilter && String(tx.category || "").trim() !== categoryFilter) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const diff = transactionSortValue(b) - transactionSortValue(a);
+      if (diff !== 0) return diff;
+      return Number(b.txn_id || 0) - Number(a.txn_id || 0);
+    });
+}
+
 function renderTransactions() {
   const tbody = $("txRows");
   tbody.innerHTML = "";
   const accountNameById = new Map(state.accounts.map((a) => [Number(a.account_id), a.account_name]));
   const labels = [t("id"), t("date"), t("type"), t("amount"), t("account"), t("category"), t("note"), t("actions")];
-  state.tx.forEach((r) => {
+  populateTransactionFilterSelects();
+  const rows = getFilteredTransactions();
+  const incomeTotal = rows
+    .filter((r) => String(r.type || "").toLowerCase() === "income")
+    .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+  const expenseTotal = rows
+    .filter((r) => String(r.type || "").toLowerCase() === "expense")
+    .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
+  if ($("txFilteredIncome")) $("txFilteredIncome").textContent = fmtMoney(incomeTotal);
+  if ($("txFilteredExpense")) $("txFilteredExpense").textContent = fmtMoney(expenseTotal);
+
+  rows.forEach((r) => {
     const tr = document.createElement("tr");
     const vals = [
       r.txn_id ?? "",
@@ -1755,6 +1836,17 @@ window.addEventListener("load", async () => {
     }
   };
   $("btnCancelTx").onclick = resetTxForm;
+  if ($("txFilterAccount")) $("txFilterAccount").onchange = renderTransactions;
+  if ($("txFilterDate")) $("txFilterDate").onchange = renderTransactions;
+  if ($("txFilterCategory")) $("txFilterCategory").onchange = renderTransactions;
+  if ($("btnClearTxFilters")) {
+    $("btnClearTxFilters").onclick = () => {
+      if ($("txFilterAccount")) $("txFilterAccount").value = "";
+      if ($("txFilterDate")) $("txFilterDate").value = "";
+      if ($("txFilterCategory")) $("txFilterCategory").value = "";
+      renderTransactions();
+    };
+  }
   if ($("btnTransferMoney")) {
     $("btnTransferMoney").onclick = async () => {
       if (!ensureAppAccessOrNotify()) return;

@@ -719,8 +719,8 @@ def _subscription_access_details(
 
 
 def _build_subscription_payload(profile: dict) -> dict:
-    is_lifetime = bool(profile.get("is_lifetime", False))
     plan_code = str(profile.get("plan_code", "")).strip().lower()
+    is_lifetime = bool(profile.get("is_lifetime", False)) or plan_code == "lifetime"
     if not plan_code:
         plan_code = "lifetime" if is_lifetime else "basic"
     status = str(profile.get("subscription_status", "")).strip().lower()
@@ -1261,7 +1261,7 @@ def _require_bank_sync_access(request: Request, authorization: Optional[str], ex
     if not bool(feature_flags.get("bank_sync")):
         raise HTTPException(
             status_code=403,
-            detail="Secure bank connection is available on Regular and above.",
+            detail="Secure bank connection is available on Regular and above, including Lifetime.",
         )
     if not plaid_is_configured():
         raise HTTPException(

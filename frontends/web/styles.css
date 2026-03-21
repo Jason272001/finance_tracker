@@ -417,6 +417,54 @@ button.accent { background: linear-gradient(135deg, var(--accent-start), var(--a
   margin: 0 0 10px;
 }
 
+.tx-filter-panel {
+  margin: 0 0 14px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.tx-filter-panel h3 {
+  margin: 0 0 8px;
+  color: var(--heading);
+}
+
+.tx-filter-totals {
+  margin-top: 12px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+}
+
+.tx-filter-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.tx-filter-total span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.tx-filter-total strong {
+  font-size: 1.08rem;
+}
+
+.tx-filter-total.income strong {
+  color: #2fbf71;
+}
+
+.tx-filter-total.expense strong {
+  color: #ffb02f;
+}
+
 table { width: 100%; border-collapse: collapse; }
 th, td {
   border-bottom: 1px solid var(--table-border);
@@ -742,6 +790,7 @@ th { color: var(--muted); font-weight: 700; }
   .kpi-grid { grid-template-columns: 1fr; }
   .kpi-card p { font-size: 1.35rem; }
   .row > * { flex: 1 1 100%; min-width: 0; }
+  .tx-filter-totals { grid-template-columns: 1fr; }
   .password-field {
     flex-direction: column;
   }
