@@ -1,16 +1,17 @@
 env/
 __pycache__/
 .ipynb_checkpoints/
-*.pyc
+*.py[cod]
 build/
 dist/
 *.spec
 
-# Local app data and secrets
-data/users.csv
-data/transactions.csv
-data/accounts.csv
-data/daily_balances.csv
-backups/*
-!backups/.gitkeep
-!backups/README.md
+# Generated desktop release artifacts
+frontends/desktop/*.exe
+frontends/desktop/*.zip
+
+# Local app data, migrations, backups, and secrets
+data/*.csv
+data/*.db
+data/*.sqlite*
+backups/

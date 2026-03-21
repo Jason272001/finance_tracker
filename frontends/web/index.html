@@ -20,7 +20,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <link rel="stylesheet" href="./styles.css?v=40" />
+  <link rel="stylesheet" href="./styles.css?v=41" />
 </head>
 <body>
   <main class="page">
@@ -253,6 +253,31 @@
         </section>
 
         <section class="card span-2">
+          <div class="section-head">
+            <div>
+              <h2 id="bankSyncTitle">Bank Sync</h2>
+              <p id="bankSyncHint" class="muted">Connect bank accounts to import balances and transactions automatically.</p>
+            </div>
+            <div class="row compact">
+              <button id="btnConnectBank" class="secondary">Connect Bank</button>
+              <button id="btnSyncBank" class="accent">Sync Transactions</button>
+            </div>
+          </div>
+          <div id="bankSyncUpgrade" class="callout hidden"></div>
+          <p id="bankSyncStatus" class="muted">Regular and above can connect bank accounts with Plaid.</p>
+          <div class="bank-sync-grid">
+            <div class="stack-list-card">
+              <h3 id="linkedConnectionsTitle">Linked Institutions</h3>
+              <div id="bankConnectionsList" class="stack-list"></div>
+            </div>
+            <div class="stack-list-card">
+              <h3 id="linkedAccountsTitle">Imported Accounts</h3>
+              <div id="linkedBankAccountsList" class="stack-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card span-2">
           <h2 id="transactionsTitle">Transactions</h2>
           <div class="row">
             <select id="txType">
@@ -296,6 +321,7 @@
     </section>
   </main>
 
-  <script src="./web.js?v=40"></script>
+  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+  <script src="./web.js?v=42"></script>
 </body>
 </html>

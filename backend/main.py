@@ -19,6 +19,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
+from backend.plan_features import feature_flags_for_plan, is_bank_sync_allowed, normalize_plan_code
+from backend.plaid_service import (
+    create_link_token,
+    exchange_public_token,
+    get_accounts,
+    get_institution,
+    get_item,
+    plaid_is_configured,
+    transactions_sync,
+)
+from backend.plaid_store import PlaidStore
 from core import Account, Admin1957, Category, DailyBalance, SPECIAL_COUPON_CODE, Transaction, User
 
 
@@ -30,6 +41,7 @@ STRICT_TOKEN_SECRET = str(os.getenv("STRICT_TOKEN_SECRET", "1")).strip().lower()
 SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "keeperbma_session")
 ADMIN_SESSION_COOKIE_NAME = os.getenv("ADMIN_SESSION_COOKIE_NAME", "keeperbma_admin_session")
 logger = logging.getLogger("keeperbma.api")
+plaid_store = PlaidStore()
 SMTP_HOST = str(os.getenv("SMTP_HOST", "")).strip()
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = str(os.getenv("SMTP_USER", "")).strip()
@@ -108,11 +120,7 @@ class RegisterBody(BaseModel):
     @field_validator("plan_code")
     @classmethod
     def validate_plan_code(cls, v: str) -> str:
-        allowed = {"basic", "regular", "business", "premium_plus"}
-        key = str(v).strip().lower()
-        if key not in allowed:
-            raise ValueError("Invalid plan_code")
-        return key
+        return normalize_plan_code(v)
 
     @field_validator("billing_cycle")
     @classmethod
@@ -185,11 +193,7 @@ class AdminUserUpdateBody(BaseModel):
     def validate_plan_code(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
             return v
-        allowed = {"basic", "regular", "business", "premium_plus", "lifetime"}
-        key = str(v).strip().lower()
-        if key not in allowed:
-            raise ValueError("Invalid plan_code")
-        return key
+        return normalize_plan_code(v)
 
     @field_validator("subscription_status")
     @classmethod
@@ -253,11 +257,7 @@ class SubscriptionUpdateBody(BaseModel):
     @field_validator("plan_code")
     @classmethod
     def validate_plan_code(cls, v: str) -> str:
-        allowed = {"basic", "regular", "business", "premium_plus"}
-        key = str(v).strip().lower()
-        if key not in allowed:
-            raise ValueError("Invalid plan_code")
-        return key
+        return normalize_plan_code(v)
 
 
 class BillingCheckoutBody(BaseModel):
@@ -272,11 +272,7 @@ class BillingCheckoutBody(BaseModel):
     @field_validator("plan_code")
     @classmethod
     def validate_plan_code(cls, v: str) -> str:
-        allowed = {"basic", "regular", "business", "premium_plus"}
-        key = str(v).strip().lower()
-        if key not in allowed:
-            raise ValueError("Invalid plan_code")
-        return key
+        return normalize_plan_code(v)
 
     @field_validator("billing_cycle")
     @classmethod
@@ -310,11 +306,7 @@ class BillingPrecheckoutBody(BaseModel):
     @field_validator("plan_code")
     @classmethod
     def validate_plan_code(cls, v: str) -> str:
-        allowed = {"basic", "regular", "business", "premium_plus"}
-        key = str(v).strip().lower()
-        if key not in allowed:
-            raise ValueError("Invalid plan_code")
-        return key
+        return normalize_plan_code(v)
 
     @field_validator("billing_cycle")
     @classmethod
@@ -337,11 +329,7 @@ class BillingPrecheckoutEmbeddedBody(BaseModel):
     @field_validator("plan_code")
     @classmethod
     def validate_plan_code(cls, v: str) -> str:
-        allowed = {"basic", "regular", "business", "premium_plus"}
-        key = str(v).strip().lower()
-        if key not in allowed:
-            raise ValueError("Invalid plan_code")
-        return key
+        return normalize_plan_code(v)
 
     @field_validator("billing_cycle")
     @classmethod
@@ -379,11 +367,7 @@ class BillingEmbeddedCheckoutBody(BaseModel):
     @field_validator("plan_code")
     @classmethod
     def validate_plan_code(cls, v: str) -> str:
-        allowed = {"basic", "regular", "business", "premium_plus"}
-        key = str(v).strip().lower()
-        if key not in allowed:
-            raise ValueError("Invalid plan_code")
-        return key
+        return normalize_plan_code(v)
 
     @field_validator("billing_cycle")
     @classmethod
@@ -480,6 +464,22 @@ class AccountTransferBody(BaseModel):
     from_account_id: int
     to_account_id: int
     amount: float = Field(gt=0.0, le=10_000_000.0)
+
+
+class BankLinkTokenBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    user_id: int
+
+
+class BankExchangeBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    user_id: int
+    public_token: str = Field(min_length=6, max_length=2000)
+
+
+class BankSyncBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    user_id: int
 
 
 class TxUpdateBody(BaseModel):
@@ -680,24 +680,11 @@ def _stripe_price_metadata(price_id: str) -> dict:
 
 
 def _subscription_feature_flags(plan_code: str, is_lifetime: bool = False, with_website: bool = False) -> dict:
-    if is_lifetime:
-        return {
-            "manual_tracking": True,
-            "auto_sync": True,
-            "analytics": True,
-            "business_tools": True,
-            "ai_insights": True,
-            "website_bundle": True,
-        }
-    key = str(plan_code or "").strip().lower()
-    return {
-        "manual_tracking": True,
-        "auto_sync": key in {"regular", "business", "premium_plus"},
-        "analytics": key in {"regular", "business", "premium_plus"},
-        "business_tools": key in {"business", "premium_plus"},
-        "ai_insights": key in {"premium_plus"},
-        "website_bundle": bool(with_website),
-    }
+    return feature_flags_for_plan(
+        plan_code=plan_code,
+        is_lifetime=is_lifetime,
+        with_website=with_website,
+    )
 
 
 def _subscription_access_details(
@@ -858,6 +845,17 @@ SUBSCRIPTION_PLANS = [
         ],
     },
     {
+        "plan_code": "diamond",
+        "label": "Diamond",
+        "price_monthly": 70,
+        "price_annual": 700,
+        "features": [
+            "All Premium Plus features",
+            "Portfolio website included",
+            "Bank sync and advanced analytics",
+        ],
+    },
+    {
         "plan_code": "lifetime",
         "label": "Lifetime Access",
         "price_monthly": 0,
@@ -888,6 +886,10 @@ def _stripe_price_for_plan(plan_code: str, with_website: bool = False, billing_c
         if with_website and STRIPE_PRICE_PREMIUM_PLUS_WEBSITE:
             return STRIPE_PRICE_PREMIUM_PLUS_WEBSITE
         return STRIPE_PRICE_PREMIUM_PLUS
+    if key == "diamond":
+        if cycle == "annual":
+            return STRIPE_PRICE_PREMIUM_PLUS_WEBSITE_ANNUAL
+        return STRIPE_PRICE_PREMIUM_PLUS_WEBSITE
     return ""
 
 
@@ -1250,6 +1252,35 @@ def _require_app_access(request: Request, authorization: Optional[str], expected
             detail=str(subscription.get("access_reason") or "Subscription inactive. Update billing to continue."),
         )
     return profile
+
+
+def _require_bank_sync_access(request: Request, authorization: Optional[str], expected_user_id: int) -> dict:
+    profile = _require_app_access(request, authorization, expected_user_id)
+    subscription = _build_subscription_payload(profile)
+    feature_flags = subscription.get("feature_flags") or {}
+    if not bool(feature_flags.get("bank_sync")):
+        raise HTTPException(
+            status_code=403,
+            detail="Secure bank connection is available on Regular and above.",
+        )
+    if not plaid_is_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Bank sync is not configured yet. Add Plaid credentials to the backend.",
+        )
+    return profile
+
+
+def _plaid_account_type_to_keeper(account_type: str, subtype: str) -> str:
+    atype = str(account_type or "").strip().lower()
+    sub = str(subtype or "").strip().lower()
+    if atype == "depository":
+        return "saving" if sub == "savings" else "checking"
+    if atype in {"credit", "loan"}:
+        return "credit"
+    if atype == "investment":
+        return "asset"
+    return "asset"
 
 
 def _extract_admin_token(request: Request, authorization: Optional[str]) -> str:
@@ -2868,6 +2899,260 @@ def transfer_between_accounts(
     if not ok:
         raise HTTPException(status_code=400, detail="Transfer failed.")
     return {"ok": True}
+
+
+@app.post("/bank/plaid/link-token")
+def create_plaid_link_token(
+    body: BankLinkTokenBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    profile = _require_bank_sync_access(request, authorization, body.user_id)
+    host = request.url.hostname or ""
+    webhook_url = None
+    if host:
+        webhook_url = f"{request.url.scheme}://{host}/plaid/webhook"
+    try:
+        out = create_link_token(
+            user_id=int(body.user_id),
+            username=str(profile.get("name", "")).strip() or str(profile.get("email", "")).strip() or f"user-{body.user_id}",
+            webhook_url=webhook_url,
+        )
+        return out
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Plaid link token creation failed for user_id=%s", body.user_id)
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/bank/connections")
+def list_bank_connections(
+    request: Request,
+    user_id: int,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_bank_sync_access(request, authorization, user_id)
+    return plaid_store.list_connections(user_id=user_id)
+
+
+@app.get("/bank/accounts")
+def list_bank_accounts(
+    request: Request,
+    user_id: int,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_bank_sync_access(request, authorization, user_id)
+    accounts = plaid_store.list_linked_accounts(user_id=user_id)
+    if not accounts:
+        return []
+    local_accounts = Account().by_user(user_id)
+    name_by_id = {}
+    if local_accounts is not None and not local_accounts.empty:
+        for _, row in local_accounts.iterrows():
+            try:
+                name_by_id[int(row.get("account_id"))] = str(row.get("account_name", "")).strip()
+            except Exception:
+                continue
+    for row in accounts:
+        keeper_id = row.get("keeper_account_id")
+        if keeper_id:
+            try:
+                row["keeper_account_name"] = name_by_id.get(int(keeper_id), "")
+            except Exception:
+                row["keeper_account_name"] = ""
+        else:
+            row["keeper_account_name"] = ""
+    return accounts
+
+
+@app.post("/plaid/webhook")
+async def plaid_webhook(request: Request):
+    payload = await request.json()
+    logger.info(
+        "Plaid webhook received: %s/%s",
+        payload.get("webhook_type"),
+        payload.get("webhook_code"),
+    )
+    return {"ok": True}
+
+
+@app.post("/bank/plaid/exchange")
+def exchange_plaid_public_token(
+    body: BankExchangeBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_bank_sync_access(request, authorization, body.user_id)
+    try:
+        exchange = exchange_public_token(body.public_token)
+        access_token = str(exchange.get("access_token", "")).strip()
+        item_id = str(exchange.get("item_id", "")).strip()
+        item = get_item(access_token)
+        institution_id = str(item.get("institution_id", "")).strip()
+        institution_name = ""
+        institution = {}
+        if institution_id:
+            institution = get_institution(institution_id) or {}
+            institution_name = str(institution.get("name", "")).strip()
+        connection = plaid_store.upsert_connection(
+            user_id=body.user_id,
+            item_id=item_id,
+            access_token=access_token,
+            institution_id=institution_id,
+            institution_name=institution_name,
+            status="active",
+        )
+
+        accounts_payload = get_accounts(access_token)
+        accounts = accounts_payload.get("accounts", []) or []
+        local_df = Account().by_user(body.user_id)
+        existing_by_name = {}
+        if local_df is not None and not local_df.empty:
+            for _, row in local_df.iterrows():
+                existing_by_name[str(row.get("account_name", "")).strip().lower()] = int(row.get("account_id"))
+
+        linked_rows = []
+        for account in accounts:
+            provider_account_id = str(account.get("account_id", "")).strip()
+            name = str(account.get("name", "")).strip()
+            official_name = str(account.get("official_name", "")).strip()
+            display_name = official_name or name or provider_account_id
+            subtype = str(account.get("subtype", "")).strip().lower()
+            account_type = _plaid_account_type_to_keeper(account.get("type", ""), subtype)
+            balances = account.get("balances", {}) or {}
+            current_balance = balances.get("current")
+            available_balance = balances.get("available")
+            group_name = "bank"
+            if str(account.get("type", "")).strip().lower() in {"credit", "loan"}:
+                group_name = "debt"
+            keeper_account_id = existing_by_name.get(display_name.lower())
+            if not keeper_account_id:
+                keeper_account_id = Account().add(
+                    account_name=display_name,
+                    account_type=account_type,
+                    group_name=group_name,
+                    balance=float(current_balance or 0.0),
+                    user_id=body.user_id,
+                )
+                existing_by_name[display_name.lower()] = int(keeper_account_id)
+            linked_rows.append(
+                {
+                    "provider_account_id": provider_account_id,
+                    "account_name": display_name,
+                    "account_type": account_type,
+                    "account_subtype": subtype,
+                    "mask": str(account.get("mask", "")).strip(),
+                    "institution_name": institution_name,
+                    "current_balance": current_balance,
+                    "available_balance": available_balance,
+                    "keeper_account_id": int(keeper_account_id),
+                }
+            )
+        plaid_store.upsert_linked_accounts(
+            user_id=body.user_id,
+            item_id=item_id,
+            institution_name=institution_name,
+            accounts=linked_rows,
+        )
+        return {
+            "ok": True,
+            "connection": connection,
+            "accounts": plaid_store.list_linked_accounts(body.user_id),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Plaid exchange failed for user_id=%s", body.user_id)
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/bank/plaid/sync")
+def sync_plaid_transactions(
+    body: BankSyncBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_bank_sync_access(request, authorization, body.user_id)
+    connections = plaid_store.list_connections(body.user_id)
+    if not connections:
+        return {"ok": True, "connections": 0, "imported": 0, "transactions_created": 0}
+
+    imported_count = 0
+    created_count = 0
+    for connection in connections:
+        access_token = str(connection.get("access_token", "")).strip()
+        item_id = str(connection.get("item_id", "")).strip()
+        cursor = str(connection.get("cursor", "")).strip() or None
+        if not access_token or not item_id:
+            continue
+        sync_out = transactions_sync(access_token, cursor=cursor)
+        plaid_store.update_connection_cursor(body.user_id, item_id, sync_out.get("next_cursor", ""))
+        linked_accounts = plaid_store.list_linked_accounts(body.user_id)
+        linked_by_provider_id = {
+            str(row.get("provider_account_id", "")).strip(): row for row in linked_accounts
+        }
+        for txn in sync_out.get("added", []) or []:
+            transaction_id = str(txn.get("transaction_id", "")).strip()
+            if not transaction_id:
+                continue
+            imported_count += 1
+            provider_account_id = str(txn.get("account_id", "")).strip()
+            linked = linked_by_provider_id.get(provider_account_id) or {}
+            plaid_store.upsert_imported_transaction(
+                user_id=body.user_id,
+                transaction_id=transaction_id,
+                item_id=item_id,
+                provider_account_id=provider_account_id,
+                amount=txn.get("amount"),
+                iso_date=txn.get("date"),
+                pending=txn.get("pending"),
+                merchant_name=txn.get("merchant_name"),
+                description=txn.get("name"),
+                category_primary=((txn.get("personal_finance_category") or {}).get("primary") or ""),
+                raw_payload=txn,
+            )
+            if bool(txn.get("pending")):
+                continue
+            imported = plaid_store.find_imported_transaction(body.user_id, transaction_id)
+            if imported and imported.get("keeper_txn_id"):
+                continue
+            keeper_account_id = linked.get("keeper_account_id")
+            if not keeper_account_id:
+                continue
+            try:
+                amount_value = abs(float(txn.get("amount") or 0.0))
+            except Exception:
+                amount_value = 0.0
+            if amount_value <= 0:
+                continue
+            tx_type = "expense" if float(txn.get("amount") or 0.0) >= 0 else "income"
+            category_primary = str(((txn.get("personal_finance_category") or {}).get("primary") or "")).strip()
+            category_name = category_primary.replace("_", " ").title() if category_primary else "Other"
+            if category_name:
+                try:
+                    Category().add(category_name=category_name, user_id=body.user_id)
+                except Exception:
+                    pass
+            note = str(txn.get("merchant_name") or txn.get("name") or "").strip()
+            keeper_txn_id = Transaction().add(
+                t_type=tx_type,
+                amount=amount_value,
+                account_id=int(keeper_account_id),
+                category=category_name or "Other",
+                note=note,
+                user_id=body.user_id,
+            )
+            plaid_store.mark_keeper_txn(body.user_id, transaction_id, keeper_txn_id)
+            created_count += 1
+
+    return {
+        "ok": True,
+        "connections": len(connections),
+        "imported": imported_count,
+        "transactions_created": created_count,
+        "linked_accounts": plaid_store.list_linked_accounts(body.user_id),
+    }
 
 
 @app.get("/transactions")

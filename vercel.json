@@ -47,15 +47,6 @@
       ]
     },
     {
-      "source": "/admin-register.html",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-store, max-age=0"
-        }
-      ]
-    },
-    {
       "source": "/admin-dashboard.html",
       "headers": [
         {
@@ -66,15 +57,6 @@
     },
     {
       "source": "/frontends/web/admin-login.js",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-store, max-age=0"
-        }
-      ]
-    },
-    {
-      "source": "/frontends/web/admin-register.js",
       "headers": [
         {
           "key": "Cache-Control",
@@ -202,11 +184,6 @@
     },
     {
       "source": "/admin-login.html",
-      "destination": "/kmak/1957/1965/a/login",
-      "permanent": true
-    },
-    {
-      "source": "/admin-register.html",
       "destination": "/kmak/1957/1965/a/login",
       "permanent": true
     },

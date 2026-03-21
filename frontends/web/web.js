@@ -18,6 +18,8 @@ let state = {
   profile: {},
   pendingProfileImage: null,
   subscription: {},
+  bankConnections: [],
+  linkedBankAccounts: [],
   charts: { income: null, expense: null, debt: null },
 };
 const SIGNUP_PLAN_KEY = "keeperbma_signup_plan";
@@ -459,6 +461,15 @@ function notify(msg) {
   setStatus("health", msg);
 }
 
+function escapeHtml(v) {
+  return String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function setText(id, key) {
   const el = $(id);
   if (el) el.textContent = t(key);
@@ -592,6 +603,7 @@ function applyLanguage(lang) {
   renderCategories();
   renderTransactions();
   renderSubscription();
+  renderBankSync();
   applyTheme(state.theme);
 }
 
@@ -812,6 +824,7 @@ function syncFinanceLockState() {
     "catName", "btnAddCategory",
     "txType", "txAmount", "txAccount", "txCategory", "txNote", "btnAddTx", "btnCancelTx",
     "transferFromAccount", "transferToAccount", "transferAmount", "btnTransferMoney",
+    "btnConnectBank", "btnSyncBank",
   ].forEach((id) => {
     const el = $(id);
     if (el) el.disabled = locked;
@@ -983,6 +996,66 @@ function renderCategories() {
     box.appendChild(chip);
   });
   populateCategorySelect();
+}
+
+function hasBankSyncAccess() {
+  return Boolean(((state.subscription || {}).feature_flags || {}).bank_sync);
+}
+
+function renderBankSync() {
+  const statusEl = $("bankSyncStatus");
+  const upgradeEl = $("bankSyncUpgrade");
+  const connectionsEl = $("bankConnectionsList");
+  const accountsEl = $("linkedBankAccountsList");
+  if (!statusEl || !connectionsEl || !accountsEl) return;
+
+  connectionsEl.innerHTML = "";
+  accountsEl.innerHTML = "";
+  if (upgradeEl) {
+    upgradeEl.classList.add("hidden");
+    upgradeEl.textContent = "";
+  }
+
+  if (!hasAppAccess()) {
+    statusEl.textContent = accessReason();
+    return;
+  }
+
+  if (!hasBankSyncAccess()) {
+    statusEl.textContent = "Bank sync is locked on your current plan.";
+    if (upgradeEl) {
+      upgradeEl.textContent = "Secure bank connection and automatic transaction sync are available on Regular and above.";
+      upgradeEl.classList.remove("hidden");
+    }
+    return;
+  }
+
+  statusEl.textContent = state.bankConnections.length
+    ? `Connected to ${state.bankConnections.length} institution(s).`
+    : "No institutions linked yet. Connect your bank to start syncing.";
+
+  if (!state.bankConnections.length) {
+    connectionsEl.innerHTML = '<div class="stack-item"><div class="stack-item-meta">No linked institutions yet.</div></div>';
+  } else {
+    connectionsEl.innerHTML = state.bankConnections.map((row) => `
+      <div class="stack-item">
+        <div class="stack-item-title">${escapeHtml(row.institution_name || row.item_id || "Linked institution")}</div>
+        <div class="stack-item-meta">Status: ${escapeHtml(row.status || "active")}</div>
+      </div>
+    `).join("");
+  }
+
+  if (!state.linkedBankAccounts.length) {
+    accountsEl.innerHTML = '<div class="stack-item"><div class="stack-item-meta">No imported accounts yet.</div></div>';
+  } else {
+    accountsEl.innerHTML = state.linkedBankAccounts.map((row) => `
+      <div class="stack-item">
+        <div class="stack-item-title">${escapeHtml(row.account_name || "Imported account")}</div>
+        <div class="stack-item-meta">${escapeHtml(row.institution_name || "")}${row.mask ? ` • ****${escapeHtml(row.mask)}` : ""}</div>
+        <div class="stack-item-meta">Mapped to: ${escapeHtml(row.keeper_account_name || "Not mapped")} • Balance: ${fmtMoney(row.current_balance || 0)}</div>
+      </div>
+    `).join("");
+  }
 }
 
 function renderTransactions() {
@@ -1393,27 +1466,43 @@ async function refreshAll() {
     state.tx = [];
     state.daily = [];
     state.filteredTx = [];
+    state.bankConnections = [];
+    state.linkedBankAccounts = [];
     renderAccountsTable();
     renderCategories();
     renderTransactions();
     renderKpisAndCharts();
     renderDailySummary();
+    renderBankSync();
     setStatus("health", accessReason());
     return;
   }
 
-  const results = await Promise.allSettled([
+  const financeRequests = [
     api(`/accounts?user_id=${state.userId}`),
     api(`/categories?user_id=${state.userId}`),
     api(`/transactions?user_id=${state.userId}`),
     api(`/daily_balances?user_id=${state.userId}`),
-  ]);
+  ];
+  const shouldFetchBank = hasBankSyncAccess();
+  if (shouldFetchBank) {
+    financeRequests.push(api(`/bank/connections?user_id=${state.userId}`));
+    financeRequests.push(api(`/bank/accounts?user_id=${state.userId}`));
+  }
 
-  const [accountsRes, categoriesRes, txRes, dailyRes] = results;
+  const results = await Promise.allSettled(financeRequests);
+
+  const [accountsRes, categoriesRes, txRes, dailyRes, bankConnectionsRes, bankAccountsRes] = results;
   state.accounts = accountsRes.status === "fulfilled" ? (accountsRes.value || []) : [];
   state.categories = categoriesRes.status === "fulfilled" ? (categoriesRes.value || []) : [];
   state.tx = txRes.status === "fulfilled" ? (txRes.value || []) : [];
   state.daily = dailyRes.status === "fulfilled" ? (dailyRes.value || []) : [];
+  state.bankConnections = shouldFetchBank && bankConnectionsRes && bankConnectionsRes.status === "fulfilled"
+    ? (bankConnectionsRes.value || [])
+    : [];
+  state.linkedBankAccounts = shouldFetchBank && bankAccountsRes && bankAccountsRes.status === "fulfilled"
+    ? (bankAccountsRes.value || [])
+    : [];
   applyTxRange();
 
   renderAccountsTable();
@@ -1421,6 +1510,7 @@ async function refreshAll() {
   renderTransactions();
   renderKpisAndCharts();
   renderDailySummary();
+  renderBankSync();
   syncFinanceLockState();
 
   const failures = [...baseResults, ...results].filter((r) => r.status === "rejected");
@@ -1584,6 +1674,8 @@ window.addEventListener("load", async () => {
     state.profile = {};
     state.pendingProfileImage = null;
     state.subscription = {};
+    state.bankConnections = [];
+    state.linkedBankAccounts = [];
     showLanding();
     setStatus("authStatus", "");
   };
@@ -1696,6 +1788,71 @@ window.addEventListener("load", async () => {
         setStatus("health", t("transfer_success"));
       } catch (e) {
         notify(`Transfer failed: ${errMessage(e)}`);
+      }
+    };
+  }
+  if ($("btnConnectBank")) {
+    $("btnConnectBank").onclick = async () => {
+      try {
+        if (!hasBankSyncAccess()) {
+          renderBankSync();
+          return;
+        }
+        setStatus("bankSyncStatus", "Preparing secure bank connection...");
+        const out = await api("/bank/plaid/link-token", {
+          method: "POST",
+          body: JSON.stringify({ user_id: state.userId }),
+        });
+        if (!window.Plaid || !out.link_token) {
+          throw new Error("Plaid Link failed to initialize.");
+        }
+        const handler = window.Plaid.create({
+          token: out.link_token,
+          onSuccess: async (publicToken) => {
+            try {
+              setStatus("bankSyncStatus", "Linking bank account...");
+              await api("/bank/plaid/exchange", {
+                method: "POST",
+                body: JSON.stringify({ user_id: state.userId, public_token: publicToken }),
+              });
+              await refreshAll();
+              setStatus("bankSyncStatus", "Bank account connected successfully.");
+            } catch (e) {
+              setStatus("bankSyncStatus", errMessage(e));
+            }
+          },
+          onExit: (err) => {
+            if (err) {
+              setStatus("bankSyncStatus", err.display_message || err.error_message || "Bank connection was closed.");
+            }
+          },
+        });
+        handler.open();
+      } catch (e) {
+        setStatus("bankSyncStatus", errMessage(e));
+      }
+    };
+  }
+
+  if ($("btnSyncBank")) {
+    $("btnSyncBank").onclick = async () => {
+      try {
+        if (!hasBankSyncAccess()) {
+          renderBankSync();
+          return;
+        }
+        setStatus("bankSyncStatus", "Syncing bank transactions...");
+        const out = await api("/bank/plaid/sync", {
+          method: "POST",
+          body: JSON.stringify({ user_id: state.userId }),
+        });
+        await refreshAll();
+        setStatus(
+          "bankSyncStatus",
+          `Imported ${Number(out.imported || 0)} bank transaction(s) and created ${Number(out.transactions_created || 0)} app transaction(s).`
+        );
+      } catch (e) {
+        setStatus("bankSyncStatus", errMessage(e));
       }
     };
   }

@@ -465,7 +465,7 @@ class User:
             coupon_s = str(coupon_code or "").strip()
             is_lifetime = coupon_s == SPECIAL_COUPON_CODE
             plan_s = str(plan_code or "").strip().lower()
-            allowed_plans = {"basic", "regular", "business", "premium_plus"}
+            allowed_plans = {"basic", "regular", "business", "premium_plus", "diamond"}
             if not is_lifetime and plan_s not in allowed_plans:
                 raise ValueError("Plan selection is required.")
         else:
@@ -699,7 +699,7 @@ class User:
         trial_status=None,
     ):
         uid = int(user_id)
-        allowed_plan_codes = {"basic", "regular", "business", "premium_plus", "lifetime"}
+        allowed_plan_codes = {"basic", "regular", "business", "premium_plus", "diamond", "lifetime"}
         allowed_status = {"trial", "active", "past_due", "canceled", "incomplete", "unpaid"}
         allowed_cycles = {"", "monthly", "annual"}
         allowed_payment_status = {"pending", "active"}
