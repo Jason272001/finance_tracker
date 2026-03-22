@@ -3,6 +3,7 @@ import hmac
 import hashlib
 import math
 import re
+import secrets
 import pandas as pd
 import tempfile
 import time
@@ -24,6 +25,7 @@ T_PATH=os.path.join(DATA_DIR,"transactions.csv")
 A_PATH=os.path.join(DATA_DIR,"accounts.csv")
 D_PATH=os.path.join(DATA_DIR,"daily_balances.csv")
 C_PATH=os.path.join(DATA_DIR,"category.csv")
+COUPON_PATH = os.path.join(DATA_DIR, "coupons.csv")
 DB_BACKEND = str(os.getenv("DB_BACKEND", "postgres")).strip().lower()
 DATABASE_URL = str(os.getenv("DATABASE_URL", "")).strip()
 MYSQL_HOST = os.getenv("MYSQL_HOST", "127.0.0.1")
@@ -447,6 +449,9 @@ class User:
         plan_code=None,
         billing_cycle="",
         plan_with_website=False,
+        activate_without_payment=False,
+        force_plan_code=None,
+        force_lifetime=False,
     ):
         # Backward compatible: legacy caller passes (name, pw).
         if pw is None:
@@ -463,7 +468,7 @@ class User:
             if not name_s:
                 raise ValueError("Name is required.")
             coupon_s = str(coupon_code or "").strip()
-            is_lifetime = coupon_s == SPECIAL_COUPON_CODE
+            is_lifetime = force_lifetime or coupon_s == SPECIAL_COUPON_CODE
             plan_s = str(plan_code or "").strip().lower()
             allowed_plans = {"basic", "regular", "business", "premium_plus", "diamond"}
             if not is_lifetime and plan_s not in allowed_plans:
@@ -497,6 +502,7 @@ class User:
             if billing_cycle_s not in {"monthly", "annual"}:
                 billing_cycle_s = ""
             plan_with_website_b = bool(plan_with_website)
+            effective_plan = str(force_plan_code or plan_s or "basic").strip().lower() or "basic"
 
             if bool(is_lifetime):
                 plan_code = "lifetime"
@@ -505,8 +511,15 @@ class User:
                 trial_status = "active"
                 trial_ends_at = ""
                 subscription_started_at = now_iso
+            elif activate_without_payment:
+                plan_code = effective_plan
+                subscription_status = "active"
+                payment_status = "active"
+                trial_status = "active"
+                trial_ends_at = ""
+                subscription_started_at = now_iso
             else:
-                plan_code = plan_s
+                plan_code = effective_plan
                 subscription_status = "incomplete"
                 payment_status = "pending"
                 trial_status = "pending"
@@ -1318,7 +1331,201 @@ class Admin1957:
             "position": str(row.get("position", "")).strip(),
             "created_at": str(row.get("created_at", "")).strip(),
         }
-    
+
+
+class Coupon:
+    cols = [
+        "id",
+        "code",
+        "plan_code",
+        "billing_cycle",
+        "is_lifetime",
+        "max_uses",
+        "used_count",
+        "is_active",
+        "expires_at",
+        "created_by_admin_id",
+        "created_at",
+    ]
+
+    def __init__(self, path=COUPON_PATH):
+        self.path = path
+        self.table = "coupons"
+        if not DB_IS_SQL:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            if not os.path.exists(self.path):
+                pd.DataFrame(columns=self.cols).to_csv(self.path, index=False)
+
+    def _load(self):
+        if DB_IS_SQL:
+            df = _read_table(self.table, self.cols)
+        else:
+            df = pd.read_csv(self.path)
+        for c in self.cols:
+            if c not in df.columns:
+                df[c] = ""
+        return df[self.cols]
+
+    def _save(self, df):
+        out = df.copy()
+        for c in self.cols:
+            if c not in out.columns:
+                out[c] = ""
+        out = out[self.cols]
+        if DB_IS_SQL:
+            _write_table(self.table, out)
+        else:
+            _atomic_write_csv(self.path, out)
+
+    def _next_id(self, df):
+        if df.empty:
+            return 1
+        series = pd.to_numeric(df["id"], errors="coerce").dropna()
+        return 1 if series.empty else int(series.max()) + 1
+
+    def _normalize_plan_code(self, plan_code):
+        plan = str(plan_code or "").strip().lower()
+        allowed = {"basic", "regular", "business", "premium_plus", "diamond", "lifetime"}
+        if plan not in allowed:
+            raise ValueError("Invalid coupon plan.")
+        return plan
+
+    def _normalize_billing_cycle(self, billing_cycle):
+        cycle = str(billing_cycle or "").strip().lower()
+        if not cycle:
+            return ""
+        if cycle not in {"monthly", "annual"}:
+            raise ValueError("Invalid coupon billing cycle.")
+        return cycle
+
+    def _normalize_datetime(self, value):
+        if value in (None, "", pd.NA):
+            return ""
+        if isinstance(value, datetime):
+            return value.isoformat()
+        text = str(value or "").strip()
+        if not text:
+            return ""
+        try:
+            return datetime.fromisoformat(text.replace("Z", "+00:00")).isoformat()
+        except Exception as exc:
+            raise ValueError("Coupon expiration must be a valid date/time.") from exc
+
+    def _generate_code(self):
+        return f"KMAK-{secrets.token_urlsafe(6).upper()}"
+
+    def _serialize_record(self, row):
+        created_by_admin_id = str(row.get("created_by_admin_id", "") or "").strip()
+        return {
+            "id": int(float(row.get("id", 0) or 0)),
+            "code": str(row.get("code", "") or ""),
+            "plan_code": str(row.get("plan_code", "") or "").strip().lower(),
+            "billing_cycle": str(row.get("billing_cycle", "") or "").strip().lower(),
+            "is_lifetime": bool(_coerce_bool(row.get("is_lifetime", False))),
+            "max_uses": int(float(row.get("max_uses", 1) or 1)),
+            "used_count": int(float(row.get("used_count", 0) or 0)),
+            "is_active": bool(_coerce_bool(row.get("is_active", True))),
+            "expires_at": str(row.get("expires_at", "") or ""),
+            "created_by_admin_id": int(float(created_by_admin_id)) if created_by_admin_id else None,
+            "created_at": str(row.get("created_at", "") or ""),
+        }
+
+    def list_all(self):
+        df = self._load()
+        if df.empty:
+            return []
+        records = [self._serialize_record(row) for row in df.to_dict(orient="records")]
+        return sorted(records, key=lambda item: item["id"], reverse=True)
+
+    def get_by_code(self, code):
+        code_s = str(code or "").strip()
+        if not code_s:
+            return None
+        df = self._load()
+        if df.empty:
+            return None
+        matches = df[df["code"].astype(str).str.strip() == code_s]
+        if matches.empty:
+            return None
+        return self._serialize_record(matches.iloc[0].to_dict())
+
+    def create(
+        self,
+        code=None,
+        plan_code="basic",
+        billing_cycle="monthly",
+        is_lifetime=False,
+        max_uses=1,
+        expires_at=None,
+        created_by_admin_id=None,
+    ):
+        df = self._load()
+        plan = self._normalize_plan_code(plan_code)
+        lifetime = bool(is_lifetime or plan == "lifetime")
+        cycle = "" if lifetime else self._normalize_billing_cycle(billing_cycle)
+        uses = int(max_uses or 1)
+        if uses < 1:
+            raise ValueError("Coupon max uses must be at least 1.")
+        expires_at_s = self._normalize_datetime(expires_at)
+        code_s = str(code or "").strip().upper() or self._generate_code()
+        existing = df[df["code"].astype(str).str.strip().str.upper() == code_s]
+        if not existing.empty:
+            raise ValueError("Coupon code already exists.")
+        new_row = pd.DataFrame(
+            [
+                {
+                    "id": self._next_id(df),
+                    "code": code_s,
+                    "plan_code": "lifetime" if lifetime else plan,
+                    "billing_cycle": cycle,
+                    "is_lifetime": lifetime,
+                    "max_uses": uses,
+                    "used_count": 0,
+                    "is_active": True,
+                    "expires_at": expires_at_s,
+                    "created_by_admin_id": created_by_admin_id if created_by_admin_id else "",
+                    "created_at": datetime.utcnow().isoformat(timespec="seconds"),
+                }
+            ]
+        )
+        out = pd.concat([df, new_row], ignore_index=True)
+        self._save(out)
+        return self.get_by_code(code_s)
+
+    def deactivate(self, coupon_id):
+        try:
+            cid = int(coupon_id)
+        except Exception:
+            raise ValueError("Coupon not found.")
+        df = self._load()
+        ids = pd.to_numeric(df["id"], errors="coerce")
+        mask = ids == cid
+        if not mask.any():
+            raise ValueError("Coupon not found.")
+        df.loc[mask, "is_active"] = False
+        self._save(df)
+        return self._serialize_record(df.loc[mask].iloc[0].to_dict())
+
+    def mark_used(self, coupon_id):
+        try:
+            cid = int(coupon_id)
+        except Exception:
+            raise ValueError("Coupon not found.")
+        df = self._load()
+        ids = pd.to_numeric(df["id"], errors="coerce")
+        mask = ids == cid
+        if not mask.any():
+            raise ValueError("Coupon not found.")
+        idx = df.index[mask][0]
+        used_count = int(float(df.at[idx, "used_count"] or 0))
+        max_uses = int(float(df.at[idx, "max_uses"] or 1))
+        next_used = used_count + 1
+        df.at[idx, "used_count"] = next_used
+        if next_used >= max_uses:
+            df.at[idx, "is_active"] = False
+        self._save(df)
+        return self._serialize_record(df.loc[mask].iloc[0].to_dict())
+
 
 class Transaction:
     cols = ["txn_id", "date", "type", "amount", "account_id", "category", "note", "user_id"]

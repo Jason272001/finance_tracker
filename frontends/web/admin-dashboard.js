@@ -9,6 +9,7 @@ const state = {
     users: "",
     accounts: "",
     transactions: "",
+    coupons: "",
     categories: "",
     dailyBalances: "",
   },
@@ -67,6 +68,10 @@ function setAdminStatus(message, isError = false) {
   setStatus("adminAdminStatus", message, isError);
 }
 
+function setCouponStatus(message, isError = false) {
+  setStatus("adminCouponStatus", message, isError);
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -107,6 +112,8 @@ function setAdminEditorVisibility() {
   const canManageAdmins = Boolean(permissions().can_manage_admins);
   const card = $("adminManageCard");
   if (card) card.style.display = canManageAdmins ? "block" : "none";
+  const couponCreateSection = $("adminCouponCreateSection");
+  if (couponCreateSection) couponCreateSection.style.display = canManageAdmins ? "block" : "none";
 }
 
 function setUserEditorState() {
@@ -264,6 +271,75 @@ function renderTransactions() {
   tbody.innerHTML = rows || `<tr><td colspan="8" data-label="Empty">No transactions found.</td></tr>`;
 }
 
+function renderCoupons() {
+  const tbody = $("adminCouponsTable")?.querySelector("tbody");
+  if (!tbody) return;
+  const canManageAdmins = Boolean(permissions().can_manage_admins);
+  const rows = filterItems(
+    state.dashboard?.coupons || [],
+    "coupons",
+    (coupon) => [
+      coupon.id,
+      coupon.code,
+      coupon.plan_code,
+      coupon.billing_cycle,
+      coupon.max_uses,
+      coupon.used_count,
+      coupon.is_active,
+      coupon.is_lifetime,
+      coupon.expires_at,
+      coupon.created_at,
+    ].join(" ")
+  ).map((coupon) => {
+    const isActive = Boolean(
+      coupon.is_active === true ||
+      String(coupon.is_active || "").toLowerCase() === "true" ||
+      Number(coupon.is_active || 0) === 1
+    );
+    const isLifetime = Boolean(
+      coupon.is_lifetime === true ||
+      String(coupon.is_lifetime || "").toLowerCase() === "true" ||
+      Number(coupon.is_lifetime || 0) === 1
+    );
+    const action = isActive && canManageAdmins
+      ? `<button type="button" class="danger admin-deactivate-coupon" data-coupon-id="${escapeHtml(coupon.id)}">Deactivate</button>`
+      : `<span class="muted">${isActive ? "-" : "Inactive"}</span>`;
+    return `
+      <tr>
+        ${rowCell("ID", escapeHtml(coupon.id))}
+        ${rowCell("Code", escapeHtml(coupon.code))}
+        ${rowCell("Plan", escapeHtml(coupon.plan_code))}
+        ${rowCell("Cycle", escapeHtml(isLifetime ? "lifetime" : (coupon.billing_cycle || "")))}
+        ${rowCell("Uses", escapeHtml(`${coupon.used_count || 0}/${coupon.max_uses || 0}`))}
+        ${rowCell("Active", escapeHtml(isActive ? "true" : "false"))}
+        ${rowCell("Lifetime", escapeHtml(isLifetime ? "true" : "false"))}
+        ${rowCell("Expires", escapeHtml(coupon.expires_at || "-"))}
+        ${rowCell("Created", escapeHtml(coupon.created_at || "-"))}
+        ${rowCell("Action", action, "table-actions")}
+      </tr>
+    `;
+  }).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="10" data-label="Empty">No coupons found.</td></tr>`;
+  tbody.querySelectorAll(".admin-deactivate-coupon").forEach((btn) => {
+    btn.onclick = async () => {
+      try {
+        if (!permissions().can_manage_admins) {
+          setCouponStatus("Only owners can manage coupons.", true);
+          return;
+        }
+        const couponId = Number(btn.dataset.couponId || 0);
+        if (!couponId) return;
+        if (!window.confirm("Deactivate this coupon?")) return;
+        await api(`/admin1957/coupons/${couponId}/deactivate`, { method: "POST" });
+        await loadDashboard();
+        setCouponStatus("Coupon deactivated successfully.");
+      } catch (error) {
+        setCouponStatus(error.message || "Failed to deactivate coupon.", true);
+      }
+    };
+  });
+}
+
 function renderCategories() {
   const tbody = $("adminCategoriesTable")?.querySelector("tbody");
   if (!tbody) return;
@@ -368,6 +444,28 @@ function clearAdminCreateForm() {
   }
 }
 
+function clearCouponCreateForm() {
+  if ($("adminCouponCode")) $("adminCouponCode").value = "";
+  if ($("adminCouponPlan")) $("adminCouponPlan").value = "basic";
+  if ($("adminCouponCycle")) $("adminCouponCycle").value = "monthly";
+  if ($("adminCouponMaxUses")) $("adminCouponMaxUses").value = "1";
+  if ($("adminCouponExpiresAt")) $("adminCouponExpiresAt").value = "";
+  syncCouponPlanControls();
+}
+
+function syncCouponPlanControls() {
+  const plan = String($("adminCouponPlan")?.value || "basic").toLowerCase();
+  const cycle = $("adminCouponCycle");
+  if (!cycle) return;
+  const isLifetime = plan === "lifetime";
+  cycle.disabled = isLifetime;
+  if (isLifetime) {
+    cycle.value = "annual";
+  } else if (!cycle.value) {
+    cycle.value = "monthly";
+  }
+}
+
 function loadUserIntoForm(userId) {
   const user = (state.dashboard?.users || []).find((item) => Number(item.user_id) === Number(userId));
   if (!user) return;
@@ -391,6 +489,7 @@ function renderDashboard() {
   $("metricUsers").textContent = String(metrics.users || 0);
   $("metricAccounts").textContent = String(metrics.accounts || 0);
   $("metricTransactions").textContent = String(metrics.transactions || 0);
+  if ($("metricCoupons")) $("metricCoupons").textContent = String(metrics.coupons || 0);
   if ($("adminWhoami")) {
     const admin = state.admin || {};
     $("adminWhoami").textContent = `${admin.name || "Admin"} - ${admin.position || ""}`.trim();
@@ -401,6 +500,7 @@ function renderDashboard() {
   renderUsers();
   renderAccounts();
   renderTransactions();
+  renderCoupons();
   renderCategories();
   renderDailyBalances();
 }
@@ -431,8 +531,11 @@ window.addEventListener("load", async () => {
   bindTableSearch("adminUsersSearch", "users");
   bindTableSearch("adminAccountsSearch", "accounts");
   bindTableSearch("adminTransactionsSearch", "transactions");
+  bindTableSearch("adminCouponsSearch", "coupons");
   bindTableSearch("adminCategoriesSearch", "categories");
   bindTableSearch("adminDailyBalancesSearch", "dailyBalances");
+  if ($("adminCouponPlan")) $("adminCouponPlan").onchange = syncCouponPlanControls;
+  syncCouponPlanControls();
 
   $("adminRefreshBtn").onclick = async () => {
     try {
@@ -551,6 +654,41 @@ window.addEventListener("load", async () => {
         setAdminStatus("Admin created successfully.");
       } catch (error) {
         setAdminStatus(error.message || "Failed to create admin.", true);
+      }
+    };
+  }
+
+  const createCouponBtn = $("adminCreateCouponBtn");
+  if (createCouponBtn) {
+    createCouponBtn.onclick = async () => {
+      try {
+        if (!permissions().can_manage_admins) {
+          setCouponStatus("Only owners can manage coupons.", true);
+          return;
+        }
+        const planCode = $("adminCouponPlan").value || "basic";
+        const isLifetime = String(planCode).toLowerCase() === "lifetime";
+        const payload = {
+          code: $("adminCouponCode").value.trim(),
+          plan_code: planCode,
+          billing_cycle: isLifetime ? "annual" : ($("adminCouponCycle").value || "monthly"),
+          is_lifetime: isLifetime,
+          max_uses: Number($("adminCouponMaxUses").value || 1),
+          expires_at: $("adminCouponExpiresAt").value || "",
+        };
+        if (payload.max_uses < 1) {
+          setCouponStatus("Max uses must be at least 1.", true);
+          return;
+        }
+        const result = await api("/admin1957/coupons", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        clearCouponCreateForm();
+        await loadDashboard();
+        setCouponStatus(`Coupon ${result?.coupon?.code || "created"} created successfully.`);
+      } catch (error) {
+        setCouponStatus(error.message || "Failed to create coupon.", true);
       }
     };
   }

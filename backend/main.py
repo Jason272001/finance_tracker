@@ -1,4 +1,4 @@
-import hmac
+﻿import hmac
 import hashlib
 import json
 import logging
@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from email.message import EmailMessage
 
-from fastapi import FastAPI, Header, HTTPException, Request, Response
+from fastapi import Cookie, FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ConfigDict, field_validator
@@ -30,7 +30,7 @@ from backend.plaid_service import (
     transactions_sync,
 )
 from backend.plaid_store import PlaidStore
-from core import Account, Admin1957, Category, DailyBalance, SPECIAL_COUPON_CODE, Transaction, User
+from core import Account, Admin1957, Category, Coupon, DailyBalance, SPECIAL_COUPON_CODE, Transaction, User
 
 
 app = FastAPI(title="KeeperBMA Backend", version="1.1.0")
@@ -173,6 +173,28 @@ class AdminUpdateBody(BaseModel):
 class AdminResetPasswordBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     new_password: str = Field(min_length=7, max_length=200)
+
+class AdminCouponCreateBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    code: Optional[str] = Field(default="", max_length=64)
+    plan_code: str = Field(min_length=1, max_length=40)
+    billing_cycle: Optional[str] = Field(default="monthly", min_length=1, max_length=20)
+    is_lifetime: bool = False
+    max_uses: int = Field(default=1, ge=1, le=1000000)
+    expires_at: Optional[str] = Field(default="", max_length=64)
+
+    @field_validator("plan_code")
+    @classmethod
+    def validate_plan_code(cls, v: str) -> str:
+        return normalize_plan_code(v)
+
+    @field_validator("billing_cycle")
+    @classmethod
+    def validate_billing_cycle(cls, v: Optional[str]) -> str:
+        key = str(v or "monthly").strip().lower()
+        if key not in {"monthly", "annual"}:
+            raise ValueError("Invalid billing_cycle")
+        return key
 
 
 class AdminUserUpdateBody(BaseModel):
@@ -1511,23 +1533,34 @@ def health():
 @app.post("/auth/register")
 def register(body: RegisterBody):
     try:
-        is_lifetime_coupon = _coupon_grants_lifetime(body.coupon_code)
+        coupon_ctx = _resolve_coupon_context(body.coupon_code, body.plan_code, body.billing_cycle)
+        coupon_code = _normalize_coupon_code(body.coupon_code)
+        if coupon_code and not bool(coupon_ctx.get("valid")):
+            raise HTTPException(status_code=400, detail=str(coupon_ctx.get("error") or "Invalid coupon code."))
+
         uid = User().register(
             name=body.name,
             pw=body.password,
             email=body.email,
             phone=body.phone,
-            coupon_code=body.coupon_code or "",
+            coupon_code=coupon_code,
             plan_code=body.plan_code,
             billing_cycle=body.billing_cycle,
             plan_with_website=body.with_website,
+            activate_without_payment=bool(coupon_ctx.get("valid") and coupon_ctx.get("bypass_payment") and not coupon_ctx.get("is_lifetime")),
+            force_plan_code=coupon_ctx.get("plan_code") if coupon_ctx.get("valid") else None,
+            force_lifetime=bool(coupon_ctx.get("valid") and coupon_ctx.get("is_lifetime")),
         )
+        if bool(coupon_ctx.get("generated")) and bool(coupon_ctx.get("valid")):
+            Coupon().mark_used(coupon_ctx.get("code") or "")
+
         profile = User().get_user_by_id(uid) or {}
         subscription = _build_subscription_payload(profile)
         profile_payload = _build_profile_payload(profile)
+        payment_required = not bool(coupon_ctx.get("valid") and coupon_ctx.get("bypass_payment"))
         payment_token = ""
         payment_url = ""
-        if not bool(subscription.get("is_lifetime", False)):
+        if payment_required:
             payment_token = _issue_pending_payment_token(uid)
             payment_url = _payment_page_url(payment_token)
         return {
@@ -1539,9 +1572,11 @@ def register(body: RegisterBody):
             "email_notifications_enabled": bool(profile_payload.get("email_notifications_enabled", True)),
             "profile_image_url": profile_payload.get("profile_image_url", ""),
             "lifetime_access": bool(subscription.get("is_lifetime", False)),
-            "payment_required": not bool(subscription.get("is_lifetime", False)),
+            "payment_required": payment_required,
             "payment_token": payment_token,
             "payment_url": payment_url,
+            "coupon_applied": bool(coupon_ctx.get("valid")),
+            "coupon_code": coupon_ctx.get("code") or "",
             **subscription,
         }
     except ValueError as e:
@@ -1770,6 +1805,7 @@ def admin1957_dashboard(request: Request, authorization: Optional[str] = Header(
     categories_model = Category()
     daily_model = DailyBalance()
     admins_model = Admin1957()
+    coupons_model = Coupon()
 
     users = users_model.list_all()
     accounts = _records_from_frame(accounts_model._load())
@@ -1777,6 +1813,7 @@ def admin1957_dashboard(request: Request, authorization: Optional[str] = Header(
     categories = _build_admin_category_records(_records_from_frame(categories_model._load()))
     daily_balances = _build_admin_daily_balance_records(_records_from_frame(daily_model._load()), transactions)
     admins = admins_model.list_all()
+    coupons = coupons_model.list_all()
 
     return {
         "ok": True,
@@ -1788,6 +1825,7 @@ def admin1957_dashboard(request: Request, authorization: Optional[str] = Header(
             "transactions": len(transactions),
             "categories": len(categories),
             "daily_balances": len(daily_balances),
+            "coupons": len(coupons),
         },
         "admins": admins,
         "users": users,
@@ -1795,6 +1833,7 @@ def admin1957_dashboard(request: Request, authorization: Optional[str] = Header(
         "transactions": transactions,
         "categories": categories,
         "daily_balances": daily_balances,
+        "coupons": coupons,
     }
 
 
@@ -1919,6 +1958,42 @@ def admin1957_reset_admin_password(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"ok": True, "admin": _build_admin_payload(updated)}
+
+
+@app.post("/admin1957/coupons")
+def admin1957_create_coupon(
+    body: AdminCouponCreateBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    admin = _require_admin_roles(request, authorization, ("owner",))
+    is_lifetime = bool(body.is_lifetime or normalize_plan_code(body.plan_code) == "lifetime")
+    try:
+        coupon = Coupon().create(
+            code=body.code or "",
+            plan_code="lifetime" if is_lifetime else body.plan_code,
+            billing_cycle=body.billing_cycle,
+            is_lifetime=is_lifetime,
+            max_uses=int(body.max_uses),
+            expires_at=body.expires_at or "",
+            created_by_admin_id=admin.get("id"),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True, "coupon": coupon}
+
+
+@app.post("/admin1957/coupons/{coupon_id}/deactivate")
+def admin1957_deactivate_coupon(
+    coupon_id: int,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_admin_roles(request, authorization, ("owner",))
+    coupon = Coupon().deactivate(coupon_id)
+    if not coupon:
+        raise HTTPException(status_code=404, detail="Coupon not found.")
+    return {"ok": True, "coupon": coupon}
 
 
 @app.get("/billing/plans")
@@ -2159,11 +2234,22 @@ def billing_pending_activate(body: PendingPaymentActivateBody):
 def billing_precheckout(body: BillingPrecheckoutBody):
     plan_code = str(body.plan_code).strip().lower()
     billing_cycle = str(body.billing_cycle).strip().lower()
-    if _coupon_grants_lifetime(body.coupon_code):
+    coupon_ctx = _resolve_coupon_context(body.coupon_code, plan_code, billing_cycle)
+    coupon_code = _normalize_coupon_code(body.coupon_code)
+    if coupon_code and not bool(coupon_ctx.get("valid")):
+        raise HTTPException(status_code=400, detail=str(coupon_ctx.get("error") or "Invalid coupon code."))
+    if bool(coupon_ctx.get("valid") and coupon_ctx.get("bypass_payment")):
         return {
             "ok": True,
             "skip_checkout": True,
-            "lifetime_access": True,
+            "coupon_applied": True,
+            "lifetime_access": bool(coupon_ctx.get("is_lifetime")),
+            "plan_code": coupon_ctx.get("plan_code") or plan_code,
+            "billing_cycle": coupon_ctx.get("billing_cycle") or billing_cycle,
+            "message": "Coupon applied. No payment information is required.",
+            "payment_token": "",
+            "payment_url": "",
+            "trial_days": int(BILLING_TRIAL_DAYS),
         }
 
     price_id = _stripe_price_for_plan(plan_code, bool(body.with_website), billing_cycle=billing_cycle)
@@ -2228,11 +2314,22 @@ def billing_precheckout(body: BillingPrecheckoutBody):
 def billing_precheckout_embedded(body: BillingPrecheckoutEmbeddedBody):
     plan_code = str(body.plan_code).strip().lower()
     billing_cycle = str(body.billing_cycle).strip().lower()
-    if _coupon_grants_lifetime(body.coupon_code):
+    coupon_ctx = _resolve_coupon_context(body.coupon_code, plan_code, billing_cycle)
+    coupon_code = _normalize_coupon_code(body.coupon_code)
+    if coupon_code and not bool(coupon_ctx.get("valid")):
+        raise HTTPException(status_code=400, detail=str(coupon_ctx.get("error") or "Invalid coupon code."))
+    if bool(coupon_ctx.get("valid") and coupon_ctx.get("bypass_payment")):
         return {
             "ok": True,
             "skip_checkout": True,
-            "lifetime_access": True,
+            "coupon_applied": True,
+            "lifetime_access": bool(coupon_ctx.get("is_lifetime")),
+            "plan_code": coupon_ctx.get("plan_code") or plan_code,
+            "billing_cycle": coupon_ctx.get("billing_cycle") or billing_cycle,
+            "client_secret": "",
+            "session_id": "",
+            "publishable_key": STRIPE_PUBLISHABLE_KEY,
+            "message": "Coupon applied. No payment information is required.",
             "trial_days": int(BILLING_TRIAL_DAYS),
         }
 
@@ -3269,3 +3366,6 @@ def list_daily_balances(request: Request, user_id: int, authorization: Optional[
     if df is None or df.empty:
         return []
     return df.fillna("").to_dict(orient="records")
+
+
+

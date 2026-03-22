@@ -44,6 +44,7 @@
       <article class="kpi-card income"><h3>Users</h3><p id="metricUsers">0</p></article>
       <article class="kpi-card expense"><h3>Accounts</h3><p id="metricAccounts">0</p></article>
       <article class="kpi-card debt"><h3>Transactions</h3><p id="metricTransactions">0</p></article>
+      <article class="kpi-card"><h3>Coupons</h3><p id="metricCoupons">0</p></article>
     </section>
 
     <section class="grid">
@@ -151,10 +152,75 @@
         <p id="adminDashboardStatus" class="muted"></p>
       </article>
 
+      <article id="adminCouponCard" class="card">
+        <h2>Coupon Management</h2>
+        <p class="muted">Owners can create one-time or reusable coupons for monthly, yearly, or lifetime access. Leave the code blank to auto-generate one.</p>
+        <div id="adminCouponCreateSection" class="admin-panel-section">
+          <label for="adminCouponCode">Coupon Code</label>
+          <input id="adminCouponCode" placeholder="Leave blank to auto-generate" />
+          <div class="row compact">
+            <div>
+              <label for="adminCouponPlan">Plan</label>
+              <select id="adminCouponPlan">
+                <option value="basic">Basic</option>
+                <option value="regular">Regular</option>
+                <option value="business">Business</option>
+                <option value="premium_plus">Premium Plus</option>
+                <option value="diamond">Diamond</option>
+                <option value="lifetime">Lifetime</option>
+              </select>
+            </div>
+            <div>
+              <label for="adminCouponCycle">Billing Cycle</label>
+              <select id="adminCouponCycle">
+                <option value="monthly">Monthly</option>
+                <option value="annual">Yearly</option>
+              </select>
+            </div>
+          </div>
+          <div class="row compact">
+            <div>
+              <label for="adminCouponMaxUses">Max Uses</label>
+              <input id="adminCouponMaxUses" type="number" min="1" step="1" value="1" />
+            </div>
+            <div>
+              <label for="adminCouponExpiresAt">Expires At</label>
+              <input id="adminCouponExpiresAt" type="datetime-local" />
+            </div>
+          </div>
+          <button id="adminCreateCouponBtn" class="accent" type="button">Create Coupon</button>
+        </div>
+        <p id="adminCouponStatus" class="muted"></p>
+      </article>
+
       <article class="card">
         <h2>Admins</h2>
         <input id="adminAdminsSearch" class="table-search" type="search" placeholder="Search admins" />
         <div class="table-scroll"><table id="adminAdminsTable" class="mobile-stack"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Position</th><th>Created</th><th>Action</th></tr></thead><tbody></tbody></table></div>
+      </article>
+
+      <article class="card span-2">
+        <h2>Coupons</h2>
+        <input id="adminCouponsSearch" class="table-search" type="search" placeholder="Search coupons" />
+        <div class="table-scroll">
+          <table id="adminCouponsTable" class="mobile-stack">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Code</th>
+                <th>Plan</th>
+                <th>Cycle</th>
+                <th>Uses</th>
+                <th>Active</th>
+                <th>Lifetime</th>
+                <th>Expires</th>
+                <th>Created</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </article>
 
       <article class="card span-2">
@@ -189,7 +255,7 @@
     </section>
   </main>
 
-  <script src="/frontends/web/admin-dashboard.js?v=9"></script>
+  <script src="/frontends/web/admin-dashboard.js?v=10"></script>
 </body>
 </html>
 
