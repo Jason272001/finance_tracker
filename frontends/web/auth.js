@@ -11,6 +11,7 @@ class ApiError extends Error {
 
 const state = {
   apiBase: "https://api.keeperbma.com",
+  websiteBase: "https://keeperbma.com",
   mode: "signin",
   lang: "en",
   theme: "light",
@@ -18,6 +19,8 @@ const state = {
   signupBillingCycle: "monthly",
   signupWithWebsite: false,
   pendingPaymentUrl: "",
+  mobilePlatform: "",
+  isCompanionApp: false,
 };
 
 const SIGNUP_PLAN_KEY = "keeperbma_signup_plan";
@@ -58,6 +61,10 @@ const AUTH_I18N = {
     theme: "Theme",
     light_mode: "Light",
     dark_mode: "Dark",
+    mobile_notice_title: "Mobile Companion App",
+    mobile_notice_message: "Sign in here to use KeeperBMA on mobile. New subscriptions and account billing are managed on the KeeperBMA website.",
+    mobile_billing_on_website: "Account signup and billing are managed on the KeeperBMA website.",
+    open_website: "Open Website",
     plan_basic: "Basic",
     plan_regular: "Regular",
     plan_business: "Business",
@@ -102,6 +109,25 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
 }
 
+function websiteUrl(path = "/") {
+  const cleanPath = String(path || "/").startsWith("/") ? String(path || "/") : `/${String(path || "")}`;
+  return `${state.websiteBase}${cleanPath}`;
+}
+
+function openWebsite(url) {
+  const target = String(url || websiteUrl("/")).trim();
+  if (!target) return;
+  const popup = window.open(target, "_blank", "noopener,noreferrer");
+  if (!popup) {
+    window.location.href = target;
+  }
+}
+
+function isMobileCompanionPlatform(value) {
+  const key = String(value || "").trim().toLowerCase();
+  return key === "android" || key === "ios";
+}
+
 function applyTheme(theme) {
   state.theme = String(theme || "").trim().toLowerCase() === "dark" ? "dark" : "light";
   localStorage.setItem("keeperbma_theme", state.theme);
@@ -137,12 +163,19 @@ function applyAuthLanguage(lang) {
   if ($("pendingPaymentAction")) $("pendingPaymentAction").textContent = authT("add_payment");
   if ($("pendingPaymentClose")) $("pendingPaymentClose").textContent = authT("close");
   if ($("signupInfoHint")) $("signupInfoHint").textContent = authT("signup_info");
+  if ($("mobileAuthNoticeTitle")) $("mobileAuthNoticeTitle").textContent = authT("mobile_notice_title");
+  if ($("mobileAuthNoticeMessage")) $("mobileAuthNoticeMessage").textContent = authT("mobile_notice_message");
+  if ($("mobileWebsiteBtn")) $("mobileWebsiteBtn").textContent = authT("open_website");
   const homeLinks = document.querySelectorAll("[data-auth-home]");
   homeLinks.forEach((link) => {
     link.textContent = authT("home");
+    if (state.isCompanionApp) {
+      link.setAttribute("href", websiteUrl("/"));
+    }
   });
   renderSignupPlanBanner();
   applyTheme(state.theme);
+  renderMobileAuthNotice();
 }
 
 function setStatus(msg) {
@@ -168,6 +201,12 @@ function renderSignupPlanBanner() {
   banner.textContent = `${authT("signup_plan_selected")}: ${planLabel(state.signupPlan)}`;
 }
 
+function renderMobileAuthNotice() {
+  const notice = $("mobileAuthNotice");
+  if (!notice) return;
+  notice.classList.toggle("hidden", !state.isCompanionApp);
+}
+
 function hidePendingPaymentModal() {
   const modal = $("pendingPaymentModal");
   if (modal) modal.classList.add("hidden");
@@ -184,6 +223,10 @@ function showPendingPaymentModal(message, paymentUrl) {
 }
 
 function setMode(mode) {
+  if (state.isCompanionApp && mode === "signup") {
+    state.mode = "signin";
+    setStatus(authT("mobile_billing_on_website"));
+  } else 
   if (mode === "signup" && !state.signupPlan) {
     state.mode = "signin";
     setStatus(authT("choose_plan_first"));
@@ -198,6 +241,7 @@ function setMode(mode) {
   $("tabSignin").classList.toggle("active", isSignin);
   $("tabSignup").classList.toggle("active", isSignup);
   $("tabRecover").classList.toggle("active", isRecover);
+  $("tabSignup").classList.toggle("hidden", state.isCompanionApp);
   $("signupFields").classList.toggle("hidden", !isSignup);
   $("recoverFields").classList.toggle("hidden", !isRecover);
   $("confirmWrap").classList.toggle("hidden", !(isSignup || isRecover));
@@ -260,6 +304,7 @@ window.addEventListener("load", async () => {
   const queryWebsite = parseBoolFlag(queryWebsiteRaw);
   const queryCoupon = String(q.get("coupon") || "").trim();
   const paymentState = String(q.get("payment") || "").trim().toLowerCase();
+  const mobilePlatform = String(q.get("mobile") || "").trim().toLowerCase();
 
   if (queryPlan) localStorage.setItem(SIGNUP_PLAN_KEY, queryPlan);
   if (queryCycle) localStorage.setItem(BILLING_CYCLE_KEY, queryCycle);
@@ -271,13 +316,18 @@ window.addEventListener("load", async () => {
   state.signupWithWebsite = queryWebsiteProvided
     ? queryWebsite
     : parseBoolFlag(localStorage.getItem(SIGNUP_WITH_WEBSITE_KEY));
+  state.mobilePlatform = isMobileCompanionPlatform(mobilePlatform) ? mobilePlatform : "";
+  state.isCompanionApp = Boolean(state.mobilePlatform);
   if (state.signupPlan !== "premium_plus") state.signupWithWebsite = false;
 
   const savedLang = String(localStorage.getItem("keeperbma_lang") || "en");
   state.lang = AUTH_I18N[savedLang] ? savedLang : "en";
   state.theme = String(localStorage.getItem("keeperbma_theme") || "light").trim().toLowerCase() === "dark" ? "dark" : "light";
 
-  setMode(explicitMode || "signin");
+  const initialMode = state.isCompanionApp
+    ? (explicitMode === "recover" ? "recover" : "signin")
+    : (explicitMode || "signin");
+  setMode(initialMode);
   applyAuthLanguage(state.lang);
   applyTheme(state.theme);
 
@@ -291,6 +341,11 @@ window.addEventListener("load", async () => {
 
   $("tabSignin").onclick = () => setMode("signin");
   $("tabSignup").onclick = () => {
+    if (state.isCompanionApp) {
+      setStatus(authT("mobile_billing_on_website"));
+      openWebsite(websiteUrl("/plans"));
+      return;
+    }
     if (!state.signupPlan) {
       setStatus(authT("choose_plan_first"));
       return;
@@ -303,9 +358,16 @@ window.addEventListener("load", async () => {
   $("pendingPaymentBackdrop").onclick = hidePendingPaymentModal;
   $("pendingPaymentAction").onclick = () => {
     if (state.pendingPaymentUrl) {
-      window.location.href = state.pendingPaymentUrl;
+      if (state.isCompanionApp) {
+        openWebsite(state.pendingPaymentUrl);
+      } else {
+        window.location.href = state.pendingPaymentUrl;
+      }
     }
   };
+  if ($("mobileWebsiteBtn")) {
+    $("mobileWebsiteBtn").onclick = () => openWebsite(websiteUrl("/"));
+  }
 
   if (paymentState === "success") {
     setStatus(authT("payment_saved"));

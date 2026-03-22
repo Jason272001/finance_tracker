@@ -833,8 +833,8 @@ SUBSCRIPTION_PLANS = [
     {
         "plan_code": "regular",
         "label": "Regular",
-        "price_monthly": 5,
-        "price_annual": 50,
+        "price_monthly": 7,
+        "price_annual": 70,
         "features": [
             "Automatic transaction sync (API integration ready)",
             "Automatic categorization",

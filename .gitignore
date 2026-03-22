@@ -15,3 +15,9 @@ data/*.csv
 data/*.db
 data/*.sqlite*
 backups/
+
+# Android companion app dependencies and local build outputs
+frontends/android/node_modules/
+frontends/android/android/.gradle/
+frontends/android/android/local.properties
+frontends/android/android/app/build/

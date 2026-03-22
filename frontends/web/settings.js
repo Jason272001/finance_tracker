@@ -85,7 +85,7 @@ const I18N = {
 
 const DEFAULT_BILLING_PLANS = [
   { plan_code: "basic", price_monthly: 2, price_annual: 20 },
-  { plan_code: "regular", price_monthly: 5, price_annual: 50 },
+  { plan_code: "regular", price_monthly: 7, price_annual: 70 },
   { plan_code: "business", price_monthly: 25, price_annual: 250 },
   { plan_code: "premium_plus", price_monthly: 50, price_annual: 500, price_with_website_monthly: 70, price_with_website_annual: 700 },
 ];

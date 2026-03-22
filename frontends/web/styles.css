@@ -142,6 +142,13 @@ body {
 }
 .tab.active { color: var(--primary-start); border-bottom-color: var(--primary-start); }
 .auth-card { display: flex; flex-direction: column; gap: 10px; }
+.auth-mobile-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.auth-mobile-notice h3 { margin: 0; }
 .password-field {
   display: flex;
   align-items: stretch;

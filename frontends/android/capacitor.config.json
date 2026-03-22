@@ -1,0 +1,16 @@
+{
+  "appId": "com.keeperbma.mobile",
+  "appName": "KeeperBMA",
+  "webDir": "www",
+  "server": {
+    "url": "https://keeperbma.com/auth?mode=signin&mobile=android",
+    "cleartext": false,
+    "allowNavigation": [
+      "keeperbma.com",
+      "www.keeperbma.com",
+      "api.keeperbma.com",
+      "js.stripe.com",
+      "m.stripe.network"
+    ]
+  }
+}

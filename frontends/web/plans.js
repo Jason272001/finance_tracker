@@ -192,7 +192,7 @@ function renderBillingCycle() {
 
   const priceMap = {
     basic: { monthly: "$2 / month", annual: "$20 / year (save $4/yr)" },
-    regular: { monthly: "$5 / month", annual: "$50 / year (save $10/yr)" },
+    regular: { monthly: "$7 / month", annual: "$70 / year (save $14/yr)" },
     business: { monthly: "$25 / month", annual: "$250 / year (save $50/yr)" },
     premium_plus: { monthly: "$50 / month", annual: "$500 / year (save $100/yr)" },
     diamond: { monthly: "$70 / month", annual: "$700 / year (save $140/yr)" },
