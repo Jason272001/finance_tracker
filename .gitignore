@@ -21,3 +21,7 @@ frontends/android/node_modules/
 frontends/android/android/.gradle/
 frontends/android/android/local.properties
 frontends/android/android/app/build/
+# Android Studio generated project metadata
+frontends/android/.idea/
+frontends/android/android/.idea/
+frontends/android/android/gradle/gradle-daemon-jvm.properties

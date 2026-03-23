@@ -61,10 +61,10 @@ const AUTH_I18N = {
     theme: "Theme",
     light_mode: "Light",
     dark_mode: "Dark",
-    mobile_notice_title: "Mobile Companion App",
-    mobile_notice_message: "Sign in here to use KeeperBMA on mobile. New subscriptions and account billing are managed on the KeeperBMA website.",
+    mobile_notice_title: "Don't Have an Account Yet?",
+    mobile_notice_message: "If you don't have an account yet, sign up on the KeeperBMA website. Existing users can sign in below.",
     mobile_billing_on_website: "Account signup and billing are managed on the KeeperBMA website.",
-    open_website: "Open Website",
+    open_website: "Sign Up Here",
     plan_basic: "Basic",
     plan_regular: "Regular",
     plan_business: "Business",
@@ -366,7 +366,7 @@ window.addEventListener("load", async () => {
     }
   };
   if ($("mobileWebsiteBtn")) {
-    $("mobileWebsiteBtn").onclick = () => openWebsite(websiteUrl("/"));
+    $("mobileWebsiteBtn").onclick = () => openWebsite(websiteUrl("/plans"));
   }
 
   if (paymentState === "success") {
