@@ -1,4 +1,4 @@
-﻿import hmac
+import hmac
 import hashlib
 import json
 import logging
@@ -30,11 +30,11 @@ from backend.plaid_service import (
     transactions_sync,
 )
 from backend.plaid_store import PlaidStore
-from core import Account, Admin1957, Category, Coupon, DailyBalance, SPECIAL_COUPON_CODE, Transaction, User
+from core import Account, Admin1957, Category, Coupon, DailyBalance, Transaction, User
 
 
 app = FastAPI(title="KeeperBMA Backend", version="1.1.0")
-TOKEN_SECRET = os.getenv("API_TOKEN_SECRET", "change-me-in-render")
+TOKEN_SECRET = str(os.getenv("API_TOKEN_SECRET", "")).strip()
 TOKEN_TTL_SECONDS = int(os.getenv("API_TOKEN_TTL_SECONDS", "1800"))  # 30 minutes
 PENDING_PAYMENT_TOKEN_TTL_SECONDS = int(os.getenv("PENDING_PAYMENT_TOKEN_TTL_SECONDS", "2592000"))  # 30 days
 STRICT_TOKEN_SECRET = str(os.getenv("STRICT_TOKEN_SECRET", "1")).strip().lower() in {"1", "true", "yes"}
@@ -1129,10 +1129,6 @@ def _payment_page_url(token: str, billing: Optional[str] = None, session_id: Opt
     return _append_query_params_preserve_checkout_id(_payment_page_base_url(), params)
 
 
-def _coupon_grants_lifetime(coupon_code: Optional[str]) -> bool:
-    return str(coupon_code or "").strip() == SPECIAL_COUPON_CODE
-
-
 def _stripe_fetch_checkout_session(session_id: str) -> dict:
     sid = str(session_id or "").strip()
     if not sid:
@@ -1500,8 +1496,8 @@ def _build_admin_daily_balance_records(daily_rows: list[dict], transaction_rows:
 
 @app.on_event("startup")
 def _startup_checks() -> None:
-    if TOKEN_SECRET == "change-me-in-render":
-        msg = "API_TOKEN_SECRET is using default value; set a strong secret in environment."
+    if not TOKEN_SECRET or len(TOKEN_SECRET) < 32:
+        msg = "API_TOKEN_SECRET must be set to a strong secret (32+ chars)."
         if STRICT_TOKEN_SECRET:
             raise RuntimeError(msg)
         logger.warning(msg)
@@ -2397,7 +2393,9 @@ def billing_precheckout_embedded(body: BillingPrecheckoutEmbeddedBody):
 def billing_precheckout_session(
     session_id: str,
     plan_code: Optional[str] = None,
+    token: Optional[str] = None,
 ):
+    _verify_pending_payment_token(str(token or "").strip())
     info = _stripe_verified_precheckout_session(session_id, expected_plan_code=plan_code)
     return {
         "ok": True,

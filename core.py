@@ -41,7 +41,7 @@ PG_PASSWORD = os.getenv("PGPASSWORD", "")
 DB_IS_SQL = bool(DATABASE_URL) or DB_BACKEND in {"mysql", "postgres", "postgresql"}
 PW_SCHEME = "pbkdf2_sha256"
 PW_ITERATIONS = 210000
-SPECIAL_COUPON_CODE = "KMAK1957/1965"
+SPECIAL_COUPON_CODE = str(os.getenv("SPECIAL_COUPON_CODE", "")).strip()
 DEFAULT_TRIAL_DAYS = int(os.getenv("DEFAULT_TRIAL_DAYS", "60"))
 # ---------------------------
 # Internal loader (STRICT)
@@ -378,9 +378,12 @@ class User:
     def login(self, identifier, pw):
         ident_s = str(identifier or "")
         normalized_ident = ident_s.strip()
-        key = normalized_ident.lower()
+        key = f"ident:{normalized_ident.lower()}"
         now_ts = time.time()
         rec = self._login_attempts.get(key, {"count": 0, "until": 0.0})
+        lock_until = float(rec.get("until", 0.0) or 0.0)
+        if now_ts < lock_until:
+            return False
 
         u = _load_users()
         ident_email = self._normalize_email(normalized_ident)
@@ -392,11 +395,30 @@ class User:
             | (u["name"].astype(str).str.strip().str.lower() == ident_name)
         ]
 
+        candidate_keys = []
+        if not candidates.empty:
+            candidate_ids = (
+                pd.to_numeric(candidates["user_id"], errors="coerce")
+                .dropna()
+                .astype(int)
+                .tolist()
+            )
+            candidate_keys = [f"user:{uid}" for uid in sorted(set(candidate_ids))]
+            for candidate_key in candidate_keys:
+                candidate_rec = self._login_attempts.get(candidate_key, {"count": 0, "until": 0.0})
+                candidate_lock_until = float(candidate_rec.get("until", 0.0) or 0.0)
+                if now_ts < candidate_lock_until:
+                    return False
+
+        def _record_failed_attempt(lock_key: str) -> None:
+            fail_rec = self._login_attempts.get(lock_key, {"count": 0, "until": 0.0})
+            fail_rec["count"] = int(fail_rec.get("count", 0)) + 1
+            if fail_rec["count"] >= 5:
+                fail_rec["until"] = now_ts + min(300, 2 ** (fail_rec["count"] - 5))
+            self._login_attempts[lock_key] = fail_rec
+
         if candidates.empty:
-            rec["count"] += 1
-            if rec["count"] >= 5:
-                rec["until"] = now_ts + min(300, 2 ** (rec["count"] - 5))
-            self._login_attempts[key] = rec
+            _record_failed_attempt(key)
             return False
 
         for idx, row in candidates.iterrows():
@@ -410,6 +432,7 @@ class User:
                 display_name = str(row.get("email", "")).strip() or f"user-{self.uid}"
             self.name = display_name
             self._login_attempts.pop(key, None)
+            self._login_attempts.pop(f"user:{self.uid}", None)
 
             if needs_upgrade:
                 # Opportunistically migrate plaintext passwords on successful login.
@@ -433,10 +456,9 @@ class User:
 
             return True
 
-        rec["count"] += 1
-        if rec["count"] >= 5:
-            rec["until"] = now_ts + min(300, 2 ** (rec["count"] - 5))
-        self._login_attempts[key] = rec
+        _record_failed_attempt(key)
+        for candidate_key in candidate_keys:
+            _record_failed_attempt(candidate_key)
         return False
 
     def register(
@@ -468,7 +490,9 @@ class User:
             if not name_s:
                 raise ValueError("Name is required.")
             coupon_s = str(coupon_code or "").strip()
-            is_lifetime = force_lifetime or coupon_s == SPECIAL_COUPON_CODE
+            is_lifetime = force_lifetime or (
+                bool(SPECIAL_COUPON_CODE) and bool(coupon_s) and coupon_s == SPECIAL_COUPON_CODE
+            )
             plan_s = str(plan_code or "").strip().lower()
             allowed_plans = {"basic", "regular", "business", "premium_plus", "diamond"}
             if not is_lifetime and plan_s not in allowed_plans:
@@ -1762,7 +1786,6 @@ class Transaction:
                 account_id=old_account_id,
                 category=old_category,
             )
-            self._apply_postings(user_id=user_id, postings=old_postings, reverse=True)
 
             allowed = {"type", "amount", "account_id", "category", "note"}
             for k, v in changes.items():
@@ -1787,7 +1810,14 @@ class Transaction:
             )
 
             self._save(df)
-        self._apply_postings(user_id=user_id, postings=new_postings, reverse=False)
+        # Apply only the net balance delta after transaction row persistence to avoid
+        # interim account drift when an update fails mid-way.
+        net_postings = []
+        for aid, delta in old_postings:
+            net_postings.append((aid, -float(delta)))
+        for aid, delta in new_postings:
+            net_postings.append((aid, float(delta)))
+        self._apply_postings(user_id=user_id, postings=net_postings, reverse=False)
         return True
 
     def delete(self, txn_id, user_id=None):
@@ -2011,6 +2041,8 @@ class Account:
             i_from = from_idx[0]
             i_to = to_idx[0]
 
+            from_name = str(df.at[i_from, "account_name"])
+            to_name = str(df.at[i_to, "account_name"])
             from_type = str(df.at[i_from, "account_type"])
             to_type = str(df.at[i_to, "account_type"])
             from_balance = float(ndf.at[i_from, "balance"]) if pd.notna(ndf.at[i_from, "balance"]) else 0.0
@@ -2019,6 +2051,17 @@ class Account:
             df.at[i_from, "balance"] = from_balance + self._movement_delta(from_type, amt, "out")
             df.at[i_to, "balance"] = to_balance + self._movement_delta(to_type, amt, "in")
             self._save(df)
+
+        # Record transfer history as a neutral transaction row.
+        # This does not affect balances again because "transfer" produces no postings.
+        Transaction().add(
+            t_type="transfer",
+            amount=amt,
+            account_id=int(from_account_id),
+            category="Transfer",
+            note=f"{from_name} -> {to_name}",
+            user_id=int(user_id),
+        )
         return True
 
 
