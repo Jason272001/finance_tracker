@@ -3,6 +3,7 @@ const state = {
   apiBase: "https://api.keeperbma.com",
   theme: "light",
 };
+const ADMIN_TOKEN_KEY = "keeperbma_admin_token";
 
 class ApiError extends Error {
   constructor(message, status = 500, payload = {}) {
@@ -26,10 +27,27 @@ function applyTheme(theme) {
   if (label) label.textContent = `Theme: ${state.theme === "dark" ? "Dark" : "Light"}`;
 }
 
+function getAdminToken() {
+  return localStorage.getItem(ADMIN_TOKEN_KEY) || "";
+}
+
+function setAdminToken(token) {
+  const normalized = String(token || "").trim();
+  if (!normalized) {
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    return;
+  }
+  localStorage.setItem(ADMIN_TOKEN_KEY, normalized);
+}
+
 async function api(path, opts = {}) {
   const headers = { ...(opts.headers || {}) };
   if (opts.body && !Object.keys(headers).some((k) => String(k).toLowerCase() === "content-type")) {
     headers["Content-Type"] = "application/json";
+  }
+  const adminToken = getAdminToken();
+  if (adminToken && !Object.keys(headers).some((k) => String(k).toLowerCase() === "authorization")) {
+    headers.Authorization = `Bearer ${adminToken}`;
   }
   const res = await fetch(`${state.apiBase}${path}`, {
     credentials: "include",
@@ -88,10 +106,11 @@ window.addEventListener("load", async () => {
         setStatus("Identifier and password are required.", true);
         return;
       }
-      await api("/admin1957/login", {
+      const out = await api("/admin1957/login", {
         method: "POST",
         body: JSON.stringify({ identifier, password }),
       });
+      setAdminToken(out?.token || "");
       setStatus("Sign in successful. Redirecting...");
       window.location.replace("/kmak/1957/1965/a/dashboard");
     } catch (error) {

@@ -1413,7 +1413,7 @@ def _build_admin_category_records(category_rows: list[dict]) -> list[dict]:
             {
                 "category_id": _coerce_int(row.get("category_id"), 0),
                 "user_id": _coerce_int(row.get("user_id"), 0),
-                "name": str(row.get("category_name", "") or "").strip(),
+                "name": str((row.get("category_name") or row.get("name") or "")).strip(),
                 "type": "account_linked" if linked_account_id > 0 else "custom",
                 "is_auto": is_auto,
                 "account_linked": linked_account_id > 0,
@@ -1788,8 +1788,14 @@ def admin1957_logout(response: Response):
 
 @app.get("/admin1957/session")
 def admin1957_session(request: Request, authorization: Optional[str] = Header(default=None)):
+    token = _extract_admin_token(request, authorization)
     admin = _require_admin(request, authorization)
-    return {"ok": True, "admin": _build_admin_payload(admin)}
+    return {
+        "ok": True,
+        "admin": _build_admin_payload(admin),
+        "token": token,
+        "session_minutes": TOKEN_TTL_SECONDS // 60,
+    }
 
 
 @app.get("/admin1957/dashboard")

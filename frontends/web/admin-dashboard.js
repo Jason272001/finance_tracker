@@ -14,6 +14,7 @@ const state = {
     dailyBalances: "",
   },
 };
+const ADMIN_TOKEN_KEY = "keeperbma_admin_token";
 
 class ApiError extends Error {
   constructor(message, status = 500, payload = {}) {
@@ -37,10 +38,27 @@ function applyTheme(theme) {
   if (label) label.textContent = `Theme: ${state.theme === "dark" ? "Dark" : "Light"}`;
 }
 
+function getAdminToken() {
+  return localStorage.getItem(ADMIN_TOKEN_KEY) || "";
+}
+
+function setAdminToken(token) {
+  const normalized = String(token || "").trim();
+  if (!normalized) {
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    return;
+  }
+  localStorage.setItem(ADMIN_TOKEN_KEY, normalized);
+}
+
 async function api(path, opts = {}) {
   const headers = { ...(opts.headers || {}) };
   if (opts.body && !Object.keys(headers).some((k) => String(k).toLowerCase() === "content-type")) {
     headers["Content-Type"] = "application/json";
+  }
+  const adminToken = getAdminToken();
+  if (adminToken && !Object.keys(headers).some((k) => String(k).toLowerCase() === "authorization")) {
+    headers.Authorization = `Bearer ${adminToken}`;
   }
   let res;
   try {
@@ -544,6 +562,7 @@ function bindTableSearch(inputId, key) {
 async function loadDashboard() {
   const session = await api("/admin1957/session");
   state.admin = session.admin || null;
+  setAdminToken(session?.token || getAdminToken());
   const dashboard = await api("/admin1957/dashboard");
   state.dashboard = dashboard;
   renderDashboard();
@@ -578,6 +597,7 @@ window.addEventListener("load", async () => {
     try {
       await api("/admin1957/logout", { method: "POST" });
     } catch (_) {}
+    setAdminToken("");
     window.location.replace("/kmak/1957/1965/a/login");
   };
 
@@ -794,6 +814,7 @@ window.addEventListener("load", async () => {
   } catch (error) {
     const status = Number(error?.status || 0);
     if (status === 401 || status === 403) {
+      setAdminToken("");
       window.location.replace("/kmak/1957/1965/a/login");
       return;
     }
