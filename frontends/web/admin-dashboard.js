@@ -116,6 +116,78 @@ function friendlyAdminErrorMessage(error, fallbackMessage) {
   return raw;
 }
 
+function filledValue(value, fallback = "") {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === "string" && value.trim() === "") return fallback;
+  return value;
+}
+
+function normalizedText(value, fallback = "") {
+  return String(filledValue(value, fallback));
+}
+
+function boolish(value) {
+  return Boolean(
+    value === true ||
+    value === 1 ||
+    String(value || "").trim().toLowerCase() === "true"
+  );
+}
+
+function normalizeDashboard(rawDashboard = {}) {
+  const dashboard = rawDashboard && typeof rawDashboard === "object" ? { ...rawDashboard } : {};
+  dashboard.admins = Array.isArray(dashboard.admins) ? dashboard.admins : [];
+  dashboard.users = Array.isArray(dashboard.users) ? dashboard.users : [];
+  dashboard.accounts = Array.isArray(dashboard.accounts) ? dashboard.accounts : [];
+  dashboard.transactions = Array.isArray(dashboard.transactions) ? dashboard.transactions : [];
+  dashboard.coupons = Array.isArray(dashboard.coupons) ? dashboard.coupons : [];
+
+  const accountNameById = new Map(
+    dashboard.accounts.map((account) => [Number(account.account_id || 0), normalizedText(account.account_name)])
+  );
+
+  dashboard.categories = (Array.isArray(dashboard.categories) ? dashboard.categories : []).map((category) => {
+    const linkedAccountId = Number(category?.linked_account_id || 0);
+    const accountLinked = boolish(category?.account_linked) || linkedAccountId > 0;
+    const accountLinkedName = linkedAccountId > 0 ? accountNameById.get(linkedAccountId) || "" : "";
+    return {
+      ...category,
+      category_id: filledValue(category?.category_id, category?.id ?? ""),
+      name: normalizedText(
+        category?.name,
+        filledValue(category?.category_name, filledValue(accountLinkedName, "(Unnamed category)"))
+      ),
+      type: normalizedText(
+        category?.type,
+        accountLinked ? "account_linked" : "custom"
+      ),
+      is_auto: accountLinked || boolish(category?.is_auto),
+      account_linked: accountLinked,
+    };
+  });
+
+  dashboard.daily_balances = (Array.isArray(dashboard.daily_balances) ? dashboard.daily_balances : []).map((item) => ({
+    ...item,
+    dailyb_id: filledValue(item?.dailyb_id, filledValue(item?.dailyB_id, item?.id ?? "")),
+    income: normalizedText(item?.income, "0.00"),
+    expense: normalizedText(item?.expense, "0.00"),
+    net: normalizedText(item?.net, "0.00"),
+    snapshot: normalizedText(item?.snapshot, "-"),
+  }));
+
+  const metrics = dashboard.metrics && typeof dashboard.metrics === "object" ? { ...dashboard.metrics } : {};
+  dashboard.metrics = {
+    ...metrics,
+    admins: Number(filledValue(metrics.admins, dashboard.admins.length)) || dashboard.admins.length,
+    users: Number(filledValue(metrics.users, dashboard.users.length)) || dashboard.users.length,
+    accounts: Number(filledValue(metrics.accounts, dashboard.accounts.length)) || dashboard.accounts.length,
+    transactions: Number(filledValue(metrics.transactions, dashboard.transactions.length)) || dashboard.transactions.length,
+    coupons: Number(filledValue(metrics.coupons, dashboard.coupons.length)) || dashboard.coupons.length,
+  };
+
+  return dashboard;
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -399,8 +471,8 @@ function renderCategories() {
       category.account_linked,
     ].join(" ")
   ).map((category) => {
-    const name = category.name ?? category.category_name ?? "(Unnamed category)";
-    const type = category.type ?? (Number(category.linked_account_id || 0) > 0 ? "account_linked" : "custom");
+    const name = category.name || category.category_name || "(Unnamed category)";
+    const type = category.type || (Number(category.linked_account_id || 0) > 0 ? "account_linked" : "custom");
     const isAuto = Boolean(
       category.is_auto === true ||
       String(category.is_auto || "").toLowerCase() === "true" ||
@@ -427,7 +499,7 @@ function renderDailyBalances() {
     state.dashboard?.daily_balances || [],
     "dailyBalances",
     (item) => [
-      item.dailyb_id ?? item.dailyB_id,
+      filledValue(item.dailyb_id, item.dailyB_id),
       lookupUserName(item.user_id),
       item.date,
       item.income,
@@ -437,13 +509,13 @@ function renderDailyBalances() {
     ].join(" ")
   ).map((item) => `
     <tr>
-      ${rowCell("ID", escapeHtml(item.dailyb_id ?? item.dailyB_id ?? ""))}
+      ${rowCell("ID", escapeHtml(filledValue(item.dailyb_id, item.dailyB_id ?? "")))}
       ${rowCell("User", lookupUserName(item.user_id))}
-      ${rowCell("Date", escapeHtml(item.date))}
-      ${rowCell("Income", escapeHtml(item.income ?? "0.00"))}
-      ${rowCell("Expense", escapeHtml(item.expense ?? "0.00"))}
-      ${rowCell("Net", escapeHtml(item.net ?? "0.00"))}
-      ${rowCell("Snapshot", escapeHtml(item.snapshot ?? "-"))}
+      ${rowCell("Date", escapeHtml(filledValue(item.date, "-")))}
+      ${rowCell("Income", escapeHtml(filledValue(item.income, "0.00")))}
+      ${rowCell("Expense", escapeHtml(filledValue(item.expense, "0.00")))}
+      ${rowCell("Net", escapeHtml(filledValue(item.net, "0.00")))}
+      ${rowCell("Snapshot", escapeHtml(filledValue(item.snapshot, "-")))}
     </tr>
   `).join("");
   tbody.innerHTML = rows || `<tr><td colspan="7" data-label="Empty">No daily balances found.</td></tr>`;
@@ -564,7 +636,7 @@ async function loadDashboard() {
   state.admin = session.admin || null;
   setAdminToken(session?.token || getAdminToken());
   const dashboard = await api("/admin1957/dashboard");
-  state.dashboard = dashboard;
+  state.dashboard = normalizeDashboard(dashboard);
   renderDashboard();
 }
 
