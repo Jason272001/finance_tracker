@@ -42,11 +42,20 @@ async function api(path, opts = {}) {
   if (opts.body && !Object.keys(headers).some((k) => String(k).toLowerCase() === "content-type")) {
     headers["Content-Type"] = "application/json";
   }
-  const res = await fetch(`${state.apiBase}${path}`, {
-    credentials: "include",
-    headers,
-    ...opts,
-  });
+  let res;
+  try {
+    res = await fetch(`${state.apiBase}${path}`, {
+      credentials: "include",
+      headers,
+      ...opts,
+    });
+  } catch (error) {
+    throw new ApiError(
+      "Network error reaching the admin API. Check whether your admin session is still active and the backend is reachable.",
+      0,
+      { original: String(error?.message || error || "") }
+    );
+  }
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) throw new ApiError(payload?.detail || `HTTP ${res.status}`, res.status, payload);
   return payload;
@@ -70,6 +79,23 @@ function setAdminStatus(message, isError = false) {
 
 function setCouponStatus(message, isError = false) {
   setStatus("adminCouponStatus", message, isError);
+}
+
+function normalizeDateTimeLocalToIso(value) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return trimmed;
+  return parsed.toISOString();
+}
+
+function friendlyAdminErrorMessage(error, fallbackMessage) {
+  const raw = String(error?.message || fallbackMessage || "").trim();
+  if (!raw) return fallbackMessage || "Request failed.";
+  if (raw.toLowerCase() === "failed to fetch") {
+    return "Network error reaching the admin API. Check whether your admin session is still active and the backend is reachable.";
+  }
+  return raw;
 }
 
 function escapeHtml(value) {
@@ -355,7 +381,7 @@ function renderCategories() {
       category.account_linked,
     ].join(" ")
   ).map((category) => {
-    const name = category.name ?? category.category_name ?? "";
+    const name = category.name ?? category.category_name ?? "(Unnamed category)";
     const type = category.type ?? (Number(category.linked_account_id || 0) > 0 ? "account_linked" : "custom");
     const isAuto = Boolean(
       category.is_auto === true ||
@@ -396,10 +422,10 @@ function renderDailyBalances() {
       ${rowCell("ID", escapeHtml(item.dailyb_id ?? item.dailyB_id ?? ""))}
       ${rowCell("User", lookupUserName(item.user_id))}
       ${rowCell("Date", escapeHtml(item.date))}
-      ${rowCell("Income", escapeHtml(item.income))}
-      ${rowCell("Expense", escapeHtml(item.expense))}
-      ${rowCell("Net", escapeHtml(item.net))}
-      ${rowCell("Snapshot", escapeHtml(item.snapshot))}
+      ${rowCell("Income", escapeHtml(item.income ?? "0.00"))}
+      ${rowCell("Expense", escapeHtml(item.expense ?? "0.00"))}
+      ${rowCell("Net", escapeHtml(item.net ?? "0.00"))}
+      ${rowCell("Snapshot", escapeHtml(item.snapshot ?? "-"))}
     </tr>
   `).join("");
   tbody.innerHTML = rows || `<tr><td colspan="7" data-label="Empty">No daily balances found.</td></tr>`;
@@ -660,21 +686,24 @@ window.addEventListener("load", async () => {
 
   const createCouponBtn = $("adminCreateCouponBtn");
   if (createCouponBtn) {
-    createCouponBtn.onclick = async () => {
+    createCouponBtn.onclick = async (event) => {
       try {
+        event?.preventDefault?.();
         if (!permissions().can_manage_admins) {
           setCouponStatus("Only owners can manage coupons.", true);
           return;
         }
+        setCouponStatus("Creating coupon...");
         const planCode = $("adminCouponPlan").value || "basic";
         const isLifetime = String(planCode).toLowerCase() === "lifetime";
+        const expiresAtRaw = $("adminCouponExpiresAt").value || "";
         const payload = {
           code: $("adminCouponCode").value.trim(),
           plan_code: planCode,
           billing_cycle: isLifetime ? "annual" : ($("adminCouponCycle").value || "monthly"),
           is_lifetime: isLifetime,
           max_uses: Number($("adminCouponMaxUses").value || 1),
-          expires_at: $("adminCouponExpiresAt").value || "",
+          expires_at: normalizeDateTimeLocalToIso(expiresAtRaw),
         };
         if (payload.max_uses < 1) {
           setCouponStatus("Max uses must be at least 1.", true);
@@ -685,10 +714,18 @@ window.addEventListener("load", async () => {
           body: JSON.stringify(payload),
         });
         clearCouponCreateForm();
-        await loadDashboard();
         setCouponStatus(`Coupon ${result?.coupon?.code || "created"} created successfully.`);
+        try {
+          await loadDashboard();
+        } catch (refreshError) {
+          setCouponStatus(
+            `Coupon ${result?.coupon?.code || "created"} created successfully. Dashboard refresh failed: ${
+              refreshError?.message || "Please refresh the page."
+            }`
+          );
+        }
       } catch (error) {
-        setCouponStatus(error.message || "Failed to create coupon.", true);
+        setCouponStatus(friendlyAdminErrorMessage(error, "Failed to create coupon."), true);
       }
     };
   }
@@ -754,8 +791,19 @@ window.addEventListener("load", async () => {
 
   try {
     await loadDashboard();
-  } catch (_) {
-    window.location.replace("/kmak/1957/1965/a/login");
+  } catch (error) {
+    const status = Number(error?.status || 0);
+    if (status === 401 || status === 403) {
+      window.location.replace("/kmak/1957/1965/a/login");
+      return;
+    }
+    setDashboardStatus(
+      friendlyAdminErrorMessage(
+        error,
+        "The admin dashboard could not finish loading. Your session may still be valid, so please refresh once before signing in again."
+      ),
+      true
+    );
   }
 });
 
