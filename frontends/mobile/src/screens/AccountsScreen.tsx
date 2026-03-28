@@ -4,7 +4,9 @@ import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
+import { OptionSelect } from '../components/OptionSelect';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { WEB_BASE_URL } from '../constants/config';
 import { financeApi, getApiErrorInfo } from '../services/api';
 import { AccountRecord, BankAccountRecord, BankConnectionRecord } from '../types/app';
@@ -15,12 +17,26 @@ import { spacing, typography } from '../theme/theme';
 export const AccountsScreen: React.FC = () => {
   const { theme } = useTheme();
   const { user } = useAuth();
+  const { locale, t } = useLanguage();
   const [accounts, setAccounts] = useState<AccountRecord[]>([]);
   const [connections, setConnections] = useState<BankConnectionRecord[]>([]);
   const [bankAccounts, setBankAccounts] = useState<BankAccountRecord[]>([]);
   const [query, setQuery] = useState('');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [bankMessage, setBankMessage] = useState<string | null>(null);
+  const [transferMessage, setTransferMessage] = useState<string | null>(null);
+  const [transferMessageIsError, setTransferMessageIsError] = useState(false);
+  const [accountMessage, setAccountMessage] = useState<string | null>(null);
+  const [accountMessageIsError, setAccountMessageIsError] = useState(false);
+  const [newAccountName, setNewAccountName] = useState('');
+  const [newAccountType, setNewAccountType] = useState('checking');
+  const [newGroupName, setNewGroupName] = useState('bank');
+  const [newBalance, setNewBalance] = useState('');
+  const [submittingAccount, setSubmittingAccount] = useState(false);
+  const [transferFromId, setTransferFromId] = useState<string | null>(null);
+  const [transferToId, setTransferToId] = useState<string | null>(null);
+  const [transferAmount, setTransferAmount] = useState('');
+  const [submittingTransfer, setSubmittingTransfer] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const bankSyncAllowed = Boolean(user?.is_lifetime || user?.feature_flags?.bank_sync);
@@ -81,6 +97,90 @@ export const AccountsScreen: React.FC = () => {
     );
   }, [filteredAccounts]);
 
+  const accountOptions = useMemo(
+    () => accounts.map((account) => ({ value: String(account.account_id), label: account.account_name })),
+    [accounts]
+  );
+
+  const accountTypeOptions = useMemo(
+    () => [
+      { value: 'checking', label: 'Checking' },
+      { value: 'saving', label: 'Saving' },
+      { value: 'cash', label: 'Cash' },
+      { value: 'asset', label: 'Asset' },
+      { value: 'credit_card', label: 'Credit Card' },
+    ],
+    []
+  );
+
+  const handleCreateAccount = useCallback(async () => {
+    if (!user?.user_id) return;
+    const accountName = newAccountName.trim();
+    const groupName = newGroupName.trim() || 'bank';
+    const balance = numberFromUnknown(newBalance);
+
+    if (!accountName) {
+      setAccountMessage('Account name is required.');
+      setAccountMessageIsError(true);
+      return;
+    }
+
+    try {
+      setSubmittingAccount(true);
+      await financeApi.createAccount({
+        user_id: user.user_id,
+        account_name: accountName,
+        account_type: newAccountType,
+        group_name: groupName,
+        balance,
+      });
+      setNewAccountName('');
+      setNewGroupName(newAccountType === 'credit_card' ? 'debt' : 'bank');
+      setNewBalance('');
+      setAccountMessage('Account created successfully.');
+      setAccountMessageIsError(false);
+      await loadData();
+    } catch (error) {
+      setAccountMessage(getApiErrorInfo(error).message);
+      setAccountMessageIsError(true);
+    } finally {
+      setSubmittingAccount(false);
+    }
+  }, [loadData, newAccountName, newAccountType, newBalance, newGroupName, user?.user_id]);
+
+  const handleTransfer = useCallback(async () => {
+    if (!user?.user_id) return;
+
+    const amount = numberFromUnknown(transferAmount);
+    if (!transferFromId || !transferToId || amount <= 0) {
+      setTransferMessage(t('accounts.transferMissingFields'));
+      setTransferMessageIsError(true);
+      return;
+    }
+
+    if (transferFromId === transferToId) {
+      setTransferMessage(t('accounts.transferSameAccount'));
+      setTransferMessageIsError(true);
+      return;
+    }
+
+    try {
+      setSubmittingTransfer(true);
+      await financeApi.transferAccounts(user.user_id, Number(transferFromId), Number(transferToId), amount);
+      setTransferMessage(t('accounts.transferSuccess'));
+      setTransferMessageIsError(false);
+      setTransferAmount('');
+      setTransferFromId(null);
+      setTransferToId(null);
+      await loadData();
+    } catch (error) {
+      setTransferMessage(getApiErrorInfo(error).message);
+      setTransferMessageIsError(true);
+    } finally {
+      setSubmittingTransfer(false);
+    }
+  }, [loadData, t, transferAmount, transferFromId, transferToId, user?.user_id]);
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.bgTop }]}
@@ -88,22 +188,102 @@ export const AccountsScreen: React.FC = () => {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primaryStart} />}
     >
       <Card>
-        <Text style={[styles.heading, { color: theme.heading }]}>Accounts</Text>
-        <Text style={[styles.subheading, { color: theme.muted }]}>Search by account name, type, group, or balance.</Text>
-        <Input placeholder="Search accounts" value={query} onChangeText={setQuery} />
+        <Text style={[styles.heading, { color: theme.heading }]}>{t('accounts.heading')}</Text>
+        <Text style={[styles.subheading, { color: theme.muted }]}>{t('accounts.subheading')}</Text>
+        <Input placeholder={t('accounts.searchPlaceholder')} value={query} onChangeText={setQuery} />
         <View style={styles.summaryRow}>
           <View>
-            <Text style={[styles.summaryLabel, { color: theme.muted }]}>Available</Text>
-            <Text style={[styles.summaryValue, { color: theme.primaryStart }]}>{formatCurrency(totals.available)}</Text>
+            <Text style={[styles.summaryLabel, { color: theme.muted }]}>{t('common.available')}</Text>
+            <Text style={[styles.summaryValue, { color: theme.primaryStart }]}>{formatCurrency(totals.available, locale)}</Text>
           </View>
           <View>
-            <Text style={[styles.summaryLabel, { color: theme.muted }]}>Debt</Text>
-            <Text style={[styles.summaryValue, { color: theme.dangerStart }]}>{formatCurrency(totals.debt)}</Text>
+            <Text style={[styles.summaryLabel, { color: theme.muted }]}>{t('common.debt')}</Text>
+            <Text style={[styles.summaryValue, { color: theme.dangerStart }]}>{formatCurrency(totals.debt, locale)}</Text>
           </View>
         </View>
       </Card>
 
       {statusMessage ? <Card><Text style={[styles.errorText, { color: theme.dangerStart }]}>{statusMessage}</Text></Card> : null}
+
+      <Card>
+        <Text style={[styles.sectionTitle, { color: theme.heading }]}>Create Account</Text>
+        <Text style={[styles.sectionCaption, { color: theme.muted }]}>Add checking, savings, cash, asset, or credit accounts from mobile.</Text>
+        <Input
+          label="Account Name"
+          placeholder="Account Name"
+          value={newAccountName}
+          onChangeText={setNewAccountName}
+        />
+        <OptionSelect
+          label="Account Type"
+          placeholder="Account Type"
+          value={newAccountType}
+          options={accountTypeOptions}
+          onChange={(value) => {
+            setNewAccountType(value);
+            if (value === 'credit_card') {
+              setNewGroupName('debt');
+            }
+          }}
+        />
+        <Input
+          label="Group"
+          placeholder="bank"
+          value={newGroupName}
+          onChangeText={setNewGroupName}
+        />
+        <Input
+          label="Opening Balance"
+          placeholder="0.00"
+          keyboardType="decimal-pad"
+          value={newBalance}
+          onChangeText={setNewBalance}
+        />
+        {accountMessage ? (
+          <Text style={[styles.feedbackText, { color: accountMessageIsError ? theme.dangerStart : theme.secondaryStart }]}>
+            {accountMessage}
+          </Text>
+        ) : null}
+        <Button
+          title={submittingAccount ? 'Creating Account...' : 'Create Account'}
+          onPress={handleCreateAccount}
+          disabled={submittingAccount}
+        />
+      </Card>
+
+      <Card>
+        <Text style={[styles.sectionTitle, { color: theme.heading }]}>{t('accounts.transferTitle')}</Text>
+        <Text style={[styles.sectionCaption, { color: theme.muted }]}>{t('accounts.transferDescription')}</Text>
+        <OptionSelect
+          label={t('accounts.fromAccount')}
+          placeholder={t('accounts.fromAccount')}
+          value={transferFromId}
+          options={accountOptions}
+          onChange={setTransferFromId}
+        />
+        <OptionSelect
+          label={t('accounts.toAccount')}
+          placeholder={t('accounts.toAccount')}
+          value={transferToId}
+          options={accountOptions}
+          onChange={setTransferToId}
+        />
+        <Input
+          label={t('accounts.transferAmount')}
+          placeholder={t('accounts.transferAmount')}
+          keyboardType="decimal-pad"
+          value={transferAmount}
+          onChangeText={setTransferAmount}
+        />
+        {transferMessage ? (
+          <Text style={[styles.feedbackText, { color: transferMessageIsError ? theme.dangerStart : theme.secondaryStart }]}>{transferMessage}</Text>
+        ) : null}
+        <Button
+          title={submittingTransfer ? `${t('accounts.transferButton')}...` : t('accounts.transferButton')}
+          onPress={handleTransfer}
+          disabled={submittingTransfer || accountOptions.length < 2}
+        />
+      </Card>
 
       <Card>
         {filteredAccounts.length ? (
@@ -113,46 +293,46 @@ export const AccountsScreen: React.FC = () => {
                 <Text style={[styles.accountName, { color: theme.text }]}>{account.account_name}</Text>
                 <Text style={[styles.accountMeta, { color: theme.muted }]}>{account.account_type} {account.group_name ? `| ${account.group_name}` : ''}</Text>
               </View>
-              <Text style={[styles.accountAmount, { color: isDebtAccount(account.account_type) ? theme.dangerStart : theme.text }]}>{formatCurrency(account.balance)}</Text>
+              <Text style={[styles.accountAmount, { color: isDebtAccount(account.account_type) ? theme.dangerStart : theme.text }]}>{formatCurrency(account.balance, locale)}</Text>
             </View>
           ))
         ) : (
-          <EmptyState title="No matching accounts" message="Try a different search term or create accounts on the web app." />
+          <EmptyState title={t('accounts.noMatchingTitle')} message={t('accounts.noMatchingMessage')} />
         )}
       </Card>
 
       <Card>
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: theme.heading }]}>Bank Sync</Text>
-          <Button title="Manage On Website" variant="secondary" onPress={() => Linking.openURL(`${WEB_BASE_URL}/?mobile=1`)} />
+          <Text style={[styles.sectionTitle, { color: theme.heading }]}>{t('accounts.bankSync')}</Text>
+          <Button title={t('accounts.manageOnWebsite')} variant="secondary" onPress={() => Linking.openURL(`${WEB_BASE_URL}/?mobile=1`)} />
         </View>
         {!bankSyncAllowed ? (
-          <EmptyState title="Upgrade required" message="Secure bank connection and automatic transaction import are available on Regular and above, including Lifetime." />
+          <EmptyState title={t('accounts.upgradeRequiredTitle')} message={t('accounts.upgradeRequiredMessage')} />
         ) : bankMessage ? (
           <Text style={[styles.errorText, { color: theme.muted }]}>{bankMessage}</Text>
         ) : (
           <>
-            <Text style={[styles.sectionCaption, { color: theme.muted }]}>Linked institutions</Text>
+            <Text style={[styles.sectionCaption, { color: theme.muted }]}>{t('accounts.linkedInstitutions')}</Text>
             {connections.length ? connections.map((item, index) => (
               <View key={`${item.connection_id ?? index}-${item.institution_name}`} style={[styles.accountRow, { borderBottomColor: theme.border }]}> 
                 <View>
                   <Text style={[styles.accountName, { color: theme.text }]}>{item.institution_name || 'Institution'}</Text>
                   <Text style={[styles.accountMeta, { color: theme.muted }]}>{item.status || 'connected'}</Text>
                 </View>
-                <Text style={[styles.accountMeta, { color: theme.muted }]}>{formatDateTime(item.last_sync_at)}</Text>
+                <Text style={[styles.accountMeta, { color: theme.muted }]}>{formatDateTime(item.last_sync_at, locale)}</Text>
               </View>
-            )) : <Text style={[styles.accountMeta, { color: theme.muted }]}>No linked institutions yet.</Text>}
+            )) : <Text style={[styles.accountMeta, { color: theme.muted }]}>{t('accounts.noLinkedInstitutions')}</Text>}
 
-            <Text style={[styles.sectionCaption, { color: theme.muted, marginTop: spacing.md }]}>Imported accounts</Text>
+            <Text style={[styles.sectionCaption, { color: theme.muted, marginTop: spacing.md }]}>{t('accounts.importedAccounts')}</Text>
             {bankAccounts.length ? bankAccounts.map((item, index) => (
               <View key={`${item.bank_account_id ?? index}-${item.account_name}`} style={[styles.accountRow, { borderBottomColor: theme.border }]}> 
                 <View style={styles.accountBody}>
                   <Text style={[styles.accountName, { color: theme.text }]}>{item.account_name || 'Imported account'}</Text>
                   <Text style={[styles.accountMeta, { color: theme.muted }]}>{item.institution_name || ''} {item.subtype ? `| ${item.subtype}` : ''}</Text>
                 </View>
-                <Text style={[styles.accountAmount, { color: theme.text }]}>{formatCurrency(item.current_balance)}</Text>
+                <Text style={[styles.accountAmount, { color: theme.text }]}>{formatCurrency(item.current_balance, locale)}</Text>
               </View>
-            )) : <Text style={[styles.accountMeta, { color: theme.muted }]}>No imported accounts yet.</Text>}
+            )) : <Text style={[styles.accountMeta, { color: theme.muted }]}>{t('accounts.noImportedAccounts')}</Text>}
           </>
         )}
       </Card>
@@ -177,4 +357,5 @@ const styles = StyleSheet.create({
   sectionTitle: { ...typography.h3 },
   sectionCaption: { ...typography.caption, fontWeight: '700', marginBottom: spacing.sm },
   errorText: { ...typography.body },
+  feedbackText: { ...typography.body, marginBottom: spacing.md },
 });

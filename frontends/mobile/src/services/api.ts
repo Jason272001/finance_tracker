@@ -93,12 +93,38 @@ export const financeApi = {
     const response = await api.get<AccountRecord[]>('/accounts', { params: { user_id: userId } });
     return response.data;
   },
+  async createAccount(payload: {
+    user_id: number;
+    account_name: string;
+    account_type: string;
+    group_name: string;
+    balance: number;
+  }): Promise<AccountRecord> {
+    const response = await api.post<AccountRecord>('/accounts', payload);
+    return response.data;
+  },
   async getTransactions(userId: number): Promise<TransactionRecord[]> {
     const response = await api.get<TransactionRecord[]>('/transactions', { params: { user_id: userId } });
     return response.data;
   },
+  async createTransaction(payload: {
+    user_id: number;
+    tx_type: string;
+    amount: number;
+    account_id: number;
+    category: string;
+    note?: string;
+    date?: string | null;
+  }): Promise<TransactionRecord> {
+    const response = await api.post<TransactionRecord>('/transactions', payload);
+    return response.data;
+  },
   async getCategories(userId: number): Promise<CategoryRecord[]> {
     const response = await api.get<CategoryRecord[]>('/categories', { params: { user_id: userId } });
+    return response.data;
+  },
+  async createCategory(payload: { user_id: number; category_name: string }): Promise<CategoryRecord> {
+    const response = await api.post<CategoryRecord>('/categories', payload);
     return response.data;
   },
   async getDailyBalances(userId: number): Promise<DailyBalanceRecord[]> {
@@ -111,6 +137,15 @@ export const financeApi = {
   },
   async getBankAccounts(userId: number): Promise<BankAccountRecord[]> {
     const response = await api.get<BankAccountRecord[]>('/bank/accounts', { params: { user_id: userId } });
+    return response.data;
+  },
+  async transferAccounts(userId: number, fromAccountId: number, toAccountId: number, amount: number): Promise<{ ok: boolean }> {
+    const response = await api.post<{ ok: boolean }>('/accounts/transfer', {
+      user_id: userId,
+      from_account_id: fromAccountId,
+      to_account_id: toAccountId,
+      amount,
+    });
     return response.data;
   },
 };

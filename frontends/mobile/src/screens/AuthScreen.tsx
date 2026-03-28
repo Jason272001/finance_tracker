@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+ï»¿import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Image,
@@ -99,11 +99,11 @@ export const AuthScreen: React.FC = () => {
             <Image source={require('../../assets/icon.png')} style={styles.logo} resizeMode="contain" />
             <View style={styles.headerTextWrap}>
               <Text style={[styles.title, { color: theme.heading }]}>KeeperBMA</Text>
-              <Text style={[styles.subtitle, { color: theme.muted }]}>Mobile companion app</Text>
+              <Text style={[styles.subtitle, { color: theme.muted }]}>Sign in to your account</Text>
             </View>
           </View>
-          <Text style={[styles.helperText, { color: theme.muted }]}>Sign in to view your live finance data. New accounts and billing are managed on the KeeperBMA website.</Text>
-          <Button title="If you don’t have an account, sign up here" variant="secondary" onPress={() => Linking.openURL(signUpUrl)} />
+          <Text style={[styles.helperText, { color: theme.muted }]}>Don't have an account yet? Create your KeeperBMA account on the website, then come back here to sign in on mobile.</Text>
+          <Button title="If you don't have an account, sign up here" variant="secondary" onPress={() => Linking.openURL(signUpUrl)} />
         </Card>
 
         <Card>
@@ -184,3 +184,5 @@ const styles = StyleSheet.create({
   noticeTitle: { ...typography.h3, marginBottom: spacing.xs },
   noticeText: { ...typography.body },
 });
+
+

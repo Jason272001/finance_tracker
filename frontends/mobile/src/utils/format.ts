@@ -7,9 +7,9 @@ export const numberFromUnknown = (value: unknown): number => {
   return 0;
 };
 
-export const formatCurrency = (value: unknown): string => {
+export const formatCurrency = (value: unknown, locale = 'en-US'): string => {
   const amount = numberFromUnknown(value);
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
@@ -17,22 +17,22 @@ export const formatCurrency = (value: unknown): string => {
   }).format(amount);
 };
 
-export const formatShortDate = (value?: string | null): string => {
+export const formatShortDate = (value?: string | null, locale = 'en-US'): string => {
   if (!value) return '-';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(locale, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   }).format(date);
 };
 
-export const formatDateTime = (value?: string | null): string => {
+export const formatDateTime = (value?: string | null, locale = 'en-US'): string => {
   if (!value) return '-';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(locale, {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',

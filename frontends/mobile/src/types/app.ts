@@ -49,7 +49,8 @@ export interface TransactionRecord {
 export interface CategoryRecord {
   category_id?: number;
   user_id: number;
-  name: string;
+  name?: string;
+  category_name?: string;
   category_type?: string | null;
   is_auto?: boolean;
 }

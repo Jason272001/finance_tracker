@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Home, List, CreditCard, Settings as SettingsIcon } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../theme/ThemeContext';
 import { LoadingView } from '../components/LoadingView';
 import { AuthScreen } from '../screens/AuthScreen';
@@ -15,6 +16,7 @@ const Tab = createBottomTabNavigator();
 
 const TabNavigator = () => {
   const { theme } = useTheme();
+  const { t } = useLanguage();
 
   return (
     <Tab.Navigator
@@ -39,6 +41,7 @@ const TabNavigator = () => {
         name="Home"
         component={HomeScreen}
         options={{
+          title: t('tab.home'),
           tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
         }}
       />
@@ -46,6 +49,7 @@ const TabNavigator = () => {
         name="Transactions"
         component={TransactionsScreen}
         options={{
+          title: t('tab.transactions'),
           tabBarIcon: ({ color, size }) => <List color={color} size={size} />,
         }}
       />
@@ -53,6 +57,7 @@ const TabNavigator = () => {
         name="Accounts"
         component={AccountsScreen}
         options={{
+          title: t('tab.accounts'),
           tabBarIcon: ({ color, size }) => <CreditCard color={color} size={size} />,
         }}
       />
@@ -60,6 +65,7 @@ const TabNavigator = () => {
         name="Settings"
         component={SettingsScreen}
         options={{
+          title: t('tab.settings'),
           tabBarIcon: ({ color, size }) => <SettingsIcon color={color} size={size} />,
         }}
       />
@@ -70,9 +76,10 @@ const TabNavigator = () => {
 export const MainNavigator = () => {
   const { isReady, isAuthenticated } = useAuth();
   const { isReady: themeReady } = useTheme();
+  const { isReady: languageReady, t } = useLanguage();
 
-  if (!isReady || !themeReady) {
-    return <LoadingView message="Preparing mobile app..." />;
+  if (!isReady || !themeReady || !languageReady) {
+    return <LoadingView message={t('app.loading')} />;
   }
 
   return (
