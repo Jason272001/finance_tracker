@@ -132,6 +132,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/admin1957/:path*",
+      "destination": "https://api.keeperbma.com/admin1957/:path*"
+    },
+    {
       "source": "/auth",
       "destination": "/auth.html"
     },
