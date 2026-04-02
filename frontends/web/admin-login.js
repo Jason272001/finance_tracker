@@ -1,9 +1,26 @@
 const $ = (id) => document.getElementById(id);
 const state = {
-  apiBase: "https://api.keeperbma.com",
+  apiBase: resolveAdminApiBase(),
   theme: "light",
 };
 const ADMIN_TOKEN_KEY = "keeperbma_admin_token";
+
+function resolveAdminApiBase() {
+  const override = String(window.__KEEPERBMA_API_BASE__ || localStorage.getItem("keeperbma_api_base") || "").trim();
+  if (override) return override.replace(/\/+$/, "");
+  const { protocol, origin, hostname } = window.location;
+  const host = String(hostname || "").toLowerCase();
+  if (host === "keeperbma.com" || host === "www.keeperbma.com") {
+    return "https://api.keeperbma.com";
+  }
+  if (host === "api.keeperbma.com") {
+    return origin;
+  }
+  if (protocol === "http:" || protocol === "https:") {
+    return origin;
+  }
+  return "https://api.keeperbma.com";
+}
 
 class ApiError extends Error {
   constructor(message, status = 500, payload = {}) {
