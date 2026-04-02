@@ -17,16 +17,17 @@ const state = {
 const ADMIN_TOKEN_KEY = "keeperbma_admin_token";
 
 function resolveAdminApiBase() {
-  const override = String(window.__KEEPERBMA_API_BASE__ || localStorage.getItem("keeperbma_api_base") || "").trim();
-  if (override) return override.replace(/\/+$/, "");
   const { protocol, origin, hostname } = window.location;
   const host = String(hostname || "").toLowerCase();
   if (host === "keeperbma.com" || host === "www.keeperbma.com") {
+    localStorage.removeItem("keeperbma_api_base");
     return "https://api.keeperbma.com";
   }
   if (host === "api.keeperbma.com") {
     return origin;
   }
+  const override = String(window.__KEEPERBMA_API_BASE__ || localStorage.getItem("keeperbma_api_base") || "").trim();
+  if (override) return override.replace(/\/+$/, "");
   if (protocol === "http:" || protocol === "https:") {
     return origin;
   }
