@@ -10,7 +10,7 @@ function resolveAdminApiBase() {
   const host = String(hostname || "").toLowerCase();
   if (host === "keeperbma.com" || host === "www.keeperbma.com") {
     localStorage.removeItem("keeperbma_api_base");
-    return origin;
+    return "https://api.keeperbma.com";
   }
   if (host === "api.keeperbma.com") {
     return origin;
