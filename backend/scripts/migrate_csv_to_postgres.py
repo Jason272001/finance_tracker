@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 from pathlib import Path
@@ -11,14 +12,114 @@ from sqlalchemy import create_engine, text
 ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT / "data"
 
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 PGHOST = os.getenv("PGHOST", "127.0.0.1")
 PGPORT = int(os.getenv("PGPORT", "5432"))
 PGDATABASE = os.getenv("PGDATABASE", "keeperbma")
 PGUSER = os.getenv("PGUSER", "postgres")
 PGPASSWORD = os.getenv("PGPASSWORD", "")
 
+TABLE_MIGRATIONS = [
+    (
+        "users",
+        "users.csv",
+        [
+            "user_id",
+            "name",
+            "email",
+            "phone",
+            "password",
+            "is_lifetime",
+            "payment_status",
+            "trial_status",
+            "email_notifications_enabled",
+            "profile_image_url",
+            "coupon_code",
+            "created_at",
+            "plan_code",
+            "subscription_status",
+            "trial_ends_at",
+            "subscription_started_at",
+            "subscription_ends_at",
+            "billing_provider",
+            "billing_customer_id",
+            "billing_subscription_id",
+            "billing_price_id",
+            "billing_cycle",
+            "plan_with_website",
+            "next_charge_at",
+        ],
+    ),
+    (
+        "transactions",
+        "transactions.csv",
+        ["txn_id", "date", "type", "amount", "account_id", "category", "note", "user_id"],
+    ),
+    (
+        "accounts",
+        "accounts.csv",
+        ["account_id", "account_name", "account_type", "group", "user_id", "balance"],
+    ),
+    (
+        "daily_balances",
+        "daily_balances.csv",
+        ["dailyB_id", "date", "account_id", "balance", "type", "user_id"],
+    ),
+    (
+        "categories",
+        "category.csv",
+        ["category_id", "category_name", "user_id", "is_auto", "linked_account_id"],
+    ),
+    (
+        "admin_1957",
+        "admin_1957.csv",
+        ["id", "name", "email", "phone", "password", "position", "created_at"],
+    ),
+    (
+        "coupons",
+        "coupons.csv",
+        [
+            "id",
+            "code",
+            "plan_code",
+            "billing_cycle",
+            "is_lifetime",
+            "max_uses",
+            "used_count",
+            "is_active",
+            "expires_at",
+            "created_by_admin_id",
+            "created_at",
+        ],
+    ),
+]
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Migrate local CSV data into PostgreSQL. Safe by default: existing rows are not overwritten unless --replace is used."
+    )
+    parser.add_argument(
+        "--source-dir",
+        default=str(DATA_DIR),
+        help="Directory containing source CSV files. Defaults to the local data/ directory.",
+    )
+    parser.add_argument(
+        "--replace",
+        action="store_true",
+        help="Truncate each destination table before importing from CSV.",
+    )
+    parser.add_argument(
+        "--allow-empty",
+        action="store_true",
+        help="Allow --replace to clear a table even when the source CSV is missing or empty.",
+    )
+    return parser.parse_args()
+
 
 def _admin_conn():
+    if DATABASE_URL:
+        raise RuntimeError("Database already selected via DATABASE_URL; skip admin database creation.")
     return psycopg2.connect(
         host=PGHOST,
         port=PGPORT,
@@ -29,6 +130,9 @@ def _admin_conn():
 
 
 def ensure_database():
+    if DATABASE_URL:
+        print("[ok] skipping database creation because DATABASE_URL is set")
+        return
     conn = _admin_conn()
     conn.autocommit = True
     try:
@@ -44,7 +148,10 @@ def ensure_database():
 
 
 def get_engine():
-    url = f"postgresql+psycopg2://{PGUSER}:{PGPASSWORD}@{PGHOST}:{PGPORT}/{PGDATABASE}"
+    if DATABASE_URL:
+        url = DATABASE_URL
+    else:
+        url = f"postgresql+psycopg2://{PGUSER}:{PGPASSWORD}@{PGHOST}:{PGPORT}/{PGDATABASE}"
     return create_engine(url, pool_pre_ping=True)
 
 
@@ -194,123 +301,85 @@ def _read_csv(path, cols):
     return df[cols]
 
 
-def migrate_table(engine, table_name, csv_name, cols):
-    df = _read_csv(DATA_DIR / csv_name, cols)
+def _table_row_count(engine, table_name):
     with engine.begin() as conn:
-        conn.execute(text(f'TRUNCATE TABLE "{table_name}"'))
-    if not df.empty:
-        if table_name == "categories":
-            df["is_auto"] = df["is_auto"].astype(str).str.lower().isin(["1", "true", "yes"])
-            df["linked_account_id"] = pd.to_numeric(df["linked_account_id"], errors="coerce")
-        if table_name == "users":
-            for bool_col in ["is_lifetime", "email_notifications_enabled", "plan_with_website"]:
-                if bool_col in df.columns:
-                    df[bool_col] = df[bool_col].astype(str).str.lower().isin(["1", "true", "yes"])
-        if table_name == "admin_1957":
-            pass
-        if table_name == "coupons":
-            for bool_col in ["is_lifetime", "is_active"]:
-                if bool_col in df.columns:
-                    df[bool_col] = df[bool_col].astype(str).str.lower().isin(["1", "true", "yes"])
-            for int_col in ["max_uses", "used_count", "created_by_admin_id"]:
-                if int_col in df.columns:
-                    df[int_col] = pd.to_numeric(df[int_col], errors="coerce")
-        if "amount" in df.columns:
-            df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
-        if "balance" in df.columns:
-            df["balance"] = pd.to_numeric(df["balance"], errors="coerce")
-        for id_col in ["user_id", "txn_id", "account_id", "dailyB_id", "category_id", "id"]:
-            if id_col in df.columns:
-                df[id_col] = pd.to_numeric(df[id_col], errors="coerce")
-        df.to_sql(table_name, con=engine, if_exists="append", index=False, method="multi")
-    print(f"[ok] migrated {table_name}: {len(df)} rows")
+        value = conn.execute(text(f'SELECT COUNT(*) FROM "{table_name}"')).scalar()
+    return int(value or 0)
+
+
+def migrate_table(engine, table_name, csv_path, cols, *, replace=False, allow_empty=False):
+    source_path = Path(csv_path)
+    df = _read_csv(source_path, cols)
+    existing_rows = _table_row_count(engine, table_name)
+
+    if replace:
+        if df.empty and not allow_empty:
+            raise RuntimeError(
+                f"Refusing to replace table '{table_name}' from empty or missing source '{source_path}'. "
+                "Pass --allow-empty only if you intentionally want to clear the table."
+            )
+        with engine.begin() as conn:
+            conn.execute(text(f'TRUNCATE TABLE "{table_name}"'))
+    else:
+        if existing_rows > 0:
+            print(
+                f"[skip] {table_name}: destination already has {existing_rows} rows. "
+                "Re-run with --replace to overwrite."
+            )
+            return
+        if df.empty:
+            print(f"[skip] {table_name}: source CSV missing or empty at {source_path}")
+            return
+
+    if df.empty:
+        print(f"[ok] cleared {table_name}: 0 rows imported from {source_path}")
+        return
+
+    if table_name == "categories":
+        df["is_auto"] = df["is_auto"].astype(str).str.lower().isin(["1", "true", "yes"])
+        df["linked_account_id"] = pd.to_numeric(df["linked_account_id"], errors="coerce")
+    if table_name == "users":
+        for bool_col in ["is_lifetime", "email_notifications_enabled", "plan_with_website"]:
+            if bool_col in df.columns:
+                df[bool_col] = df[bool_col].astype(str).str.lower().isin(["1", "true", "yes"])
+    if table_name == "coupons":
+        for bool_col in ["is_lifetime", "is_active"]:
+            if bool_col in df.columns:
+                df[bool_col] = df[bool_col].astype(str).str.lower().isin(["1", "true", "yes"])
+        for int_col in ["max_uses", "used_count", "created_by_admin_id"]:
+            if int_col in df.columns:
+                df[int_col] = pd.to_numeric(df[int_col], errors="coerce")
+    if "amount" in df.columns:
+        df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
+    if "balance" in df.columns:
+        df["balance"] = pd.to_numeric(df["balance"], errors="coerce")
+    for id_col in ["user_id", "txn_id", "account_id", "dailyB_id", "category_id", "id"]:
+        if id_col in df.columns:
+            df[id_col] = pd.to_numeric(df[id_col], errors="coerce")
+    df.to_sql(table_name, con=engine, if_exists="append", index=False, method="multi")
+    print(f"[ok] migrated {table_name}: {len(df)} rows from {source_path}")
 
 
 def main():
     try:
+        args = parse_args()
+        source_dir = Path(args.source_dir).expanduser().resolve()
+        if not source_dir.exists():
+            raise RuntimeError(f"Source directory not found: {source_dir}")
         ensure_database()
         engine = get_engine()
         create_tables(engine)
-
-        migrate_table(
-            engine,
-            table_name="users",
-            csv_name="users.csv",
-            cols=[
-                "user_id",
-                "name",
-                "email",
-                "phone",
-                "password",
-                "is_lifetime",
-                "payment_status",
-                "trial_status",
-                "email_notifications_enabled",
-                "profile_image_url",
-                "coupon_code",
-                "created_at",
-                "plan_code",
-                "subscription_status",
-                "trial_ends_at",
-                "subscription_started_at",
-                "subscription_ends_at",
-                "billing_provider",
-                "billing_customer_id",
-                "billing_subscription_id",
-                "billing_price_id",
-                "billing_cycle",
-                "plan_with_website",
-                "next_charge_at",
-            ],
-        )
-        migrate_table(
-            engine,
-            table_name="transactions",
-            csv_name="transactions.csv",
-            cols=["txn_id", "date", "type", "amount", "account_id", "category", "note", "user_id"],
-        )
-        migrate_table(
-            engine,
-            table_name="accounts",
-            csv_name="accounts.csv",
-            cols=["account_id", "account_name", "account_type", "group", "user_id", "balance"],
-        )
-        migrate_table(
-            engine,
-            table_name="daily_balances",
-            csv_name="daily_balances.csv",
-            cols=["dailyB_id", "date", "account_id", "balance", "type", "user_id"],
-        )
-        migrate_table(
-            engine,
-            table_name="categories",
-            csv_name="category.csv",
-            cols=["category_id", "category_name", "user_id", "is_auto", "linked_account_id"],
-        )
-        migrate_table(
-            engine,
-            table_name="admin_1957",
-            csv_name="admin_1957.csv",
-            cols=["id", "name", "email", "phone", "password", "position", "created_at"],
-        )
-        migrate_table(
-            engine,
-            table_name="coupons",
-            csv_name="coupons.csv",
-            cols=[
-                "id",
-                "code",
-                "plan_code",
-                "billing_cycle",
-                "is_lifetime",
-                "max_uses",
-                "used_count",
-                "is_active",
-                "expires_at",
-                "created_by_admin_id",
-                "created_at",
-            ],
-        )
+        print(f"[info] source directory: {source_dir}")
+        print(f"[info] mode: {'replace' if args.replace else 'safe-append'}")
+        for table_name, csv_name, cols in TABLE_MIGRATIONS:
+            migrate_table(
+                engine,
+                table_name=table_name,
+                csv_path=source_dir / csv_name,
+                cols=cols,
+                replace=bool(args.replace),
+                allow_empty=bool(args.allow_empty),
+            )
         print("[done] CSV to PostgreSQL migration complete.")
     except Exception as e:
         print(f"[error] migration failed: {e}")

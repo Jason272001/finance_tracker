@@ -30,6 +30,14 @@ CSV files under `data/` are **local runtime fallback/migration files**. They are
 
 Because of that, they should not be deleted until the project intentionally removes CSV fallback and backup support.
 
+When restoring PostgreSQL from local CSVs, use the migration script carefully:
+
+- Fresh/empty database: `python backend/scripts/migrate_csv_to_postgres.py`
+- Replace existing PostgreSQL rows from a verified CSV backup: `python backend/scripts/migrate_csv_to_postgres.py --replace --source-dir <path>`
+
+The `--replace` mode truncates destination tables before import, so it should only be used when the source CSV directory has been verified.
+The script accepts either `DATABASE_URL` or the `PGHOST` / `PGPORT` / `PGDATABASE` / `PGUSER` / `PGPASSWORD` variables.
+
 ## Local-only files
 
 These are intentionally ignored from git:

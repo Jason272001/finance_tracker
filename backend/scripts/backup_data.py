@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT / "data"
 BACKUP_DIR = ROOT / "backups"
 
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 PGHOST = os.getenv("PGHOST", "127.0.0.1")
 PGPORT = int(os.getenv("PGPORT", "5432"))
 PGDATABASE = os.getenv("PGDATABASE", "keeperbma")
@@ -20,7 +21,10 @@ PGPASSWORD = os.getenv("PGPASSWORD", "postgres")
 
 
 def get_engine():
-    url = f"postgresql+psycopg2://{PGUSER}:{PGPASSWORD}@{PGHOST}:{PGPORT}/{PGDATABASE}"
+    if DATABASE_URL:
+        url = DATABASE_URL
+    else:
+        url = f"postgresql+psycopg2://{PGUSER}:{PGPASSWORD}@{PGHOST}:{PGPORT}/{PGDATABASE}"
     return create_engine(url, pool_pre_ping=True)
 
 

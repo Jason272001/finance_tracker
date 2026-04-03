@@ -10,7 +10,9 @@ Single backend for all frontends (web, desktop, android, ios).
 ## Setup
 1. Configure environment variables (see `.env.example`).
 2. Run CSV -> PostgreSQL migration:
-   - `python backend/scripts/migrate_csv_to_postgres.py`
+   - Fresh/empty database: `python backend/scripts/migrate_csv_to_postgres.py`
+   - Replace existing table contents from a known CSV folder: `python backend/scripts/migrate_csv_to_postgres.py --replace --source-dir <path>`
+   - The script accepts either `DATABASE_URL` or the `PGHOST` / `PGPORT` / `PGDATABASE` / `PGUSER` / `PGPASSWORD` variables
 3. Run backup:
    - `python backend/scripts/backup_data.py`
 4. Run API locally:
@@ -65,4 +67,6 @@ Set these in Render to enable Stripe subscription checkout:
 
 ## Notes
 - This backend is shared by all client frontends.
-- Migration script creates database and tables, then imports current CSV data.
+- Migration script creates database and tables, then imports CSV data.
+- The migration script is safe by default: it skips tables that already contain rows.
+- `--replace` truncates each destination table before import, so only use it with a verified CSV source directory.
