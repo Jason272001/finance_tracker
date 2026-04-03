@@ -30,7 +30,7 @@ from backend.plaid_service import (
     transactions_sync,
 )
 from backend.plaid_store import PlaidStore
-from core import Account, Admin1957, Category, Coupon, DailyBalance, Transaction, User
+from core import Account, Admin1957, Category, Coupon, DailyBalance, SPECIAL_COUPON_CODE, Transaction, User
 
 
 app = FastAPI(title="KeeperBMA Backend", version="1.1.0")
@@ -1129,6 +1129,93 @@ def _payment_page_url(token: str, billing: Optional[str] = None, session_id: Opt
     return _append_query_params_preserve_checkout_id(_payment_page_base_url(), params)
 
 
+def _normalize_coupon_code(value: Optional[str]) -> str:
+    return str(value or "").strip().upper()
+
+
+def _coupon_grants_lifetime(coupon_code: Optional[str]) -> bool:
+    special_code = _normalize_coupon_code(SPECIAL_COUPON_CODE)
+    return bool(special_code) and _normalize_coupon_code(coupon_code) == special_code
+
+
+def _resolve_coupon_context(
+    coupon_code: Optional[str],
+    requested_plan_code: Optional[str],
+    requested_billing_cycle: Optional[str],
+) -> dict:
+    requested_plan = str(requested_plan_code or "").strip().lower()
+    requested_cycle = str(requested_billing_cycle or "").strip().lower()
+    if requested_cycle not in {"monthly", "annual"}:
+        requested_cycle = ""
+
+    normalized_code = _normalize_coupon_code(coupon_code)
+    context = {
+        "valid": False,
+        "error": "",
+        "generated": False,
+        "bypass_payment": False,
+        "is_lifetime": False,
+        "coupon_id": None,
+        "code": normalized_code,
+        "plan_code": requested_plan,
+        "billing_cycle": requested_cycle,
+    }
+    if not normalized_code:
+        return context
+
+    if _coupon_grants_lifetime(normalized_code):
+        context.update(
+            {
+                "valid": True,
+                "bypass_payment": True,
+                "is_lifetime": True,
+                "plan_code": "lifetime",
+                "billing_cycle": "",
+            }
+        )
+        return context
+
+    coupon = Coupon().get_by_code(normalized_code)
+    if not coupon:
+        context["error"] = "Invalid coupon code."
+        return context
+
+    if not bool(coupon.get("is_active")):
+        context["error"] = "Coupon is no longer active."
+        return context
+
+    expires_at = _as_utc(_parse_iso_datetime(str(coupon.get("expires_at", "")).strip()))
+    if expires_at is not None and expires_at <= datetime.now(timezone.utc):
+        context["error"] = "Coupon has expired."
+        return context
+
+    used_count = int(coupon.get("used_count") or 0)
+    max_uses = int(coupon.get("max_uses") or 0)
+    if max_uses > 0 and used_count >= max_uses:
+        context["error"] = "Coupon has already been used."
+        return context
+
+    coupon_plan_code = str(coupon.get("plan_code") or "").strip().lower() or requested_plan
+    coupon_is_lifetime = bool(coupon.get("is_lifetime")) or coupon_plan_code == "lifetime"
+    coupon_billing_cycle = "" if coupon_is_lifetime else str(coupon.get("billing_cycle") or requested_cycle).strip().lower()
+    if not coupon_is_lifetime and coupon_billing_cycle not in {"monthly", "annual"}:
+        coupon_billing_cycle = requested_cycle
+
+    context.update(
+        {
+            "valid": True,
+            "generated": True,
+            "bypass_payment": True,
+            "is_lifetime": coupon_is_lifetime,
+            "coupon_id": int(coupon.get("id") or 0) or None,
+            "code": str(coupon.get("code") or normalized_code).strip(),
+            "plan_code": "lifetime" if coupon_is_lifetime else coupon_plan_code,
+            "billing_cycle": "" if coupon_is_lifetime else coupon_billing_cycle,
+        }
+    )
+    return context
+
+
 def _stripe_fetch_checkout_session(session_id: str) -> dict:
     sid = str(session_id or "").strip()
     if not sid:
@@ -1550,19 +1637,19 @@ def register(body: RegisterBody):
             phone=body.phone,
             coupon_code=coupon_code,
             plan_code=body.plan_code,
-            billing_cycle=body.billing_cycle,
+            billing_cycle=coupon_ctx.get("billing_cycle") if coupon_ctx.get("valid") else body.billing_cycle,
             plan_with_website=body.with_website,
-            activate_without_payment=bool(coupon_ctx.get("valid") and coupon_ctx.get("bypass_payment") and not coupon_ctx.get("is_lifetime")),
+            activate_without_payment=bool(coupon_ctx.get("valid") and not coupon_ctx.get("is_lifetime")),
             force_plan_code=coupon_ctx.get("plan_code") if coupon_ctx.get("valid") else None,
             force_lifetime=bool(coupon_ctx.get("valid") and coupon_ctx.get("is_lifetime")),
         )
         if bool(coupon_ctx.get("generated")) and bool(coupon_ctx.get("valid")):
-            Coupon().mark_used(coupon_ctx.get("code") or "")
+            Coupon().mark_used(coupon_ctx.get("coupon_id") or 0)
 
         profile = User().get_user_by_id(uid) or {}
         subscription = _build_subscription_payload(profile)
         profile_payload = _build_profile_payload(profile)
-        payment_required = not bool(coupon_ctx.get("valid") and coupon_ctx.get("bypass_payment"))
+        payment_required = not bool(coupon_ctx.get("valid"))
         payment_token = ""
         payment_url = ""
         if payment_required:
@@ -2271,7 +2358,7 @@ def billing_precheckout(body: BillingPrecheckoutBody):
     coupon_code = _normalize_coupon_code(body.coupon_code)
     if coupon_code and not bool(coupon_ctx.get("valid")):
         raise HTTPException(status_code=400, detail=str(coupon_ctx.get("error") or "Invalid coupon code."))
-    if bool(coupon_ctx.get("valid") and coupon_ctx.get("bypass_payment")):
+    if bool(coupon_ctx.get("valid")):
         return {
             "ok": True,
             "skip_checkout": True,
@@ -2351,7 +2438,7 @@ def billing_precheckout_embedded(body: BillingPrecheckoutEmbeddedBody):
     coupon_code = _normalize_coupon_code(body.coupon_code)
     if coupon_code and not bool(coupon_ctx.get("valid")):
         raise HTTPException(status_code=400, detail=str(coupon_ctx.get("error") or "Invalid coupon code."))
-    if bool(coupon_ctx.get("valid") and coupon_ctx.get("bypass_payment")):
+    if bool(coupon_ctx.get("valid")):
         return {
             "ok": True,
             "skip_checkout": True,
