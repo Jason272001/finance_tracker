@@ -1472,7 +1472,7 @@ class Coupon:
         return cycle
 
     def _normalize_datetime(self, value):
-        if value in (None, "", pd.NA):
+        if self._is_blank(value):
             return ""
         if isinstance(value, datetime):
             return value.isoformat()
@@ -1484,23 +1484,58 @@ class Coupon:
         except Exception as exc:
             raise ValueError("Coupon expiration must be a valid date/time.") from exc
 
+    def _is_blank(self, value):
+        if value is None:
+            return True
+        try:
+            if pd.isna(value):
+                return True
+        except Exception:
+            pass
+        return isinstance(value, str) and not value.strip()
+
+    def _text_value(self, value, default=""):
+        return default if self._is_blank(value) else str(value)
+
+    def _int_value(self, value, default=0):
+        if self._is_blank(value):
+            return default
+        try:
+            return int(float(value))
+        except Exception:
+            return default
+
+    def _bool_value(self, value, default=False):
+        if self._is_blank(value):
+            return bool(default)
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            try:
+                if pd.isna(value):
+                    return bool(default)
+            except Exception:
+                pass
+            return value != 0
+        return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
     def _generate_code(self):
         return f"KMAK-{secrets.token_urlsafe(6).upper()}"
 
     def _serialize_record(self, row):
-        created_by_admin_id = str(row.get("created_by_admin_id", "") or "").strip()
+        created_by_admin_id = self._int_value(row.get("created_by_admin_id"), 0)
         return {
-            "id": int(float(row.get("id", 0) or 0)),
-            "code": str(row.get("code", "") or ""),
-            "plan_code": str(row.get("plan_code", "") or "").strip().lower(),
-            "billing_cycle": str(row.get("billing_cycle", "") or "").strip().lower(),
-            "is_lifetime": bool(_coerce_bool(row.get("is_lifetime", False))),
-            "max_uses": int(float(row.get("max_uses", 1) or 1)),
-            "used_count": int(float(row.get("used_count", 0) or 0)),
-            "is_active": bool(_coerce_bool(row.get("is_active", True))),
-            "expires_at": str(row.get("expires_at", "") or ""),
-            "created_by_admin_id": int(float(created_by_admin_id)) if created_by_admin_id else None,
-            "created_at": str(row.get("created_at", "") or ""),
+            "id": self._int_value(row.get("id"), 0),
+            "code": self._text_value(row.get("code"), ""),
+            "plan_code": self._text_value(row.get("plan_code"), "").strip().lower(),
+            "billing_cycle": self._text_value(row.get("billing_cycle"), "").strip().lower(),
+            "is_lifetime": self._bool_value(row.get("is_lifetime", False)),
+            "max_uses": max(1, self._int_value(row.get("max_uses"), 1)),
+            "used_count": max(0, self._int_value(row.get("used_count"), 0)),
+            "is_active": self._bool_value(row.get("is_active", True), True),
+            "expires_at": self._text_value(row.get("expires_at"), ""),
+            "created_by_admin_id": created_by_admin_id or None,
+            "created_at": self._text_value(row.get("created_at"), ""),
         }
 
     def list_all(self):

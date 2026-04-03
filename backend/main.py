@@ -1494,6 +1494,15 @@ def _build_admin_daily_balance_records(daily_rows: list[dict], transaction_rows:
     return out
 
 
+def _load_admin_dashboard_section(section_name: str, loader):
+    try:
+        return loader(), None
+    except Exception:
+        logger.exception("Admin dashboard section failed: %s", section_name)
+        label = str(section_name or "").replace("_", " ").strip() or "section"
+        return [], f"{label.title()} could not be loaded."
+
+
 @app.on_event("startup")
 def _startup_checks() -> None:
     if not TOKEN_SECRET or len(TOKEN_SECRET) < 32:
@@ -1809,13 +1818,34 @@ def admin1957_dashboard(request: Request, authorization: Optional[str] = Header(
     admins_model = Admin1957()
     coupons_model = Coupon()
 
-    users = users_model.list_all()
-    accounts = _records_from_frame(accounts_model._load())
-    transactions = _records_from_frame(tx_model._load())
-    categories = _build_admin_category_records(_records_from_frame(categories_model._load()))
-    daily_balances = _build_admin_daily_balance_records(_records_from_frame(daily_model._load()), transactions)
-    admins = admins_model.list_all()
-    coupons = coupons_model.list_all()
+    warnings = []
+    users, warning = _load_admin_dashboard_section("users", users_model.list_all)
+    if warning:
+        warnings.append(warning)
+    accounts, warning = _load_admin_dashboard_section("accounts", lambda: _records_from_frame(accounts_model._load()))
+    if warning:
+        warnings.append(warning)
+    transactions, warning = _load_admin_dashboard_section("transactions", lambda: _records_from_frame(tx_model._load()))
+    if warning:
+        warnings.append(warning)
+    categories, warning = _load_admin_dashboard_section(
+        "categories",
+        lambda: _build_admin_category_records(_records_from_frame(categories_model._load())),
+    )
+    if warning:
+        warnings.append(warning)
+    daily_balances, warning = _load_admin_dashboard_section(
+        "daily_balances",
+        lambda: _build_admin_daily_balance_records(_records_from_frame(daily_model._load()), transactions),
+    )
+    if warning:
+        warnings.append(warning)
+    admins, warning = _load_admin_dashboard_section("admins", admins_model.list_all)
+    if warning:
+        warnings.append(warning)
+    coupons, warning = _load_admin_dashboard_section("coupons", coupons_model.list_all)
+    if warning:
+        warnings.append(warning)
 
     return {
         "ok": True,
@@ -1836,6 +1866,7 @@ def admin1957_dashboard(request: Request, authorization: Optional[str] = Header(
         "categories": categories,
         "daily_balances": daily_balances,
         "coupons": coupons,
+        "warnings": warnings,
     }
 
 
