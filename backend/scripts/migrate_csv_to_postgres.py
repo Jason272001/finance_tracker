@@ -53,7 +53,28 @@ def create_tables(engine):
     CREATE TABLE IF NOT EXISTS users (
         user_id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
-        password TEXT NOT NULL
+        email TEXT,
+        phone TEXT,
+        password TEXT NOT NULL,
+        is_lifetime BOOLEAN,
+        payment_status TEXT,
+        trial_status TEXT,
+        email_notifications_enabled BOOLEAN,
+        profile_image_url TEXT,
+        coupon_code TEXT,
+        created_at TEXT,
+        plan_code TEXT,
+        subscription_status TEXT,
+        trial_ends_at TEXT,
+        subscription_started_at TEXT,
+        subscription_ends_at TEXT,
+        billing_provider TEXT,
+        billing_customer_id TEXT,
+        billing_subscription_id TEXT,
+        billing_price_id TEXT,
+        billing_cycle TEXT,
+        plan_with_website BOOLEAN,
+        next_charge_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS transactions (
@@ -92,12 +113,74 @@ def create_tables(engine):
         is_auto BOOLEAN,
         linked_account_id INTEGER
     );
+
+    CREATE TABLE IF NOT EXISTS admin_1957 (
+        id INTEGER PRIMARY KEY,
+        name TEXT,
+        email TEXT,
+        phone TEXT,
+        password TEXT,
+        position TEXT,
+        created_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS coupons (
+        id INTEGER PRIMARY KEY,
+        code TEXT,
+        plan_code TEXT,
+        billing_cycle TEXT,
+        is_lifetime BOOLEAN,
+        max_uses INTEGER,
+        used_count INTEGER,
+        is_active BOOLEAN,
+        expires_at TEXT,
+        created_by_admin_id INTEGER,
+        created_at TEXT
+    );
     """
     with engine.begin() as conn:
         for stmt in ddl.split(";"):
             s = stmt.strip()
             if s:
                 conn.execute(text(s))
+        for stmt in [
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS is_lifetime BOOLEAN',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_status TEXT',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_status TEXT',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS email_notifications_enabled BOOLEAN',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_url TEXT',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS coupon_code TEXT',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TEXT',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_code TEXT',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_ends_at TEXT',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_started_at TEXT',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_ends_at TEXT',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_provider TEXT',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_customer_id TEXT',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_subscription_id TEXT',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_price_id TEXT',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_cycle TEXT',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_with_website BOOLEAN',
+            'ALTER TABLE users ADD COLUMN IF NOT EXISTS next_charge_at TEXT',
+            'ALTER TABLE admin_1957 ADD COLUMN IF NOT EXISTS email TEXT',
+            'ALTER TABLE admin_1957 ADD COLUMN IF NOT EXISTS phone TEXT',
+            'ALTER TABLE admin_1957 ADD COLUMN IF NOT EXISTS password TEXT',
+            'ALTER TABLE admin_1957 ADD COLUMN IF NOT EXISTS position TEXT',
+            'ALTER TABLE admin_1957 ADD COLUMN IF NOT EXISTS created_at TEXT',
+            'ALTER TABLE coupons ADD COLUMN IF NOT EXISTS plan_code TEXT',
+            'ALTER TABLE coupons ADD COLUMN IF NOT EXISTS billing_cycle TEXT',
+            'ALTER TABLE coupons ADD COLUMN IF NOT EXISTS is_lifetime BOOLEAN',
+            'ALTER TABLE coupons ADD COLUMN IF NOT EXISTS max_uses INTEGER',
+            'ALTER TABLE coupons ADD COLUMN IF NOT EXISTS used_count INTEGER',
+            'ALTER TABLE coupons ADD COLUMN IF NOT EXISTS is_active BOOLEAN',
+            'ALTER TABLE coupons ADD COLUMN IF NOT EXISTS expires_at TEXT',
+            'ALTER TABLE coupons ADD COLUMN IF NOT EXISTS created_by_admin_id INTEGER',
+            'ALTER TABLE coupons ADD COLUMN IF NOT EXISTS created_at TEXT',
+        ]:
+            conn.execute(text(stmt))
     print("[ok] tables ensured")
 
 
@@ -119,11 +202,24 @@ def migrate_table(engine, table_name, csv_name, cols):
         if table_name == "categories":
             df["is_auto"] = df["is_auto"].astype(str).str.lower().isin(["1", "true", "yes"])
             df["linked_account_id"] = pd.to_numeric(df["linked_account_id"], errors="coerce")
+        if table_name == "users":
+            for bool_col in ["is_lifetime", "email_notifications_enabled", "plan_with_website"]:
+                if bool_col in df.columns:
+                    df[bool_col] = df[bool_col].astype(str).str.lower().isin(["1", "true", "yes"])
+        if table_name == "admin_1957":
+            pass
+        if table_name == "coupons":
+            for bool_col in ["is_lifetime", "is_active"]:
+                if bool_col in df.columns:
+                    df[bool_col] = df[bool_col].astype(str).str.lower().isin(["1", "true", "yes"])
+            for int_col in ["max_uses", "used_count", "created_by_admin_id"]:
+                if int_col in df.columns:
+                    df[int_col] = pd.to_numeric(df[int_col], errors="coerce")
         if "amount" in df.columns:
             df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
         if "balance" in df.columns:
             df["balance"] = pd.to_numeric(df["balance"], errors="coerce")
-        for id_col in ["user_id", "txn_id", "account_id", "dailyB_id", "category_id"]:
+        for id_col in ["user_id", "txn_id", "account_id", "dailyB_id", "category_id", "id"]:
             if id_col in df.columns:
                 df[id_col] = pd.to_numeric(df[id_col], errors="coerce")
         df.to_sql(table_name, con=engine, if_exists="append", index=False, method="multi")
@@ -140,7 +236,32 @@ def main():
             engine,
             table_name="users",
             csv_name="users.csv",
-            cols=["user_id", "name", "password"],
+            cols=[
+                "user_id",
+                "name",
+                "email",
+                "phone",
+                "password",
+                "is_lifetime",
+                "payment_status",
+                "trial_status",
+                "email_notifications_enabled",
+                "profile_image_url",
+                "coupon_code",
+                "created_at",
+                "plan_code",
+                "subscription_status",
+                "trial_ends_at",
+                "subscription_started_at",
+                "subscription_ends_at",
+                "billing_provider",
+                "billing_customer_id",
+                "billing_subscription_id",
+                "billing_price_id",
+                "billing_cycle",
+                "plan_with_website",
+                "next_charge_at",
+            ],
         )
         migrate_table(
             engine,
@@ -165,6 +286,30 @@ def main():
             table_name="categories",
             csv_name="category.csv",
             cols=["category_id", "category_name", "user_id", "is_auto", "linked_account_id"],
+        )
+        migrate_table(
+            engine,
+            table_name="admin_1957",
+            csv_name="admin_1957.csv",
+            cols=["id", "name", "email", "phone", "password", "position", "created_at"],
+        )
+        migrate_table(
+            engine,
+            table_name="coupons",
+            csv_name="coupons.csv",
+            cols=[
+                "id",
+                "code",
+                "plan_code",
+                "billing_cycle",
+                "is_lifetime",
+                "max_uses",
+                "used_count",
+                "is_active",
+                "expires_at",
+                "created_by_admin_id",
+                "created_at",
+            ],
         )
         print("[done] CSV to PostgreSQL migration complete.")
     except Exception as e:
