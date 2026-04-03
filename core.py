@@ -10,10 +10,11 @@ import time
 from datetime import datetime, timedelta
 from contextlib import contextmanager
 try:
-    from sqlalchemy import create_engine, inspect
+    from sqlalchemy import create_engine, inspect, text
 except Exception:
     create_engine = None
     inspect = None
+    text = None
 # ---------------------------
 # Paths
 # ---------------------------
@@ -239,6 +240,23 @@ def _write_table(table_name, df):
     if engine is None:
         raise RuntimeError("MySQL engine is not configured.")
     df.to_sql(table_name, con=engine, if_exists="replace", index=False)
+
+
+def _update_sql_row(table_name, key_column, key_value, updates):
+    engine = _get_engine()
+    if engine is None:
+        raise RuntimeError("Database engine is not configured.")
+    if text is None:
+        raise RuntimeError("SQLAlchemy text is unavailable. Install SQLAlchemy.")
+    clean_updates = {str(k): v for k, v in (updates or {}).items() if str(k).strip()}
+    if not clean_updates:
+        return 0
+    set_clause = ", ".join(f"{col} = :{col}" for col in clean_updates.keys())
+    params = {**clean_updates, "__key_value": key_value}
+    statement = text(f"UPDATE {table_name} SET {set_clause} WHERE {key_column} = :__key_value")
+    with engine.begin() as conn:
+        result = conn.execute(statement, params)
+    return int(getattr(result, "rowcount", 0) or 0)
 
 
 def _atomic_write_csv(path, df):
@@ -741,6 +759,7 @@ class User:
         allowed_cycles = {"", "monthly", "annual"}
         allowed_payment_status = {"pending", "active"}
         allowed_trial_status = {"pending", "active", "inactive"}
+        updates = {}
 
         def _update(df):
             uid_col = pd.to_numeric(df["user_id"], errors="coerce")
@@ -754,64 +773,87 @@ class User:
                 if plan_s not in allowed_plan_codes:
                     raise ValueError("Invalid subscription plan.")
                 df.at[i, "plan_code"] = plan_s
+                updates["plan_code"] = plan_s
 
             if subscription_status is not None:
                 status_s = str(subscription_status).strip().lower()
                 if status_s not in allowed_status:
                     raise ValueError("Invalid subscription status.")
                 df.at[i, "subscription_status"] = status_s
+                updates["subscription_status"] = status_s
 
             if payment_status is not None:
                 payment_s = str(payment_status).strip().lower()
                 if payment_s not in allowed_payment_status:
                     raise ValueError("Invalid payment status.")
                 df.at[i, "payment_status"] = payment_s
+                updates["payment_status"] = payment_s
 
             if trial_status is not None:
                 trial_s = str(trial_status).strip().lower()
                 if trial_s not in allowed_trial_status:
                     raise ValueError("Invalid trial status.")
                 df.at[i, "trial_status"] = trial_s
+                updates["trial_status"] = trial_s
 
             if trial_ends_at is not None:
-                df.at[i, "trial_ends_at"] = str(trial_ends_at).strip()
+                trial_ends_s = str(trial_ends_at).strip()
+                df.at[i, "trial_ends_at"] = trial_ends_s
+                updates["trial_ends_at"] = trial_ends_s
 
             if subscription_started_at is not None:
-                df.at[i, "subscription_started_at"] = str(subscription_started_at).strip()
+                started_s = str(subscription_started_at).strip()
+                df.at[i, "subscription_started_at"] = started_s
+                updates["subscription_started_at"] = started_s
 
             if subscription_ends_at is not None:
-                df.at[i, "subscription_ends_at"] = str(subscription_ends_at).strip()
+                ends_s = str(subscription_ends_at).strip()
+                df.at[i, "subscription_ends_at"] = ends_s
+                updates["subscription_ends_at"] = ends_s
 
             if billing_provider is not None:
-                df.at[i, "billing_provider"] = str(billing_provider).strip().lower()
+                provider_s = str(billing_provider).strip().lower()
+                df.at[i, "billing_provider"] = provider_s
+                updates["billing_provider"] = provider_s
 
             if billing_customer_id is not None:
-                df.at[i, "billing_customer_id"] = str(billing_customer_id).strip()
+                customer_s = str(billing_customer_id).strip()
+                df.at[i, "billing_customer_id"] = customer_s
+                updates["billing_customer_id"] = customer_s
 
             if billing_subscription_id is not None:
-                df.at[i, "billing_subscription_id"] = str(billing_subscription_id).strip()
+                subscription_id_s = str(billing_subscription_id).strip()
+                df.at[i, "billing_subscription_id"] = subscription_id_s
+                updates["billing_subscription_id"] = subscription_id_s
 
             if billing_price_id is not None:
-                df.at[i, "billing_price_id"] = str(billing_price_id).strip()
+                price_id_s = str(billing_price_id).strip()
+                df.at[i, "billing_price_id"] = price_id_s
+                updates["billing_price_id"] = price_id_s
 
             if billing_cycle is not None:
                 cycle_s = str(billing_cycle).strip().lower()
                 if cycle_s not in allowed_cycles:
                     raise ValueError("Invalid billing cycle.")
                 df.at[i, "billing_cycle"] = cycle_s
+                updates["billing_cycle"] = cycle_s
 
             if plan_with_website is not None:
-                df.at[i, "plan_with_website"] = bool(plan_with_website)
+                website_flag = bool(plan_with_website)
+                df.at[i, "plan_with_website"] = website_flag
+                updates["plan_with_website"] = website_flag
 
             if next_charge_at is not None:
-                df.at[i, "next_charge_at"] = str(next_charge_at).strip()
+                next_charge_s = str(next_charge_at).strip()
+                df.at[i, "next_charge_at"] = next_charge_s
+                updates["next_charge_at"] = next_charge_s
 
             return True, df
 
         if DB_IS_SQL:
             u = _load_users()
-            ok, out = _update(u)
-            _save_users(out)
+            ok, _ = _update(u)
+            _update_sql_row("users", "user_id", uid, updates)
             return ok
         with _file_lock(USERS_CSV):
             u = _load_users()
@@ -829,6 +871,7 @@ class User:
         profile_image_url=None,
     ):
         uid = int(user_id)
+        updates = {}
 
         def _update(df):
             uid_col = pd.to_numeric(df["user_id"], errors="coerce")
@@ -846,6 +889,7 @@ class User:
                 if len(dup) > 0:
                     raise ValueError("User name already exists.")
                 df.at[i, "name"] = name_s
+                updates["name"] = name_s
 
             if email is not None:
                 email_s = self._validate_email(email)
@@ -854,6 +898,7 @@ class User:
                 if len(dup) > 0:
                     raise ValueError("Email already exists.")
                 df.at[i, "email"] = email_s
+                updates["email"] = email_s
 
             if phone is not None:
                 phone_s = self._validate_phone(phone)
@@ -862,22 +907,26 @@ class User:
                 if len(dup) > 0:
                     raise ValueError("Phone already exists.")
                 df.at[i, "phone"] = phone_s
+                updates["phone"] = phone_s
 
             if email_notifications_enabled is not None:
-                df.at[i, "email_notifications_enabled"] = bool(email_notifications_enabled)
+                email_flag = bool(email_notifications_enabled)
+                df.at[i, "email_notifications_enabled"] = email_flag
+                updates["email_notifications_enabled"] = email_flag
 
             if profile_image_url is not None:
                 pic = str(profile_image_url).strip()
                 if len(pic) > 2_000_000:
                     raise ValueError("Profile image is too large.")
                 df.at[i, "profile_image_url"] = pic
+                updates["profile_image_url"] = pic
 
             return True, df
 
         if DB_IS_SQL:
             u = _load_users()
-            ok, out = _update(u)
-            _save_users(out)
+            ok, _ = _update(u)
+            _update_sql_row("users", "user_id", uid, updates)
             return ok
         with _file_lock(USERS_CSV):
             u = _load_users()
