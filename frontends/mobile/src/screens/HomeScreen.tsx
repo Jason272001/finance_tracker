@@ -14,6 +14,7 @@ import { ArrowUpRight, CreditCard, ShieldCheck } from 'lucide-react-native';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
+import { Input } from '../components/Input';
 import { StatCard } from '../components/StatCard';
 import { WEB_BASE_URL } from '../constants/config';
 import { useAuth } from '../context/AuthContext';
@@ -39,6 +40,26 @@ interface ChartSlice {
 }
 
 const formatChartAmount = (value: number): string => numberFromUnknown(value).toFixed(2);
+
+const parseRecordTimestamp = (value?: string | null): number | null => {
+  if (!value) return null;
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const toStartTimestamp = (value: string): number | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = new Date(`${trimmed}T00:00:00`).getTime();
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const toEndTimestamp = (value: string): number | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = new Date(`${trimmed}T23:59:59`).getTime();
+  return Number.isNaN(parsed) ? null : parsed;
+};
 
 const buildChartSlices = (
   entries: Array<[string, number]>,
@@ -69,6 +90,8 @@ export const HomeScreen: React.FC = () => {
   const [dailyBalances, setDailyBalances] = useState<DailyBalanceRecord[]>([]);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [chartStartDate, setChartStartDate] = useState('');
+  const [chartEndDate, setChartEndDate] = useState('');
 
   const chartColors = useMemo(
     () => [
@@ -139,12 +162,31 @@ export const HomeScreen: React.FC = () => {
     return { availableBalance, totalDebt, totalIncome, totalExpense };
   }, [accounts, transactions]);
 
+  const chartTransactions = useMemo(() => {
+    const startTs = toStartTimestamp(chartStartDate);
+    const endTs = toEndTimestamp(chartEndDate);
+
+    return transactions.filter((txn) => {
+      const txnTimestamp = parseRecordTimestamp(txn.date);
+      if (startTs !== null && (txnTimestamp === null || txnTimestamp < startTs)) return false;
+      if (endTs !== null && (txnTimestamp === null || txnTimestamp > endTs)) return false;
+      return true;
+    });
+  }, [chartEndDate, chartStartDate, transactions]);
+
+  const chartRangeLabel = useMemo(() => {
+    if (chartStartDate.trim() || chartEndDate.trim()) {
+      return `${chartStartDate.trim() || t('home.periodBeginning')} to ${chartEndDate.trim() || t('home.periodToday')}`;
+    }
+    return t('home.periodAllTime');
+  }, [chartEndDate, chartStartDate, t]);
+
   const chartData = useMemo(() => {
     const incomeByCategory = new Map<string, number>();
     const expenseByCategory = new Map<string, number>();
     const debtByAccount = new Map<string, number>();
 
-    transactions.forEach((txn) => {
+    chartTransactions.forEach((txn) => {
       const type = txn.tx_type ?? txn.type;
       const label = txn.category?.trim() || t('home.uncategorized');
       const amount = numberFromUnknown(txn.amount);
@@ -170,7 +212,7 @@ export const HomeScreen: React.FC = () => {
       expense: buildChartSlices([...expenseByCategory.entries()], chartColors, theme.text),
       debt: buildChartSlices([...debtByAccount.entries()], chartColors, theme.text),
     };
-  }, [accounts, chartColors, t, theme.text, transactions]);
+  }, [accounts, chartColors, chartTransactions, t, theme.text]);
 
   const recentTransactions = transactions.slice(0, 6);
   const latestBalance = dailyBalances[0];
@@ -374,6 +416,39 @@ export const HomeScreen: React.FC = () => {
         <Text style={[styles.sectionTitle, { color: theme.heading }]}>
           {t('home.summaryCharts')}
         </Text>
+        <Input
+          label={t('home.chartFromDate')}
+          placeholder="YYYY-MM-DD"
+          value={chartStartDate}
+          onChangeText={setChartStartDate}
+          autoCapitalize="none"
+          containerStyle={styles.chartDateInput}
+        />
+        <Input
+          label={t('home.chartToDate')}
+          placeholder="YYYY-MM-DD"
+          value={chartEndDate}
+          onChangeText={setChartEndDate}
+          autoCapitalize="none"
+          containerStyle={styles.chartDateInput}
+        />
+        <Button
+          title={t('home.chartClearDates')}
+          variant="outline"
+          onPress={() => {
+            setChartStartDate('');
+            setChartEndDate('');
+          }}
+        />
+        <Text style={[styles.chartRangeText, { color: theme.muted }]}>
+          {t('home.chartRangeApplied', { period: chartRangeLabel })}
+        </Text>
+        <Text style={[styles.chartRangeText, { color: theme.muted }]}>
+          {t('home.chartDateHint')}
+        </Text>
+        <Text style={[styles.chartRangeText, { color: theme.muted }]}>
+          {t('home.chartTimeframeNote')}
+        </Text>
         <View style={styles.chartGrid}>
           {renderPieSection(t('home.incomeByCategory'), chartData.income)}
           {renderPieSection(t('home.expenseByCategory'), chartData.expense)}
@@ -493,6 +568,8 @@ const styles = StyleSheet.create({
   snapshotLabel: { ...typography.caption, fontWeight: '700', marginBottom: spacing.xs },
   snapshotValue: { ...typography.body, fontWeight: '700' },
   chartGrid: { gap: spacing.md, marginTop: spacing.md },
+  chartDateInput: { marginTop: spacing.md, marginBottom: 0 },
+  chartRangeText: { ...typography.caption, lineHeight: 18, marginTop: spacing.xs },
   chartSection: { padding: spacing.sm },
   chartTitle: { ...typography.body, fontWeight: '700', marginBottom: spacing.sm },
   chartWrap: { alignItems: 'center', justifyContent: 'center' },

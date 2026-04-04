@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KeeperBMA Account Deletion</title>
+  <style>
+    :root {
+      --bg: #071325;
+      --panel: rgba(12, 27, 48, 0.9);
+      --border: rgba(111, 169, 255, 0.28);
+      --text: #eaf2ff;
+      --muted: #adc3e6;
+      --accent: #4e93ff;
+      --danger: #ff6d6d;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, rgba(78, 147, 255, 0.18), transparent 34%),
+        linear-gradient(180deg, #081427 0%, #071325 100%);
+    }
+
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px 72px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+    }
+
+    .card + .card {
+      margin-top: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .brand img {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 10px;
+    }
+
+    h1,
+    h2 {
+      margin: 0 0 12px;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      line-height: 1.05;
+    }
+
+    p,
+    li {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 1rem;
+    }
+
+    ol,
+    ul {
+      margin: 0;
+      padding-left: 22px;
+    }
+
+    .buttonRow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 180px;
+      padding: 14px 18px;
+      border-radius: 14px;
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .button.primary {
+      background: var(--accent);
+    }
+
+    .button.secondary {
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: #8fc0ff;
+    }
+
+    .warning {
+      padding: 16px 18px;
+      border-radius: 18px;
+      background: rgba(255, 109, 109, 0.1);
+      border: 1px solid rgba(255, 109, 109, 0.26);
+    }
+
+    a {
+      color: #8fc0ff;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <div class="brand">
+        <img src="/assets/keeperbma-icon.png" alt="KeeperBMA logo">
+        <div>
+          <h1>Delete Your KeeperBMA Account</h1>
+          <p>How to remove your KeeperBMA account and what happens next.</p>
+        </div>
+      </div>
+      <div class="buttonRow">
+        <a class="button primary" href="/settings.html">Open Website Settings</a>
+        <a class="button secondary" href="mailto:support@keeperbma.com">Email Support</a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>How to Request Deletion</h2>
+      <ol>
+        <li>Sign in to the KeeperBMA website.</li>
+        <li>Open your settings or account management page.</li>
+        <li>Use the account deletion option if it is available for your account.</li>
+        <li>If you cannot access your account, email <a href="mailto:support@keeperbma.com">support@keeperbma.com</a> and include the email address or username linked to the account.</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>What Deletion Means</h2>
+      <ul>
+        <li>Your account access is removed.</li>
+        <li>Your profile and related budgeting records are scheduled for deletion from active systems.</li>
+        <li>Some limited records may be retained for legal obligations, fraud prevention, dispute handling, or backup recovery windows.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <div class="warning">
+        <h2>Need Help First?</h2>
+        <p>If you only need billing help, password recovery, or profile changes, contact support before deleting your account.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

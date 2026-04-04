@@ -25,6 +25,7 @@ type AuthMode = 'signin' | 'recover';
 export const AuthScreen: React.FC = () => {
   const { theme } = useTheme();
   const { signIn } = useAuth();
+  const isAndroid = Platform.OS === 'android';
   const [mode, setMode] = useState<AuthMode>('signin');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -96,14 +97,20 @@ export const AuthScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Card style={styles.headerCard}>
           <View style={styles.headerRow}>
-            <Image source={require('../../assets/icon.png')} style={styles.logo} resizeMode="contain" />
+            <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
             <View style={styles.headerTextWrap}>
               <Text style={[styles.title, { color: theme.heading }]}>KeeperBMA</Text>
               <Text style={[styles.subtitle, { color: theme.muted }]}>Sign in to your account</Text>
             </View>
           </View>
           <Text style={[styles.helperText, { color: theme.muted }]}>Don't have an account yet? Create your KeeperBMA account on the website, then come back here to sign in on mobile.</Text>
-          <Button title="If you don't have an account, sign up here" variant="secondary" onPress={() => Linking.openURL(signUpUrl)} />
+          {isAndroid ? (
+            <Text style={[styles.helperText, { color: theme.muted }]}>
+              Android builds keep account creation on the website so the Play Store release stays review-friendly.
+            </Text>
+          ) : (
+            <Button title="If you don't have an account, sign up here" variant="secondary" onPress={() => Linking.openURL(signUpUrl)} />
+          )}
         </Card>
 
         <Card>
@@ -136,11 +143,17 @@ export const AuthScreen: React.FC = () => {
                 <Card style={[styles.noticeCard, { backgroundColor: theme.surface }]}> 
                   <Text style={[styles.noticeTitle, { color: theme.heading }]}>Payment information required</Text>
                   <Text style={[styles.noticeText, { color: theme.muted }]}>{paymentInfo.message}</Text>
-                  <Button
-                    title="Add Payment Information"
-                    onPress={() => Linking.openURL(paymentInfo.paymentUrl || `${WEB_BASE_URL}/auth?mode=signin`)}
-                    style={{ marginTop: spacing.sm }}
-                  />
+                  {isAndroid ? (
+                    <Text style={[styles.noticeText, { color: theme.muted, marginTop: spacing.sm }]}>
+                      Billing changes are managed on the KeeperBMA website for the Android store build.
+                    </Text>
+                  ) : (
+                    <Button
+                      title="Add Payment Information"
+                      onPress={() => Linking.openURL(paymentInfo.paymentUrl || `${WEB_BASE_URL}/auth?mode=signin`)}
+                      style={{ marginTop: spacing.sm }}
+                    />
+                  )}
                 </Card>
               ) : null}
               {message ? <Text style={[styles.message, { color: theme.dangerStart }]}>{message}</Text> : null}
@@ -168,12 +181,12 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { flexGrow: 1, padding: spacing.lg, justifyContent: 'center' },
   headerCard: { marginBottom: spacing.lg, gap: spacing.md },
-  headerRow: { flexDirection: 'row', alignItems: 'center' },
-  headerTextWrap: { flex: 1 },
-  logo: { width: 56, height: 56, marginRight: spacing.md },
+  headerRow: { alignItems: 'center', gap: spacing.md },
+  headerTextWrap: { alignItems: 'center' },
+  logo: { width: 220, height: 66 },
   title: { ...typography.h1, fontSize: 28 },
   subtitle: { ...typography.body },
-  helperText: { ...typography.body, lineHeight: 24 },
+  helperText: { ...typography.body, lineHeight: 24, textAlign: 'center' },
   tabs: { flexDirection: 'row', marginBottom: spacing.md },
   tab: { paddingVertical: spacing.sm, marginRight: spacing.lg },
   tabText: { ...typography.body, fontWeight: '700' },

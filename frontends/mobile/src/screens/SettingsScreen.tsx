@@ -20,6 +20,8 @@ export const SettingsScreen: React.FC = () => {
   };
 
   const openWebDashboard = () => Linking.openURL(`${WEB_BASE_URL}/?mobile=1`);
+  const openPrivacyPolicy = () => Linking.openURL(`${WEB_BASE_URL}/privacy-policy.html`);
+  const openDeleteAccount = () => Linking.openURL(`${WEB_BASE_URL}/delete-account.html`);
   const contactSupport = () => Linking.openURL('mailto:support@keeperbma.com');
 
   return (
@@ -69,6 +71,8 @@ export const SettingsScreen: React.FC = () => {
         <View style={styles.buttonStack}>
           <Button title={t('settings.openWebDashboard')} onPress={openWebDashboard} />
           <Button title={t('settings.manageProfile')} variant="outline" onPress={openWebDashboard} />
+          <Button title={t('settings.privacyPolicy')} variant="outline" onPress={openPrivacyPolicy} />
+          <Button title={t('settings.deleteAccount')} variant="secondary" onPress={openDeleteAccount} />
           <Button title={t('settings.contactSupport')} variant="secondary" onPress={contactSupport} />
           <Button
             title={t('settings.signOut')}
