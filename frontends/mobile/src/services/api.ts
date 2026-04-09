@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../constants/config';
+import { clearStoredAuthTokens, getStoredAuthTokens, storeAuthTokens } from './authStorage';
 import {
   AccountRecord,
   AuthUser,
@@ -19,12 +20,23 @@ const api = axios.create({
   timeout: 20000,
 });
 
+let currentAuthToken: string | null = null;
+let sessionExpiredHandler: (() => Promise<void> | void) | null = null;
+let refreshInFlight: Promise<string | null> | null = null;
+
 export const setAuthToken = (token: string | null) => {
+  currentAuthToken = token;
   if (token) {
     api.defaults.headers.common.Authorization = `Bearer ${token}`;
   } else {
     delete api.defaults.headers.common.Authorization;
   }
+};
+
+export const getAuthToken = () => currentAuthToken;
+
+export const setSessionExpiredHandler = (handler: (() => Promise<void> | void) | null) => {
+  sessionExpiredHandler = handler;
 };
 
 export const getApiErrorInfo = (error: unknown): PaymentRequiredInfo => {
@@ -44,17 +56,110 @@ export const getApiErrorInfo = (error: unknown): PaymentRequiredInfo => {
   return { message: 'Something went wrong.' };
 };
 
+const notifySessionExpired = async () => {
+  if (!sessionExpiredHandler) return;
+  await sessionExpiredHandler();
+};
+
+const refreshAccessToken = async (): Promise<string | null> => {
+  const { refreshToken } = await getStoredAuthTokens();
+  if (!refreshToken) {
+    throw new Error('Session expired');
+  }
+  const response = await api.post<AuthUser>(
+    '/auth/refresh',
+    { refresh_token: refreshToken },
+    { headers: { 'X-Skip-Auth-Refresh': '1' } }
+  );
+  const nextAccessToken = response.data.token ?? null;
+  const nextRefreshToken = response.data.refresh_token ?? refreshToken;
+  if (!nextAccessToken) {
+    throw new Error('Refresh response did not include an access token.');
+  }
+  await storeAuthTokens(nextAccessToken, nextRefreshToken);
+  setAuthToken(nextAccessToken);
+  return nextAccessToken;
+};
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (!axios.isAxiosError(error)) {
+      return Promise.reject(error);
+    }
+
+    const responseStatus = error.response?.status;
+    const originalRequest = error.config as (typeof error.config & { _retry?: boolean }) | undefined;
+    const skipRefresh = String(originalRequest?.headers?.['X-Skip-Auth-Refresh'] ?? '') === '1';
+    const requestUrl = String(originalRequest?.url ?? '');
+
+    if (
+      responseStatus !== 401 ||
+      !originalRequest ||
+      originalRequest._retry ||
+      skipRefresh ||
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/refresh') ||
+      requestUrl.includes('/auth/recover/')
+    ) {
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+
+    try {
+      if (!refreshInFlight) {
+        refreshInFlight = refreshAccessToken()
+          .catch(async (refreshError) => {
+            await clearStoredAuthTokens();
+            setAuthToken(null);
+            await notifySessionExpired();
+            throw refreshError;
+          })
+          .finally(() => {
+            refreshInFlight = null;
+          });
+      }
+
+      const nextAccessToken = await refreshInFlight;
+      if (nextAccessToken) {
+        originalRequest.headers = originalRequest.headers ?? {};
+        originalRequest.headers.Authorization = `Bearer ${nextAccessToken}`;
+      }
+      return api(originalRequest);
+    } catch {
+      return Promise.reject(error);
+    }
+  }
+);
+
 export const authApi = {
   async login(name: string, password: string): Promise<AuthUser> {
-    const response = await api.post<AuthUser>('/auth/login', { name, password });
+    const response = await api.post<AuthUser>('/auth/login', {
+      name,
+      password,
+      client: 'mobile',
+    });
     return response.data;
   },
   async session(): Promise<AuthUser> {
     const response = await api.get<AuthUser>('/auth/session');
     return response.data;
   },
-  async logout(): Promise<void> {
-    await api.post('/auth/logout');
+  async refresh(refreshToken: string): Promise<AuthUser> {
+    const response = await api.post<AuthUser>(
+      '/auth/refresh',
+      { refresh_token: refreshToken },
+      { headers: { 'X-Skip-Auth-Refresh': '1' } }
+    );
+    return response.data;
+  },
+  async logout(refreshToken?: string | null): Promise<void> {
+    await api.post('/auth/logout', refreshToken ? { refresh_token: refreshToken } : {});
+  },
+  async createWebSession(destination: 'dashboard' | 'profile'): Promise<{ launch_url: string }> {
+    const response = await api.post<{ launch_url: string }>('/auth/mobile-sso', { destination });
+    return response.data;
   },
   async recoverRequest(email: string): Promise<{ ok: boolean; sent: boolean; expires_minutes: number }> {
     const response = await api.post('/auth/recover/request', { email });

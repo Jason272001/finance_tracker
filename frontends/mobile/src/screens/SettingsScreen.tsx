@@ -8,21 +8,22 @@ import { useLanguage } from '../context/LanguageContext';
 import { WEB_BASE_URL } from '../constants/config';
 import { useTheme } from '../theme/ThemeContext';
 import { formatShortDate } from '../utils/format';
+import { formatPlanDisplayName } from '../utils/subscription';
 import { spacing, typography } from '../theme/theme';
 
 export const SettingsScreen: React.FC = () => {
   const { theme, isDark, toggleTheme } = useTheme();
-  const { user, signOut } = useAuth();
+  const { user, signOut, openWebSession } = useAuth();
   const { language, locale, options, setLanguage, t } = useLanguage();
 
   const handleSignOut = async () => {
     await signOut();
   };
 
-  const openWebDashboard = () => Linking.openURL(`${WEB_BASE_URL}/?mobile=1`);
   const openPrivacyPolicy = () => Linking.openURL(`${WEB_BASE_URL}/privacy-policy.html`);
   const openDeleteAccount = () => Linking.openURL(`${WEB_BASE_URL}/delete-account.html`);
   const contactSupport = () => Linking.openURL('mailto:support@keeperbma.com');
+  const planLabel = formatPlanDisplayName(user, t);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.bgTop }]} contentContainerStyle={styles.content}>
@@ -39,7 +40,7 @@ export const SettingsScreen: React.FC = () => {
       <Card>
         <Text style={[styles.sectionTitle, { color: theme.heading }]}>{t('settings.account')}</Text>
         <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: theme.muted }]}>{t('settings.phone')}</Text><Text style={[styles.infoValue, { color: theme.text }]}>{user?.phone || '-'}</Text></View>
-        <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: theme.muted }]}>{t('settings.plan')}</Text><Text style={[styles.infoValue, { color: theme.text }]}>{user?.is_lifetime ? 'Lifetime' : user?.plan_code || '-'}</Text></View>
+        <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: theme.muted }]}>{t('settings.plan')}</Text><Text style={[styles.infoValue, { color: theme.text }]}>{planLabel}</Text></View>
         <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: theme.muted }]}>{t('settings.billingCycle')}</Text><Text style={[styles.infoValue, { color: theme.text }]}>{user?.billing_cycle || '-'}</Text></View>
         <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: theme.muted }]}>{t('settings.paymentStatus')}</Text><Text style={[styles.infoValue, { color: theme.text }]}>{user?.payment_status || '-'}</Text></View>
         <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: theme.muted }]}>{t('settings.trialEnds')}</Text><Text style={[styles.infoValue, { color: theme.text }]}>{formatShortDate(user?.trial_ends_at, locale)}</Text></View>
@@ -68,9 +69,12 @@ export const SettingsScreen: React.FC = () => {
 
       <Card>
         <Text style={[styles.sectionTitle, { color: theme.heading }]}>{t('settings.websiteActions')}</Text>
+        <Text style={[styles.preferenceText, { color: theme.muted, marginBottom: spacing.md }]}>
+          {t('settings.webBillingNote')}
+        </Text>
         <View style={styles.buttonStack}>
-          <Button title={t('settings.openWebDashboard')} onPress={openWebDashboard} />
-          <Button title={t('settings.manageProfile')} variant="outline" onPress={openWebDashboard} />
+          <Button title={t('settings.openWebDashboard')} onPress={() => { void openWebSession('dashboard'); }} />
+          <Button title={t('settings.manageProfile')} variant="outline" onPress={() => { void openWebSession('profile'); }} />
           <Button title={t('settings.privacyPolicy')} variant="outline" onPress={openPrivacyPolicy} />
           <Button title={t('settings.deleteAccount')} variant="secondary" onPress={openDeleteAccount} />
           <Button title={t('settings.contactSupport')} variant="secondary" onPress={contactSupport} />

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Linking, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
@@ -7,7 +7,6 @@ import { Button } from '../components/Button';
 import { OptionSelect } from '../components/OptionSelect';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { WEB_BASE_URL } from '../constants/config';
 import { financeApi, getApiErrorInfo } from '../services/api';
 import { AccountRecord, BankAccountRecord, BankConnectionRecord } from '../types/app';
 import { formatCurrency, formatDateTime, isDebtAccount, normalizeText, numberFromUnknown } from '../utils/format';
@@ -16,7 +15,7 @@ import { spacing, typography } from '../theme/theme';
 
 export const AccountsScreen: React.FC = () => {
   const { theme } = useTheme();
-  const { user } = useAuth();
+  const { user, openWebSession } = useAuth();
   const { locale, t } = useLanguage();
   const [accounts, setAccounts] = useState<AccountRecord[]>([]);
   const [connections, setConnections] = useState<BankConnectionRecord[]>([]);
@@ -304,7 +303,7 @@ export const AccountsScreen: React.FC = () => {
       <Card>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: theme.heading }]}>{t('accounts.bankSync')}</Text>
-          <Button title={t('accounts.manageOnWebsite')} variant="secondary" onPress={() => Linking.openURL(`${WEB_BASE_URL}/?mobile=1`)} />
+          <Button title={t('accounts.manageOnWebsite')} variant="secondary" onPress={() => { void openWebSession('dashboard'); }} />
         </View>
         {!bankSyncAllowed ? (
           <EmptyState title={t('accounts.upgradeRequiredTitle')} message={t('accounts.upgradeRequiredMessage')} />

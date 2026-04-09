@@ -1,9 +1,14 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert, Linking } from 'react-native';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { authApi, getApiErrorInfo, setAuthToken } from '../services/api';
+import {
+  authApi,
+  getApiErrorInfo,
+  getAuthToken,
+  setAuthToken,
+  setSessionExpiredHandler,
+} from '../services/api';
+import { clearStoredAuthTokens, getStoredAuthTokens, storeAuthTokens } from '../services/authStorage';
 import { AuthUser, PaymentRequiredInfo } from '../types/app';
-
-const TOKEN_KEY = 'keeperbma_mobile_token';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -12,6 +17,7 @@ interface AuthContextValue {
   signIn: (name: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  openWebSession: (destination?: 'dashboard' | 'profile') => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -23,25 +29,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearSession = useCallback(async () => {
     setAuthToken(null);
     setUser(null);
-    await AsyncStorage.removeItem(TOKEN_KEY);
+    await clearStoredAuthTokens();
   }, []);
 
   const refreshSession = useCallback(async () => {
     const session = await authApi.session();
-    setUser((prev) => ({ ...prev, ...session }));
+    setUser((prev) => ({ ...(prev ?? {}), ...session, token: getAuthToken() ?? session.token }));
+  }, []);
+
+  const openWebSession = useCallback(async (destination: 'dashboard' | 'profile' = 'dashboard') => {
+    try {
+      const response = await authApi.createWebSession(destination);
+      const launchUrl = String(response.launch_url || '').trim();
+      if (!launchUrl) {
+        throw new Error('Website launch URL is missing.');
+      }
+      await Linking.openURL(launchUrl);
+    } catch (error) {
+      const info = getApiErrorInfo(error);
+      Alert.alert('Unable to open website', info.message);
+    }
   }, []);
 
   useEffect(() => {
+    setSessionExpiredHandler(async () => {
+      await clearSession();
+    });
+
     const bootstrap = async () => {
       try {
-        const token = await AsyncStorage.getItem(TOKEN_KEY);
-        if (!token) {
+        const { accessToken, refreshToken } = await getStoredAuthTokens();
+        if (!accessToken && !refreshToken) {
           setIsReady(true);
           return;
         }
-        setAuthToken(token);
+        setAuthToken(accessToken);
         const session = await authApi.session();
-        setUser({ ...session, token });
+        setUser({ ...session, token: getAuthToken() ?? accessToken ?? undefined });
       } catch {
         await clearSession();
       } finally {
@@ -49,7 +73,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    bootstrap();
+    void bootstrap();
+
+    return () => {
+      setSessionExpiredHandler(null);
+    };
   }, [clearSession]);
 
   const signIn = useCallback(async (name: string, password: string) => {
@@ -58,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!session.token) {
         throw new Error('Login response did not include an access token.');
       }
-      await AsyncStorage.setItem(TOKEN_KEY, session.token);
+      await storeAuthTokens(session.token, session.refresh_token ?? null);
       setAuthToken(session.token);
       setUser(session);
     } catch (error) {
@@ -68,7 +96,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = useCallback(async () => {
     try {
-      await authApi.logout();
+      const { refreshToken } = await getStoredAuthTokens();
+      await authApi.logout(refreshToken);
     } catch {
       // Best effort.
     } finally {
@@ -83,7 +112,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signIn,
     signOut,
     refreshSession,
-  }), [isReady, refreshSession, signIn, signOut, user]);
+    openWebSession,
+  }), [isReady, openWebSession, refreshSession, signIn, signOut, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

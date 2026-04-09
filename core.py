@@ -10,10 +10,11 @@ import time
 from datetime import datetime, timedelta
 from contextlib import contextmanager
 try:
-    from sqlalchemy import create_engine, inspect
+    from sqlalchemy import create_engine, inspect, text
 except Exception:
     create_engine = None
     inspect = None
+    text = None
 # ---------------------------
 # Paths
 # ---------------------------
@@ -26,6 +27,8 @@ A_PATH=os.path.join(DATA_DIR,"accounts.csv")
 D_PATH=os.path.join(DATA_DIR,"daily_balances.csv")
 C_PATH=os.path.join(DATA_DIR,"category.csv")
 COUPON_PATH = os.path.join(DATA_DIR, "coupons.csv")
+AUTH_SESSION_PATH = os.path.join(DATA_DIR, "auth_sessions.csv")
+WEB_LOGIN_TOKEN_PATH = os.path.join(DATA_DIR, "web_login_tokens.csv")
 DB_BACKEND = str(os.getenv("DB_BACKEND", "postgres")).strip().lower()
 DATABASE_URL = str(os.getenv("DATABASE_URL", "")).strip()
 MYSQL_HOST = os.getenv("MYSQL_HOST", "127.0.0.1")
@@ -46,6 +49,15 @@ DEFAULT_TRIAL_DAYS = int(os.getenv("DEFAULT_TRIAL_DAYS", "60"))
 # ---------------------------
 # Internal loader (STRICT)
 # ---------------------------
+
+def _coerce_bool(value):
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    if isinstance(value, (int, float)):
+        return value != 0
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 def _load_users():
     user_cols = [
@@ -197,6 +209,7 @@ def _save_users(df):
 
 
 _ENGINE = None
+_AUTH_SQL_TABLES_READY = False
 
 
 def _get_engine():
@@ -239,6 +252,112 @@ def _write_table(table_name, df):
     if engine is None:
         raise RuntimeError("MySQL engine is not configured.")
     df.to_sql(table_name, con=engine, if_exists="replace", index=False)
+
+
+def _update_sql_row(table_name, key_column, key_value, updates):
+    engine = _get_engine()
+    if engine is None:
+        raise RuntimeError("Database engine is not configured.")
+    if text is None:
+        raise RuntimeError("SQLAlchemy text is unavailable. Install SQLAlchemy.")
+    clean_updates = {str(k): v for k, v in (updates or {}).items() if str(k).strip()}
+    if not clean_updates:
+        return 0
+    set_clause = ", ".join(f"{col} = :{col}" for col in clean_updates.keys())
+    params = {**clean_updates, "__key_value": key_value}
+    statement = text(f"UPDATE {table_name} SET {set_clause} WHERE {key_column} = :__key_value")
+    with engine.begin() as conn:
+        result = conn.execute(statement, params)
+    return int(getattr(result, "rowcount", 0) or 0)
+
+
+def _fetch_sql_rows(table_name, cols, where_clause="", params=None):
+    engine = _get_engine()
+    if engine is None:
+        return pd.DataFrame(columns=cols)
+    if text is None:
+        raise RuntimeError("SQLAlchemy text is unavailable. Install SQLAlchemy.")
+    select_cols = ", ".join(cols)
+    query = f"SELECT {select_cols} FROM {table_name}"
+    if where_clause:
+        query += f" WHERE {where_clause}"
+    return pd.read_sql_query(text(query), con=engine, params=params or {})
+
+
+def _insert_sql_row(table_name, row):
+    engine = _get_engine()
+    if engine is None:
+        raise RuntimeError("Database engine is not configured.")
+    if text is None:
+        raise RuntimeError("SQLAlchemy text is unavailable. Install SQLAlchemy.")
+    clean_row = {str(k): v for k, v in (row or {}).items() if str(k).strip()}
+    if not clean_row:
+        return 0
+    columns = ", ".join(clean_row.keys())
+    values = ", ".join(f":{col}" for col in clean_row.keys())
+    statement = text(f"INSERT INTO {table_name} ({columns}) VALUES ({values})")
+    with engine.begin() as conn:
+        result = conn.execute(statement, clean_row)
+    return int(getattr(result, "rowcount", 0) or 0)
+
+
+def _delete_sql_rows(table_name, where_clause, params=None):
+    engine = _get_engine()
+    if engine is None:
+        raise RuntimeError("Database engine is not configured.")
+    if text is None:
+        raise RuntimeError("SQLAlchemy text is unavailable. Install SQLAlchemy.")
+    statement = text(f"DELETE FROM {table_name} WHERE {where_clause}")
+    with engine.begin() as conn:
+        result = conn.execute(statement, params or {})
+    return int(getattr(result, "rowcount", 0) or 0)
+
+
+def _ensure_auth_sql_tables():
+    global _AUTH_SQL_TABLES_READY
+    if _AUTH_SQL_TABLES_READY:
+        return
+    engine = _get_engine()
+    if engine is None:
+        return
+    if text is None:
+        raise RuntimeError("SQLAlchemy text is unavailable. Install SQLAlchemy.")
+    ddl = [
+        """
+        CREATE TABLE IF NOT EXISTS auth_sessions (
+            session_id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            session_kind TEXT,
+            refresh_token_hash TEXT NOT NULL,
+            refresh_expires_at TEXT,
+            created_at TEXT,
+            last_used_at TEXT,
+            rotated_at TEXT,
+            revoked_at TEXT,
+            replay_detected_at TEXT,
+            user_agent TEXT,
+            device_label TEXT
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS web_login_tokens (
+            token_id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            source_session_id TEXT,
+            token_hash TEXT NOT NULL,
+            redirect_path TEXT,
+            expires_at TEXT,
+            created_at TEXT,
+            used_at TEXT,
+            revoked_at TEXT,
+            used_by_ip TEXT
+        )
+        """,
+    ]
+    with engine.begin() as conn:
+        for stmt in ddl:
+            conn.execute(text(stmt))
+    _AUTH_SQL_TABLES_READY = True
 
 
 def _atomic_write_csv(path, df):
@@ -340,6 +459,317 @@ def _verify_password(stored_password, provided_password):
 
     # Backward-compatible plaintext support for existing rows.
     return hmac.compare_digest(stored, provided), True
+
+
+class AuthSessionStore:
+    cols = [
+        "session_id",
+        "user_id",
+        "session_kind",
+        "refresh_token_hash",
+        "refresh_expires_at",
+        "created_at",
+        "last_used_at",
+        "rotated_at",
+        "revoked_at",
+        "replay_detected_at",
+        "user_agent",
+        "device_label",
+    ]
+
+    def __init__(self, path=AUTH_SESSION_PATH):
+        self.path = path
+        self.table = "auth_sessions"
+        if DB_IS_SQL:
+            _ensure_auth_sql_tables()
+        else:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            if not os.path.exists(self.path):
+                pd.DataFrame(columns=self.cols).to_csv(self.path, index=False)
+
+    def _load(self):
+        if DB_IS_SQL:
+            return _fetch_sql_rows(self.table, self.cols)
+        df = pd.read_csv(self.path)
+        for c in self.cols:
+            if c not in df.columns:
+                df[c] = ""
+        return df[self.cols]
+
+    def _save(self, df):
+        _atomic_write_csv(self.path, df[self.cols])
+
+    def _normalize(self, df):
+        out = df.copy()
+        for c in self.cols:
+            if c not in out.columns:
+                out[c] = ""
+        out["session_id"] = out["session_id"].fillna("").astype(str).str.strip()
+        out["user_id"] = pd.to_numeric(out["user_id"], errors="coerce")
+        for c in self.cols:
+            if c in {"user_id"}:
+                continue
+            out[c] = out[c].fillna("").astype(str).str.strip()
+        return out[self.cols]
+
+    def create(
+        self,
+        session_id,
+        user_id,
+        refresh_token_hash,
+        refresh_expires_at="",
+        created_at="",
+        session_kind="mobile",
+        last_used_at="",
+        rotated_at="",
+        revoked_at="",
+        replay_detected_at="",
+        user_agent="",
+        device_label="",
+    ):
+        row = {
+            "session_id": str(session_id or "").strip(),
+            "user_id": int(user_id),
+            "session_kind": str(session_kind or "").strip().lower(),
+            "refresh_token_hash": str(refresh_token_hash or "").strip(),
+            "refresh_expires_at": str(refresh_expires_at or "").strip(),
+            "created_at": str(created_at or "").strip(),
+            "last_used_at": str(last_used_at or "").strip(),
+            "rotated_at": str(rotated_at or "").strip(),
+            "revoked_at": str(revoked_at or "").strip(),
+            "replay_detected_at": str(replay_detected_at or "").strip(),
+            "user_agent": str(user_agent or "").strip(),
+            "device_label": str(device_label or "").strip(),
+        }
+        if DB_IS_SQL:
+            _delete_sql_rows(self.table, "session_id = :session_id", {"session_id": row["session_id"]})
+            _insert_sql_row(self.table, row)
+            return row
+        with _file_lock(self.path):
+            df = self._normalize(self._load())
+            df = df[df["session_id"] != row["session_id"]].copy()
+            df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+            self._save(df)
+        return row
+
+    def get(self, session_id):
+        sid = str(session_id or "").strip()
+        if not sid:
+            return None
+        if DB_IS_SQL:
+            df = self._normalize(_fetch_sql_rows(self.table, self.cols, "session_id = :sid", {"sid": sid}))
+        else:
+            df = self._normalize(self._load())
+            df = df[df["session_id"] == sid].copy()
+        if df.empty:
+            return None
+        row = df.iloc[0].to_dict()
+        row["user_id"] = int(row["user_id"]) if pd.notna(row["user_id"]) else 0
+        return row
+
+    def touch(self, session_id, when_iso):
+        sid = str(session_id or "").strip()
+        if not sid:
+            return False
+        updates = {"last_used_at": str(when_iso or "").strip()}
+        if DB_IS_SQL:
+            return _update_sql_row(self.table, "session_id", sid, updates) > 0
+        with _file_lock(self.path):
+            df = self._normalize(self._load())
+            idx = df.index[df["session_id"] == sid]
+            if len(idx) == 0:
+                return False
+            df.at[idx[0], "last_used_at"] = updates["last_used_at"]
+            self._save(df)
+        return True
+
+    def rotate(self, session_id, current_hash, new_hash, refresh_expires_at, when_iso):
+        sid = str(session_id or "").strip()
+        current_hash_s = str(current_hash or "").strip()
+        if not sid or not current_hash_s:
+            return {"ok": False, "reason": "invalid"}
+        row = self.get(sid)
+        if not row:
+            return {"ok": False, "reason": "missing"}
+        if str(row.get("revoked_at", "")).strip():
+            return {"ok": False, "reason": "revoked"}
+        if str(row.get("refresh_token_hash", "")).strip() != current_hash_s:
+            self.revoke(sid, when_iso, replay=True)
+            return {"ok": False, "reason": "replay"}
+
+        updates = {
+            "refresh_token_hash": str(new_hash or "").strip(),
+            "refresh_expires_at": str(refresh_expires_at or "").strip(),
+            "last_used_at": str(when_iso or "").strip(),
+            "rotated_at": str(when_iso or "").strip(),
+            "revoked_at": "",
+            "replay_detected_at": "",
+        }
+        if DB_IS_SQL:
+            return {"ok": _update_sql_row(self.table, "session_id", sid, updates) > 0, "reason": ""}
+        with _file_lock(self.path):
+            df = self._normalize(self._load())
+            idx = df.index[df["session_id"] == sid]
+            if len(idx) == 0:
+                return {"ok": False, "reason": "missing"}
+            i = idx[0]
+            for key, value in updates.items():
+                df.at[i, key] = value
+            self._save(df)
+        return {"ok": True, "reason": ""}
+
+    def revoke(self, session_id, when_iso, replay=False):
+        sid = str(session_id or "").strip()
+        if not sid:
+            return False
+        updates = {"revoked_at": str(when_iso or "").strip()}
+        if replay:
+            updates["replay_detected_at"] = str(when_iso or "").strip()
+        if DB_IS_SQL:
+            return _update_sql_row(self.table, "session_id", sid, updates) > 0
+        with _file_lock(self.path):
+            df = self._normalize(self._load())
+            idx = df.index[df["session_id"] == sid]
+            if len(idx) == 0:
+                return False
+            i = idx[0]
+            for key, value in updates.items():
+                df.at[i, key] = value
+            self._save(df)
+        return True
+
+
+class WebLoginTokenStore:
+    cols = [
+        "token_id",
+        "user_id",
+        "source_session_id",
+        "token_hash",
+        "redirect_path",
+        "expires_at",
+        "created_at",
+        "used_at",
+        "revoked_at",
+        "used_by_ip",
+    ]
+
+    def __init__(self, path=WEB_LOGIN_TOKEN_PATH):
+        self.path = path
+        self.table = "web_login_tokens"
+        if DB_IS_SQL:
+            _ensure_auth_sql_tables()
+        else:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            if not os.path.exists(self.path):
+                pd.DataFrame(columns=self.cols).to_csv(self.path, index=False)
+
+    def _load(self):
+        if DB_IS_SQL:
+            return _fetch_sql_rows(self.table, self.cols)
+        df = pd.read_csv(self.path)
+        for c in self.cols:
+            if c not in df.columns:
+                df[c] = ""
+        return df[self.cols]
+
+    def _save(self, df):
+        _atomic_write_csv(self.path, df[self.cols])
+
+    def _normalize(self, df):
+        out = df.copy()
+        for c in self.cols:
+            if c not in out.columns:
+                out[c] = ""
+        out["token_id"] = out["token_id"].fillna("").astype(str).str.strip()
+        out["user_id"] = pd.to_numeric(out["user_id"], errors="coerce")
+        for c in self.cols:
+            if c in {"user_id"}:
+                continue
+            out[c] = out[c].fillna("").astype(str).str.strip()
+        return out[self.cols]
+
+    def create(
+        self,
+        token_id,
+        user_id,
+        token_hash,
+        redirect_path="",
+        expires_at="",
+        created_at="",
+        source_session_id="",
+        used_at="",
+        revoked_at="",
+        used_by_ip="",
+    ):
+        row = {
+            "token_id": str(token_id or "").strip(),
+            "user_id": int(user_id),
+            "source_session_id": str(source_session_id or "").strip(),
+            "token_hash": str(token_hash or "").strip(),
+            "redirect_path": str(redirect_path or "").strip(),
+            "expires_at": str(expires_at or "").strip(),
+            "created_at": str(created_at or "").strip(),
+            "used_at": str(used_at or "").strip(),
+            "revoked_at": str(revoked_at or "").strip(),
+            "used_by_ip": str(used_by_ip or "").strip(),
+        }
+        if DB_IS_SQL:
+            _delete_sql_rows(self.table, "token_id = :token_id", {"token_id": row["token_id"]})
+            _insert_sql_row(self.table, row)
+            return row
+        with _file_lock(self.path):
+            df = self._normalize(self._load())
+            df = df[df["token_id"] != row["token_id"]].copy()
+            df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+            self._save(df)
+        return row
+
+    def get(self, token_id):
+        tid = str(token_id or "").strip()
+        if not tid:
+            return None
+        if DB_IS_SQL:
+            df = self._normalize(_fetch_sql_rows(self.table, self.cols, "token_id = :tid", {"tid": tid}))
+        else:
+            df = self._normalize(self._load())
+            df = df[df["token_id"] == tid].copy()
+        if df.empty:
+            return None
+        row = df.iloc[0].to_dict()
+        row["user_id"] = int(row["user_id"]) if pd.notna(row["user_id"]) else 0
+        return row
+
+    def consume(self, token_id, token_hash, used_at, used_by_ip=""):
+        tid = str(token_id or "").strip()
+        token_hash_s = str(token_hash or "").strip()
+        if not tid or not token_hash_s:
+            return {"ok": False, "reason": "invalid"}
+        row = self.get(tid)
+        if not row:
+            return {"ok": False, "reason": "missing"}
+        if str(row.get("revoked_at", "")).strip():
+            return {"ok": False, "reason": "revoked"}
+        if str(row.get("used_at", "")).strip():
+            return {"ok": False, "reason": "used"}
+        if str(row.get("token_hash", "")).strip() != token_hash_s:
+            return {"ok": False, "reason": "invalid"}
+        updates = {
+            "used_at": str(used_at or "").strip(),
+            "used_by_ip": str(used_by_ip or "").strip(),
+        }
+        if DB_IS_SQL:
+            ok = _update_sql_row(self.table, "token_id", tid, updates) > 0
+            return {"ok": ok, "reason": "", "row": row if ok else None}
+        with _file_lock(self.path):
+            df = self._normalize(self._load())
+            idx = df.index[df["token_id"] == tid]
+            if len(idx) == 0:
+                return {"ok": False, "reason": "missing"}
+            i = idx[0]
+            for key, value in updates.items():
+                df.at[i, key] = value
+            self._save(df)
+        return {"ok": True, "reason": "", "row": row}
 
 
 # ---------------------------
@@ -741,6 +1171,7 @@ class User:
         allowed_cycles = {"", "monthly", "annual"}
         allowed_payment_status = {"pending", "active"}
         allowed_trial_status = {"pending", "active", "inactive"}
+        updates = {}
 
         def _update(df):
             uid_col = pd.to_numeric(df["user_id"], errors="coerce")
@@ -754,64 +1185,87 @@ class User:
                 if plan_s not in allowed_plan_codes:
                     raise ValueError("Invalid subscription plan.")
                 df.at[i, "plan_code"] = plan_s
+                updates["plan_code"] = plan_s
 
             if subscription_status is not None:
                 status_s = str(subscription_status).strip().lower()
                 if status_s not in allowed_status:
                     raise ValueError("Invalid subscription status.")
                 df.at[i, "subscription_status"] = status_s
+                updates["subscription_status"] = status_s
 
             if payment_status is not None:
                 payment_s = str(payment_status).strip().lower()
                 if payment_s not in allowed_payment_status:
                     raise ValueError("Invalid payment status.")
                 df.at[i, "payment_status"] = payment_s
+                updates["payment_status"] = payment_s
 
             if trial_status is not None:
                 trial_s = str(trial_status).strip().lower()
                 if trial_s not in allowed_trial_status:
                     raise ValueError("Invalid trial status.")
                 df.at[i, "trial_status"] = trial_s
+                updates["trial_status"] = trial_s
 
             if trial_ends_at is not None:
-                df.at[i, "trial_ends_at"] = str(trial_ends_at).strip()
+                trial_ends_s = str(trial_ends_at).strip()
+                df.at[i, "trial_ends_at"] = trial_ends_s
+                updates["trial_ends_at"] = trial_ends_s
 
             if subscription_started_at is not None:
-                df.at[i, "subscription_started_at"] = str(subscription_started_at).strip()
+                started_s = str(subscription_started_at).strip()
+                df.at[i, "subscription_started_at"] = started_s
+                updates["subscription_started_at"] = started_s
 
             if subscription_ends_at is not None:
-                df.at[i, "subscription_ends_at"] = str(subscription_ends_at).strip()
+                ends_s = str(subscription_ends_at).strip()
+                df.at[i, "subscription_ends_at"] = ends_s
+                updates["subscription_ends_at"] = ends_s
 
             if billing_provider is not None:
-                df.at[i, "billing_provider"] = str(billing_provider).strip().lower()
+                provider_s = str(billing_provider).strip().lower()
+                df.at[i, "billing_provider"] = provider_s
+                updates["billing_provider"] = provider_s
 
             if billing_customer_id is not None:
-                df.at[i, "billing_customer_id"] = str(billing_customer_id).strip()
+                customer_s = str(billing_customer_id).strip()
+                df.at[i, "billing_customer_id"] = customer_s
+                updates["billing_customer_id"] = customer_s
 
             if billing_subscription_id is not None:
-                df.at[i, "billing_subscription_id"] = str(billing_subscription_id).strip()
+                subscription_id_s = str(billing_subscription_id).strip()
+                df.at[i, "billing_subscription_id"] = subscription_id_s
+                updates["billing_subscription_id"] = subscription_id_s
 
             if billing_price_id is not None:
-                df.at[i, "billing_price_id"] = str(billing_price_id).strip()
+                price_id_s = str(billing_price_id).strip()
+                df.at[i, "billing_price_id"] = price_id_s
+                updates["billing_price_id"] = price_id_s
 
             if billing_cycle is not None:
                 cycle_s = str(billing_cycle).strip().lower()
                 if cycle_s not in allowed_cycles:
                     raise ValueError("Invalid billing cycle.")
                 df.at[i, "billing_cycle"] = cycle_s
+                updates["billing_cycle"] = cycle_s
 
             if plan_with_website is not None:
-                df.at[i, "plan_with_website"] = bool(plan_with_website)
+                website_flag = bool(plan_with_website)
+                df.at[i, "plan_with_website"] = website_flag
+                updates["plan_with_website"] = website_flag
 
             if next_charge_at is not None:
-                df.at[i, "next_charge_at"] = str(next_charge_at).strip()
+                next_charge_s = str(next_charge_at).strip()
+                df.at[i, "next_charge_at"] = next_charge_s
+                updates["next_charge_at"] = next_charge_s
 
             return True, df
 
         if DB_IS_SQL:
             u = _load_users()
-            ok, out = _update(u)
-            _save_users(out)
+            ok, _ = _update(u)
+            _update_sql_row("users", "user_id", uid, updates)
             return ok
         with _file_lock(USERS_CSV):
             u = _load_users()
@@ -829,6 +1283,7 @@ class User:
         profile_image_url=None,
     ):
         uid = int(user_id)
+        updates = {}
 
         def _update(df):
             uid_col = pd.to_numeric(df["user_id"], errors="coerce")
@@ -846,6 +1301,7 @@ class User:
                 if len(dup) > 0:
                     raise ValueError("User name already exists.")
                 df.at[i, "name"] = name_s
+                updates["name"] = name_s
 
             if email is not None:
                 email_s = self._validate_email(email)
@@ -854,6 +1310,7 @@ class User:
                 if len(dup) > 0:
                     raise ValueError("Email already exists.")
                 df.at[i, "email"] = email_s
+                updates["email"] = email_s
 
             if phone is not None:
                 phone_s = self._validate_phone(phone)
@@ -862,22 +1319,26 @@ class User:
                 if len(dup) > 0:
                     raise ValueError("Phone already exists.")
                 df.at[i, "phone"] = phone_s
+                updates["phone"] = phone_s
 
             if email_notifications_enabled is not None:
-                df.at[i, "email_notifications_enabled"] = bool(email_notifications_enabled)
+                email_flag = bool(email_notifications_enabled)
+                df.at[i, "email_notifications_enabled"] = email_flag
+                updates["email_notifications_enabled"] = email_flag
 
             if profile_image_url is not None:
                 pic = str(profile_image_url).strip()
                 if len(pic) > 2_000_000:
                     raise ValueError("Profile image is too large.")
                 df.at[i, "profile_image_url"] = pic
+                updates["profile_image_url"] = pic
 
             return True, df
 
         if DB_IS_SQL:
             u = _load_users()
-            ok, out = _update(u)
-            _save_users(out)
+            ok, _ = _update(u)
+            _update_sql_row("users", "user_id", uid, updates)
             return ok
         with _file_lock(USERS_CSV):
             u = _load_users()
@@ -2058,7 +2519,7 @@ class Account:
             t_type="transfer",
             amount=amt,
             account_id=int(from_account_id),
-            category="Transfer",
+            category="Transfer Acc to Acc",
             note=f"{from_name} -> {to_name}",
             user_id=int(user_id),
         )

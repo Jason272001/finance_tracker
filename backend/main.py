@@ -16,7 +16,7 @@ from email.message import EmailMessage
 
 from fastapi import Cookie, FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 from backend.plan_features import feature_flags_for_plan, is_bank_sync_allowed, normalize_plan_code
@@ -30,18 +30,34 @@ from backend.plaid_service import (
     transactions_sync,
 )
 from backend.plaid_store import PlaidStore
-from core import Account, Admin1957, Category, Coupon, DailyBalance, Transaction, User
+from core import (
+    Account,
+    Admin1957,
+    AuthSessionStore,
+    Category,
+    Coupon,
+    DailyBalance,
+    Transaction,
+    User,
+    WebLoginTokenStore,
+)
 
 
 app = FastAPI(title="KeeperBMA Backend", version="1.1.0")
 TOKEN_SECRET = str(os.getenv("API_TOKEN_SECRET", "")).strip()
 TOKEN_TTL_SECONDS = int(os.getenv("API_TOKEN_TTL_SECONDS", "1800"))  # 30 minutes
+REFRESH_TOKEN_TTL_SECONDS = int(os.getenv("API_REFRESH_TOKEN_TTL_SECONDS", "2592000"))  # 30 days
+WEB_LOGIN_TOKEN_TTL_SECONDS = int(os.getenv("WEB_LOGIN_TOKEN_TTL_SECONDS", "180"))  # 3 minutes
 PENDING_PAYMENT_TOKEN_TTL_SECONDS = int(os.getenv("PENDING_PAYMENT_TOKEN_TTL_SECONDS", "2592000"))  # 30 days
 STRICT_TOKEN_SECRET = str(os.getenv("STRICT_TOKEN_SECRET", "1")).strip().lower() in {"1", "true", "yes"}
 SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "keeperbma_session")
+REFRESH_COOKIE_NAME = os.getenv("REFRESH_COOKIE_NAME", "keeperbma_refresh")
 ADMIN_SESSION_COOKIE_NAME = os.getenv("ADMIN_SESSION_COOKIE_NAME", "keeperbma_admin_session")
+WEB_APP_BASE_URL = str(os.getenv("WEB_APP_BASE_URL", "https://keeperbma.com")).strip().rstrip("/")
 logger = logging.getLogger("keeperbma.api")
 plaid_store = PlaidStore()
+auth_session_store = AuthSessionStore()
+web_login_token_store = WebLoginTokenStore()
 SMTP_HOST = str(os.getenv("SMTP_HOST", "")).strip()
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = str(os.getenv("SMTP_USER", "")).strip()
@@ -84,6 +100,11 @@ if not BILLING_ALLOWED_HOSTS:
         "localhost",
         "127.0.0.1",
     }
+
+MOBILE_SSO_DESTINATIONS = {
+    "dashboard": "/index.html?app=1&mobile=1",
+    "profile": "/settings.html?mobile=1",
+}
 
 _cors_raw = str(
     os.getenv(
@@ -135,6 +156,14 @@ class LoginBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     name: str = Field(min_length=1, max_length=80)
     password: str
+    client: str = Field(default="web", min_length=1, max_length=20)
+    device_label: Optional[str] = Field(default="", max_length=120)
+
+    @field_validator("client")
+    @classmethod
+    def validate_client(cls, v: str) -> str:
+        key = str(v or "web").strip().lower()
+        return "mobile" if key == "mobile" else "web"
 
 
 class AdminRegisterBody(BaseModel):
@@ -262,6 +291,29 @@ class AdminUserUpdateBody(BaseModel):
 class RecoveryRequestBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     email: str = Field(min_length=3, max_length=200)
+
+
+class RefreshBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    refresh_token: Optional[str] = Field(default=None, max_length=2000)
+
+
+class LogoutBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    refresh_token: Optional[str] = Field(default=None, max_length=2000)
+
+
+class MobileSsoBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    destination: str = Field(default="dashboard", min_length=1, max_length=40)
+
+    @field_validator("destination")
+    @classmethod
+    def validate_destination(cls, v: str) -> str:
+        key = str(v or "dashboard").strip().lower()
+        if key not in MOBILE_SSO_DESTINATIONS:
+            raise ValueError("Invalid destination")
+        return key
 
 
 class RecoveryConfirmBody(BaseModel):
@@ -524,15 +576,301 @@ class TxUpdateBody(BaseModel):
         return key
 
 
-def _issue_token(user_id: int, ttl_seconds: int = TOKEN_TTL_SECONDS) -> str:
-    exp = int(time.time()) + int(ttl_seconds)
-    payload = f"{int(user_id)}.{exp}"
-    sig = hmac.new(
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _utc_now_iso() -> str:
+    return _utc_now().replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _iso_from_ts(ts: int) -> str:
+    return datetime.fromtimestamp(int(ts), timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _token_signature(payload: str) -> str:
+    return hmac.new(
         TOKEN_SECRET.encode("utf-8"),
         payload.encode("utf-8"),
         hashlib.sha256,
     ).hexdigest()
-    return f"{payload}.{sig}"
+
+
+def _token_digest(token: str) -> str:
+    return hmac.new(
+        TOKEN_SECRET.encode("utf-8"),
+        str(token or "").encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def _set_user_access_cookie(response: Response, token: str, max_age: int = TOKEN_TTL_SECONDS) -> None:
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=token,
+        max_age=int(max_age),
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/",
+    )
+
+
+def _set_user_refresh_cookie(response: Response, token: str, max_age: int = REFRESH_TOKEN_TTL_SECONDS) -> None:
+    response.set_cookie(
+        key=REFRESH_COOKIE_NAME,
+        value=token,
+        max_age=int(max_age),
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/",
+    )
+
+
+def _clear_user_session_cookies(response: Response) -> None:
+    response.delete_cookie(
+        key=SESSION_COOKIE_NAME,
+        path="/",
+        secure=True,
+        samesite="none",
+    )
+    response.delete_cookie(
+        key=REFRESH_COOKIE_NAME,
+        path="/",
+        secure=True,
+        samesite="none",
+    )
+
+
+def _build_auth_payload(
+    user_id: int,
+    access_token: Optional[str] = None,
+    refresh_token: Optional[str] = None,
+    include_refresh_token: bool = False,
+) -> dict:
+    profile = User().get_user_by_id(int(user_id)) or {}
+    subscription = _build_subscription_payload(profile)
+    profile_payload = _build_profile_payload(profile)
+    name = profile_payload.get("name") or profile_payload.get("email") or f"user-{int(user_id)}"
+    payload = {
+        "ok": True,
+        "user_id": int(user_id),
+        "name": name,
+        "email": profile_payload.get("email", ""),
+        "phone": profile_payload.get("phone", ""),
+        "email_notifications_enabled": bool(profile_payload.get("email_notifications_enabled", True)),
+        "profile_image_url": profile_payload.get("profile_image_url", ""),
+        "lifetime_access": bool(subscription.get("is_lifetime", False)),
+        "session_minutes": TOKEN_TTL_SECONDS // 60,
+        "refresh_session_days": max(1, REFRESH_TOKEN_TTL_SECONDS // 86400),
+        **subscription,
+    }
+    if access_token:
+        payload["token"] = access_token
+    if include_refresh_token and refresh_token:
+        payload["refresh_token"] = refresh_token
+    return payload
+
+
+def _issue_access_token(user_id: int, session_id: str, ttl_seconds: int = TOKEN_TTL_SECONDS) -> str:
+    exp = int(time.time()) + int(ttl_seconds)
+    payload = f"access.{int(user_id)}.{str(session_id).strip()}.{exp}"
+    return f"{payload}.{_token_signature(payload)}"
+
+
+def _issue_token(user_id: int, ttl_seconds: int = TOKEN_TTL_SECONDS, session_id: str = "") -> str:
+    session_key = str(session_id or "").strip()
+    if session_key:
+        return _issue_access_token(int(user_id), session_key, ttl_seconds=ttl_seconds)
+    exp = int(time.time()) + int(ttl_seconds)
+    payload = f"{int(user_id)}.{exp}"
+    return f"{payload}.{_token_signature(payload)}"
+
+
+def _issue_refresh_token(
+    user_id: int,
+    session_id: str,
+    ttl_seconds: int = REFRESH_TOKEN_TTL_SECONDS,
+) -> tuple[str, str]:
+    exp = int(time.time()) + int(ttl_seconds)
+    nonce = secrets.token_urlsafe(24)
+    payload = f"refresh.{int(user_id)}.{str(session_id).strip()}.{exp}.{nonce}"
+    token = f"{payload}.{_token_signature(payload)}"
+    return token, _iso_from_ts(exp)
+
+
+def _issue_user_session(
+    user_id: int,
+    response: Optional[Response] = None,
+    session_kind: str = "web",
+    user_agent: str = "",
+    device_label: str = "",
+) -> dict:
+    now_iso = _utc_now_iso()
+    session_id = secrets.token_urlsafe(18)
+    access_token = _issue_access_token(user_id, session_id)
+    refresh_token, refresh_expires_at = _issue_refresh_token(user_id, session_id)
+    auth_session_store.create(
+        session_id=session_id,
+        user_id=int(user_id),
+        session_kind=str(session_kind or "web").strip().lower(),
+        refresh_token_hash=_token_digest(refresh_token),
+        refresh_expires_at=refresh_expires_at,
+        created_at=now_iso,
+        last_used_at=now_iso,
+        user_agent=str(user_agent or "").strip(),
+        device_label=str(device_label or "").strip(),
+    )
+    if response is not None:
+        _set_user_access_cookie(response, access_token)
+        _set_user_refresh_cookie(response, refresh_token)
+    return {
+        "session_id": session_id,
+        "token": access_token,
+        "refresh_token": refresh_token,
+        "refresh_expires_at": refresh_expires_at,
+    }
+
+
+def _is_iso_expired(value: str) -> bool:
+    dt = _as_utc(_parse_iso_datetime(value))
+    if dt is None:
+        return False
+    return dt <= _utc_now()
+
+
+def _verify_access_token(token: str) -> dict:
+    parts = str(token or "").split(".")
+    if len(parts) == 3:
+        uid_s, exp_s, sig = parts
+        try:
+            uid = int(uid_s)
+            exp = int(exp_s)
+        except ValueError:
+            raise HTTPException(status_code=401, detail="Invalid token payload")
+        payload = f"{uid}.{exp}"
+        expected_sig = _token_signature(payload)
+        if not hmac.compare_digest(sig, expected_sig):
+            raise HTTPException(status_code=401, detail="Invalid token signature")
+        if int(time.time()) > exp:
+            raise HTTPException(status_code=401, detail="Token expired")
+        return {"user_id": uid, "session_id": "", "legacy": True}
+
+    if len(parts) != 5 or parts[0] != "access":
+        raise HTTPException(status_code=401, detail="Invalid token format")
+    _, uid_s, session_id, exp_s, sig = parts
+    try:
+        uid = int(uid_s)
+        exp = int(exp_s)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    payload = f"access.{uid}.{session_id}.{exp}"
+    expected_sig = _token_signature(payload)
+    if not hmac.compare_digest(sig, expected_sig):
+        raise HTTPException(status_code=401, detail="Invalid token signature")
+    if int(time.time()) > exp:
+        raise HTTPException(status_code=401, detail="Token expired")
+    session = auth_session_store.get(session_id)
+    if not session or int(session.get("user_id") or 0) != int(uid):
+        raise HTTPException(status_code=401, detail="Session expired")
+    if str(session.get("revoked_at", "")).strip():
+        raise HTTPException(status_code=401, detail="Session expired")
+    return {"user_id": uid, "session_id": session_id, "legacy": False, "session": session}
+
+
+def _verify_refresh_token(token: str) -> dict:
+    parts = str(token or "").split(".")
+    if len(parts) != 6 or parts[0] != "refresh":
+        raise HTTPException(status_code=401, detail="Invalid refresh token format")
+    _, uid_s, session_id, exp_s, nonce, sig = parts
+    try:
+        uid = int(uid_s)
+        exp = int(exp_s)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid refresh token payload")
+    payload = f"refresh.{uid}.{session_id}.{exp}.{nonce}"
+    expected_sig = _token_signature(payload)
+    if not hmac.compare_digest(sig, expected_sig):
+        raise HTTPException(status_code=401, detail="Invalid refresh token signature")
+    if int(time.time()) > exp:
+        raise HTTPException(status_code=401, detail="Refresh token expired")
+    return {"user_id": uid, "session_id": session_id, "expires_at": _iso_from_ts(exp)}
+
+
+def _issue_web_login_token(user_id: int, source_session_id: str, redirect_path: str) -> str:
+    exp = int(time.time()) + int(WEB_LOGIN_TOKEN_TTL_SECONDS)
+    token_id = secrets.token_urlsafe(18)
+    nonce = secrets.token_urlsafe(18)
+    payload = f"weblogin.{int(user_id)}.{token_id}.{exp}.{nonce}"
+    token = f"{payload}.{_token_signature(payload)}"
+    web_login_token_store.create(
+        token_id=token_id,
+        user_id=int(user_id),
+        source_session_id=str(source_session_id or "").strip(),
+        token_hash=_token_digest(token),
+        redirect_path=str(redirect_path or "").strip(),
+        expires_at=_iso_from_ts(exp),
+        created_at=_utc_now_iso(),
+    )
+    return token
+
+
+def _verify_web_login_token(token: str) -> dict:
+    parts = str(token or "").split(".")
+    if len(parts) != 6 or parts[0] != "weblogin":
+        raise HTTPException(status_code=401, detail="Invalid web login token format")
+    _, uid_s, token_id, exp_s, nonce, sig = parts
+    try:
+        uid = int(uid_s)
+        exp = int(exp_s)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid web login token payload")
+    payload = f"weblogin.{uid}.{token_id}.{exp}.{nonce}"
+    expected_sig = _token_signature(payload)
+    if not hmac.compare_digest(sig, expected_sig):
+        raise HTTPException(status_code=401, detail="Invalid web login token signature")
+    if int(time.time()) > exp:
+        raise HTTPException(status_code=401, detail="Web login token expired")
+    return {"user_id": uid, "token_id": token_id, "expires_at": _iso_from_ts(exp)}
+
+
+def _refresh_session_payload(refresh_token: str, response: Optional[Response] = None) -> dict:
+    token_payload = _verify_refresh_token(refresh_token)
+    session_id = str(token_payload.get("session_id") or "").strip()
+    user_id = int(token_payload.get("user_id") or 0)
+    session = auth_session_store.get(session_id)
+    if not session or int(session.get("user_id") or 0) != user_id:
+        raise HTTPException(status_code=401, detail="Refresh session not found")
+    if str(session.get("revoked_at", "")).strip():
+        raise HTTPException(status_code=401, detail="Refresh session expired")
+    if _is_iso_expired(str(session.get("refresh_expires_at", "")).strip()):
+        auth_session_store.revoke(session_id, _utc_now_iso())
+        raise HTTPException(status_code=401, detail="Refresh session expired")
+    new_access_token = _issue_access_token(user_id, session_id)
+    new_refresh_token, refresh_expires_at = _issue_refresh_token(user_id, session_id)
+    rotate_result = auth_session_store.rotate(
+        session_id=session_id,
+        current_hash=_token_digest(refresh_token),
+        new_hash=_token_digest(new_refresh_token),
+        refresh_expires_at=refresh_expires_at,
+        when_iso=_utc_now_iso(),
+    )
+    if not rotate_result.get("ok"):
+        if rotate_result.get("reason") == "replay":
+            raise HTTPException(status_code=401, detail="Refresh session revoked")
+        raise HTTPException(status_code=401, detail="Refresh session expired")
+    if response is not None:
+        _set_user_access_cookie(response, new_access_token)
+        _set_user_refresh_cookie(response, new_refresh_token)
+    payload = _build_auth_payload(
+        user_id=user_id,
+        access_token=new_access_token,
+        refresh_token=new_refresh_token,
+        include_refresh_token=True,
+    )
+    payload["session_id"] = session_id
+    return payload
 
 
 def _issue_admin_token(admin_id: int, ttl_seconds: int = TOKEN_TTL_SECONDS) -> str:
@@ -583,26 +921,7 @@ def _send_recovery_email(to_email: str, code: str) -> None:
 
 
 def _verify_token(token: str) -> int:
-    parts = token.split(".")
-    if len(parts) != 3:
-        raise HTTPException(status_code=401, detail="Invalid token format")
-    uid_s, exp_s, sig = parts
-    try:
-        uid = int(uid_s)
-        exp = int(exp_s)
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid token payload")
-    payload = f"{uid}.{exp}"
-    expected_sig = hmac.new(
-        TOKEN_SECRET.encode("utf-8"),
-        payload.encode("utf-8"),
-        hashlib.sha256,
-    ).hexdigest()
-    if not hmac.compare_digest(sig, expected_sig):
-        raise HTTPException(status_code=401, detail="Invalid token signature")
-    if int(time.time()) > exp:
-        raise HTTPException(status_code=401, detail="Token expired")
-    return uid
+    return int(_verify_access_token(token).get("user_id") or 0)
 
 
 def _verify_admin_token(token: str) -> int:
@@ -1251,9 +1570,26 @@ def _extract_token(request: Request, authorization: Optional[str]) -> str:
     raise HTTPException(status_code=401, detail="Missing auth token")
 
 
+def _extract_refresh_token(request: Request, body_refresh_token: Optional[str] = None) -> str:
+    provided = str(body_refresh_token or "").strip()
+    if provided:
+        return provided
+    cookie_token = str(request.cookies.get(REFRESH_COOKIE_NAME) or "").strip()
+    if cookie_token:
+        return cookie_token
+    raise HTTPException(status_code=401, detail="Missing refresh token")
+
+
+def _safe_web_redirect_path(path: str) -> str:
+    cleaned = str(path or "").strip()
+    if cleaned in MOBILE_SSO_DESTINATIONS.values():
+        return cleaned
+    return MOBILE_SSO_DESTINATIONS["dashboard"]
+
+
 def _require_user(request: Request, authorization: Optional[str], expected_user_id: int) -> None:
     token = _extract_token(request, authorization)
-    token_uid = _verify_token(token)
+    token_uid = _verify_access_token(token).get("user_id")
     if int(token_uid) != int(expected_user_id):
         raise HTTPException(status_code=403, detail="Forbidden user scope")
 
@@ -1580,7 +1916,7 @@ def register(body: RegisterBody):
 
 
 @app.post("/auth/login")
-def login(body: LoginBody, response: Response):
+def login(body: LoginBody, request: Request, response: Response):
     u = User()
     ok = u.login(body.name, body.password)
     if not ok:
@@ -1599,29 +1935,20 @@ def login(body: LoginBody, response: Response):
                 "payment_url": _payment_page_url(payment_token),
             },
         )
-    token = _issue_token(int(u.uid))
-    response.set_cookie(
-        key=SESSION_COOKIE_NAME,
-        value=token,
-        max_age=TOKEN_TTL_SECONDS,
-        httponly=True,
-        secure=True,
-        samesite="none",
-        path="/",
+    session_kind = "mobile" if body.client == "mobile" else "web"
+    session_tokens = _issue_user_session(
+        user_id=int(u.uid),
+        response=response,
+        session_kind=session_kind,
+        user_agent=request.headers.get("user-agent", ""),
+        device_label=body.device_label if session_kind == "mobile" else "",
     )
-    return {
-        "ok": True,
-        "user_id": int(u.uid),
-        "name": profile_payload.get("name") or u.name,
-        "email": profile_payload.get("email", ""),
-        "phone": profile_payload.get("phone", ""),
-        "email_notifications_enabled": bool(profile_payload.get("email_notifications_enabled", True)),
-        "profile_image_url": profile_payload.get("profile_image_url", ""),
-        "lifetime_access": bool(subscription.get("is_lifetime", False)),
-        "session_minutes": TOKEN_TTL_SECONDS // 60,
-        "token": token,
-        **subscription,
-    }
+    return _build_auth_payload(
+        user_id=int(u.uid),
+        access_token=session_tokens.get("token"),
+        refresh_token=session_tokens.get("refresh_token"),
+        include_refresh_token=session_kind == "mobile",
+    )
 
 
 @app.post("/auth/recover/request")
@@ -1697,36 +2024,115 @@ def recover_confirm(body: RecoveryConfirmBody):
     return {"ok": True}
 
 
+@app.post("/auth/refresh")
+def auth_refresh(
+    request: Request,
+    response: Response,
+    body: Optional[RefreshBody] = None,
+):
+    refresh_token = _extract_refresh_token(request, body.refresh_token if body else None)
+    payload = _refresh_session_payload(refresh_token, response=response)
+    if not (body and body.refresh_token):
+        payload.pop("refresh_token", None)
+    return payload
+
+
 @app.post("/auth/logout")
-def logout(response: Response):
-    response.delete_cookie(
-        key=SESSION_COOKIE_NAME,
-        path="/",
-        secure=True,
-        samesite="none",
-    )
+def logout(
+    request: Request,
+    response: Response,
+    body: Optional[LogoutBody] = None,
+    authorization: Optional[str] = Header(default=None),
+):
+    session_ids = set()
+    try:
+        access_payload = _verify_access_token(_extract_token(request, authorization))
+        session_id = str(access_payload.get("session_id") or "").strip()
+        if session_id:
+            session_ids.add(session_id)
+    except HTTPException:
+        pass
+
+    try:
+        refresh_payload = _verify_refresh_token(_extract_refresh_token(request, body.refresh_token if body else None))
+        session_id = str(refresh_payload.get("session_id") or "").strip()
+        if session_id:
+            session_ids.add(session_id)
+    except HTTPException:
+        pass
+
+    now_iso = _utc_now_iso()
+    for session_id in session_ids:
+        auth_session_store.revoke(session_id, now_iso)
+
+    _clear_user_session_cookies(response)
     return {"ok": True}
 
 
 @app.get("/auth/session")
 def auth_session(request: Request, authorization: Optional[str] = Header(default=None)):
     token = _extract_token(request, authorization)
-    uid = _verify_token(token)
-    profile = User().get_user_by_id(uid) or {}
-    subscription = _build_subscription_payload(profile)
-    profile_payload = _build_profile_payload(profile)
-    name = profile_payload.get("name") or profile_payload.get("email") or f"user-{uid}"
+    uid = _verify_access_token(token).get("user_id")
+    return _build_auth_payload(user_id=int(uid))
+
+
+@app.post("/auth/mobile-sso")
+def auth_mobile_sso(
+    body: MobileSsoBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    access_payload = _verify_access_token(_extract_token(request, authorization))
+    user_id = int(access_payload.get("user_id") or 0)
+    session_id = str(access_payload.get("session_id") or "").strip()
+    session = access_payload.get("session")
+    if session_id and session and str(session.get("session_kind", "")).strip().lower() != "mobile":
+        raise HTTPException(status_code=403, detail="Mobile SSO requires a mobile app session")
+    redirect_path = MOBILE_SSO_DESTINATIONS.get(body.destination, MOBILE_SSO_DESTINATIONS["dashboard"])
+    one_time_token = _issue_web_login_token(user_id, session_id, redirect_path)
+    launch_url = f"{str(request.base_url).rstrip('/')}/auth/mobile-sso/consume?token={urllib.parse.quote(one_time_token, safe='')}"
     return {
         "ok": True,
-        "user_id": int(uid),
-        "name": name,
-        "email": profile_payload.get("email", ""),
-        "phone": profile_payload.get("phone", ""),
-        "email_notifications_enabled": bool(profile_payload.get("email_notifications_enabled", True)),
-        "profile_image_url": profile_payload.get("profile_image_url", ""),
-        "lifetime_access": bool(subscription.get("is_lifetime", False)),
-        **subscription,
+        "launch_url": launch_url,
+        "expires_in": WEB_LOGIN_TOKEN_TTL_SECONDS,
+        "destination": body.destination,
     }
+
+
+@app.get("/auth/mobile-sso/consume")
+def auth_mobile_sso_consume(token: str, request: Request):
+    verified = _verify_web_login_token(token)
+    token_id = str(verified.get("token_id") or "").strip()
+    user_id = int(verified.get("user_id") or 0)
+    row = web_login_token_store.get(token_id)
+    if not row or int(row.get("user_id") or 0) != user_id:
+        raise HTTPException(status_code=401, detail="Web login token invalid")
+    if str(row.get("revoked_at", "")).strip():
+        raise HTTPException(status_code=401, detail="Web login token revoked")
+    if str(row.get("used_at", "")).strip():
+        raise HTTPException(status_code=401, detail="Web login token already used")
+    if _is_iso_expired(str(row.get("expires_at", "")).strip()):
+        raise HTTPException(status_code=401, detail="Web login token expired")
+
+    consume_result = web_login_token_store.consume(
+        token_id=token_id,
+        token_hash=_token_digest(token),
+        used_at=_utc_now_iso(),
+        used_by_ip=request.client.host if request.client else "",
+    )
+    if not consume_result.get("ok"):
+        raise HTTPException(status_code=401, detail="Web login token invalid")
+
+    redirect_path = _safe_web_redirect_path(str(row.get("redirect_path") or ""))
+    target_url = urllib.parse.urljoin(f"{WEB_APP_BASE_URL}/", redirect_path.lstrip("/"))
+    response = RedirectResponse(url=target_url, status_code=303)
+    _issue_user_session(
+        user_id=user_id,
+        response=response,
+        session_kind="web",
+        user_agent=request.headers.get("user-agent", ""),
+    )
+    return response
 
 
 @app.post("/admin1957/register")

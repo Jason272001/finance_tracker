@@ -22,6 +22,8 @@ export interface AuthUser {
   access_reason?: string | null;
   feature_flags?: FeatureFlags;
   token?: string;
+  refresh_token?: string;
+  session_id?: string;
 }
 
 export interface AccountRecord {

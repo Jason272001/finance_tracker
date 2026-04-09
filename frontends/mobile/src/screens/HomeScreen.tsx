@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Linking,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -16,13 +15,13 @@ import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
 import { StatCard } from '../components/StatCard';
-import { WEB_BASE_URL } from '../constants/config';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { financeApi, getApiErrorInfo } from '../services/api';
 import { AccountRecord, DailyBalanceRecord, TransactionRecord } from '../types/app';
 import { useTheme } from '../theme/ThemeContext';
 import { spacing, typography } from '../theme/theme';
+import { formatPlanDisplayName } from '../utils/subscription';
 import {
   formatCurrency,
   formatDateTime,
@@ -81,7 +80,7 @@ const buildChartSlices = (
 
 export const HomeScreen: React.FC = () => {
   const { theme } = useTheme();
-  const { user, refreshSession } = useAuth();
+  const { user, refreshSession, openWebSession } = useAuth();
   const { locale, t } = useLanguage();
   const { width } = useWindowDimensions();
   const navigation = useNavigation<any>();
@@ -216,7 +215,7 @@ export const HomeScreen: React.FC = () => {
 
   const recentTransactions = transactions.slice(0, 6);
   const latestBalance = dailyBalances[0];
-  const planName = user?.is_lifetime ? 'Lifetime' : user?.plan_code ?? 'Unknown';
+  const planName = formatPlanDisplayName(user, t);
   const bankSyncAllowed = Boolean(user?.is_lifetime || user?.feature_flags?.bank_sync);
 
   const chartConfig = useMemo(
@@ -328,7 +327,7 @@ export const HomeScreen: React.FC = () => {
           <Button
             title={t('home.openWebsite')}
             variant="outline"
-            onPress={() => Linking.openURL(`${WEB_BASE_URL}/?mobile=1`)}
+            onPress={() => { void openWebSession('dashboard'); }}
           />
         </View>
         <View style={styles.infoRow}>
@@ -340,6 +339,9 @@ export const HomeScreen: React.FC = () => {
             {bankSyncAllowed ? t('home.bankSyncAvailable') : t('home.bankSyncLocked')}
           </Text>
         </View>
+        <Text style={[styles.chartRangeText, { color: theme.muted, marginTop: spacing.sm }]}>
+          {t('home.webPaymentsNote')}
+        </Text>
       </Card>
 
       <Card>
