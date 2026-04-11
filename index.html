@@ -217,15 +217,10 @@
           <div class="row">
             <input id="accName" placeholder="Account Name" />
             <select id="accType">
-              <option>checking</option>
-              <option>credit</option>
-              <option>credit_card</option>
-              <option>saving</option>
-              <option>savings</option>
-              <option>cash</option>
-              <option>asset</option>
+              <option value="asset">asset</option>
+              <option value="credit">credit (debt)</option>
+              <option value="saving">saving</option>
             </select>
-            <input id="accGroup" placeholder="Group" value="bank" />
             <input id="accBal" type="number" step="0.01" placeholder="Balance" value="0" />
           </div>
           <button id="btnAddAccount">Add Account</button>
@@ -287,6 +282,7 @@
             <input id="txAmount" type="number" step="0.01" placeholder="Amount" />
             <select id="txAccount"></select>
             <select id="txCategory"></select>
+            <input id="txDateTime" type="datetime-local" step="1" />
             <input id="txNote" placeholder="Note" />
           </div>
           <button id="btnAddTx">Add Transaction</button>
@@ -298,6 +294,8 @@
               <select id="transferFromAccount"></select>
               <select id="transferToAccount"></select>
               <input id="transferAmount" type="number" step="0.01" placeholder="Transfer Amount" />
+              <input id="transferDateTime" type="datetime-local" step="1" />
+              <input id="transferNote" placeholder="Note" />
             </div>
             <button id="btnTransferMoney" class="accent">Transfer Money</button>
           </div>

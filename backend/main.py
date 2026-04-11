@@ -514,6 +514,7 @@ class TxUpdateBody(BaseModel):
     account_id: Optional[int] = None
     category: Optional[str] = Field(default=None, min_length=1, max_length=120)
     note: Optional[str] = Field(default=None, max_length=500)
+    date: Optional[str] = Field(default=None, max_length=64)
 
     @field_validator("tx_type")
     @classmethod
@@ -3424,6 +3425,8 @@ def update_transaction(
         changes["category"] = body.category
     if body.note is not None:
         changes["note"] = body.note
+    if body.date is not None:
+        changes["date"] = body.date
     if not changes:
         raise HTTPException(status_code=400, detail="No fields to update")
     ok = Transaction().update(txn_id=txn_id, user_id=body.user_id, **changes)

@@ -25,6 +25,7 @@ let state = {
 const SIGNUP_PLAN_KEY = "keeperbma_signup_plan";
 const ALLOWED_SIGNUP_PLANS = new Set(["basic", "regular", "business", "premium_plus", "diamond"]);
 const ALLOWED_ACCOUNT_TYPES = new Set(["checking", "credit", "credit_card", "saving", "savings", "cash", "asset"]);
+const UI_ACCOUNT_TYPES = new Set(["asset", "credit", "saving"]);
 
 const I18N = {
   en: {
@@ -112,6 +113,7 @@ const I18N = {
     transfer_amount: "Transfer Amount",
     transfer_button: "Transfer Money",
     transfer_success: "Transfer completed successfully.",
+    date_time: "Date & Time",
     cancel_edit: "Cancel Edit",
     edit: "Edit",
     delete: "Delete",
@@ -405,21 +407,40 @@ function normalizeAccountTypeValue(value) {
   if (key === "creditcard") return "credit";
   if (key === "credit_card") return "credit";
   if (key === "savings") return "saving";
-  return ALLOWED_ACCOUNT_TYPES.has(key) ? key : "checking";
+  if (key === "checking" || key === "cash") return "asset";
+  return UI_ACCOUNT_TYPES.has(key) ? key : "asset";
 }
 
 function formatAccountTypeLabel(value) {
   const key = String(value || "").trim().toLowerCase().replace(/\s+/g, "_");
   const labels = {
-    checking: "Checking",
-    credit: "Credit",
-    credit_card: "Credit",
+    checking: "Asset",
+    credit: "Credit (Debt)",
+    credit_card: "Credit (Debt)",
     saving: "Saving",
     savings: "Saving",
-    cash: "Cash",
+    cash: "Asset",
     asset: "Asset",
   };
   return labels[key] || (key ? key.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase()) : "");
+}
+
+function accountTypeToGroup(accountType) {
+  return normalizeAccountTypeValue(accountType) === "credit" ? "debt" : "bank";
+}
+
+function formatDateTimeLocalInput(value = new Date()) {
+  const pad = (part) => String(part).padStart(2, "0");
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}`;
+}
+
+function toDateTimeLocalInput(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return formatDateTimeLocalInput();
+  const direct = raw.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(:\d{2})?/);
+  if (direct) return `${direct[1]}T${direct[2]}${direct[3] || ":00"}`;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? formatDateTimeLocalInput() : formatDateTimeLocalInput(parsed);
 }
 
 function applyTheme(theme) {
@@ -575,12 +596,14 @@ function applyLanguage(lang) {
   setText("btnTransferMoney", "transfer_button");
 
   if ($("accName")) $("accName").placeholder = t("account_name");
-  if ($("accGroup")) $("accGroup").placeholder = t("group");
   if ($("accBal")) $("accBal").placeholder = t("balance");
   if ($("catName")) $("catName").placeholder = t("category_name");
   if ($("txAmount")) $("txAmount").placeholder = t("amount");
+  if ($("txDateTime")) $("txDateTime").placeholder = t("date_time");
   if ($("txNote")) $("txNote").placeholder = t("note");
   if ($("transferAmount")) $("transferAmount").placeholder = t("transfer_amount");
+  if ($("transferDateTime")) $("transferDateTime").placeholder = t("date_time");
+  if ($("transferNote")) $("transferNote").placeholder = t("note");
   setPricingHint("", false);
   if ($("profileUsername")) $("profileUsername").placeholder = t("profile_username");
   if ($("profileEmail")) $("profileEmail").placeholder = "name@example.com";
@@ -598,6 +621,7 @@ function applyLanguage(lang) {
   }
   resetAccountForm();
   resetTxForm();
+  resetTransferForm();
   renderProfile();
   renderAccountsTable();
   renderCategories();
@@ -820,10 +844,10 @@ function renderBillingLock() {
 function syncFinanceLockState() {
   const locked = !hasAppAccess();
   [
-    "accName", "accType", "accGroup", "accBal", "btnAddAccount", "btnCancelAccount",
+    "accName", "accType", "accBal", "btnAddAccount", "btnCancelAccount",
     "catName", "btnAddCategory",
-    "txType", "txAmount", "txAccount", "txCategory", "txNote", "btnAddTx", "btnCancelTx",
-    "transferFromAccount", "transferToAccount", "transferAmount", "btnTransferMoney",
+    "txType", "txAmount", "txAccount", "txCategory", "txDateTime", "txNote", "btnAddTx", "btnCancelTx",
+    "transferFromAccount", "transferToAccount", "transferAmount", "transferDateTime", "transferNote", "btnTransferMoney",
     "btnConnectBank", "btnSyncBank",
   ].forEach((id) => {
     const el = $(id);
@@ -1188,7 +1212,6 @@ function beginEditAccount(acc) {
   state.editingAccountId = Number(acc.account_id || 0);
   $("accName").value = String(acc.account_name || "");
   $("accType").value = normalizeAccountTypeValue(acc.account_type);
-  $("accGroup").value = String(acc.group || "bank");
   $("accBal").value = String(Number(acc.balance || 0));
   $("btnAddAccount").textContent = t("update_account");
   $("btnCancelAccount").classList.remove("hidden");
@@ -1198,8 +1221,7 @@ function beginEditAccount(acc) {
 function resetAccountForm() {
   state.editingAccountId = 0;
   $("accName").value = "";
-  $("accType").value = "checking";
-  $("accGroup").value = "bank";
+  $("accType").value = "asset";
   $("accBal").value = "0";
   $("btnAddAccount").textContent = t("add_account");
   $("btnCancelAccount").textContent = t("cancel_edit");
@@ -1235,6 +1257,7 @@ function beginEditTransaction(tx) {
   $("txAmount").value = String(Number(tx.amount || 0));
   $("txAccount").value = String(tx.account_id || "");
   populateCategorySelect(String(tx.category || ""));
+  $("txDateTime").value = toDateTimeLocalInput(tx.date);
   $("txNote").value = String(tx.note || "");
   $("btnAddTx").textContent = t("update_tx");
   $("btnCancelTx").classList.remove("hidden");
@@ -1246,6 +1269,7 @@ function resetTxForm() {
   $("txType").value = "income";
   $("txAmount").value = "";
   populateCategorySelect("");
+  $("txDateTime").value = formatDateTimeLocalInput();
   $("txNote").value = "";
   $("btnAddTx").textContent = t("add_tx");
   $("btnCancelTx").textContent = t("cancel_edit");
@@ -1256,6 +1280,8 @@ function resetTransferForm() {
   if ($("transferFromAccount")) $("transferFromAccount").value = "";
   if ($("transferToAccount")) $("transferToAccount").value = "";
   if ($("transferAmount")) $("transferAmount").value = "";
+  if ($("transferDateTime")) $("transferDateTime").value = formatDateTimeLocalInput();
+  if ($("transferNote")) $("transferNote").value = "";
 }
 
 async function deleteTransaction(tx) {
@@ -1768,7 +1794,7 @@ window.addEventListener("load", async () => {
         user_id: state.userId,
         account_name: $("accName").value.trim(),
         account_type: normalizeAccountTypeValue($("accType").value),
-        group_name: $("accGroup").value.trim() || "bank",
+        group_name: accountTypeToGroup($("accType").value),
         balance: Number($("accBal").value || 0),
       };
       if (state.editingAccountId > 0) {
@@ -1816,6 +1842,7 @@ window.addEventListener("load", async () => {
         amount: Number($("txAmount").value || 0),
         account_id: Number($("txAccount").value),
         category: $("txCategory").value.trim(),
+        date: $("txDateTime").value || null,
         note: $("txNote").value.trim(),
       };
       if (state.editingTxId > 0) {
@@ -1873,6 +1900,8 @@ window.addEventListener("load", async () => {
             from_account_id: fromAccountId,
             to_account_id: toAccountId,
             amount,
+            date: $("transferDateTime").value || null,
+            note: $("transferNote").value.trim(),
           }),
         });
         resetTransferForm();
