@@ -38,6 +38,11 @@ const parseTxnTimestamp = (value?: string | null): number | null => {
 const categoryDisplayName = (category: CategoryRecord): string =>
   String(category.category_name || category.name || '').trim();
 
+const formatDateTimeInput = (value: Date = new Date()): string => {
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())} ${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}`;
+};
+
 export const TransactionsScreen: React.FC = () => {
   const { theme } = useTheme();
   const { locale } = useLanguage();
@@ -54,6 +59,7 @@ export const TransactionsScreen: React.FC = () => {
   const [txAmount, setTxAmount] = useState('');
   const [txAccountId, setTxAccountId] = useState<string | null>(null);
   const [txCategory, setTxCategory] = useState<string | null>(null);
+  const [txDateTime, setTxDateTime] = useState(() => formatDateTimeInput());
   const [txNote, setTxNote] = useState('');
   const [newCategoryName, setNewCategoryName] = useState('');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -210,8 +216,10 @@ export const TransactionsScreen: React.FC = () => {
         account_id: Number(txAccountId),
         category,
         note,
+        date: txDateTime.trim() || null,
       });
       setTxAmount('');
+      setTxDateTime(formatDateTimeInput());
       setTxNote('');
       setTransactionMessage('Transaction created successfully.');
       setTransactionMessageIsError(false);
@@ -222,7 +230,7 @@ export const TransactionsScreen: React.FC = () => {
     } finally {
       setSubmittingTransaction(false);
     }
-  }, [loadData, txAccountId, txAmount, txCategory, txNote, txType, user?.user_id]);
+  }, [loadData, txAccountId, txAmount, txCategory, txDateTime, txNote, txType, user?.user_id]);
 
   return (
     <ScrollView
@@ -263,6 +271,12 @@ export const TransactionsScreen: React.FC = () => {
           value={txCategory}
           options={categoryOptions}
           onChange={setTxCategory}
+        />
+        <Input
+          label="Date & Time"
+          placeholder="YYYY-MM-DD HH:MM:SS"
+          value={txDateTime}
+          onChangeText={setTxDateTime}
         />
         <Input
           label="Note"

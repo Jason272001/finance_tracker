@@ -139,12 +139,21 @@ export const financeApi = {
     const response = await api.get<BankAccountRecord[]>('/bank/accounts', { params: { user_id: userId } });
     return response.data;
   },
-  async transferAccounts(userId: number, fromAccountId: number, toAccountId: number, amount: number): Promise<{ ok: boolean }> {
+  async transferAccounts(
+    userId: number,
+    fromAccountId: number,
+    toAccountId: number,
+    amount: number,
+    note?: string,
+    date?: string | null
+  ): Promise<{ ok: boolean }> {
     const response = await api.post<{ ok: boolean }>('/accounts/transfer', {
       user_id: userId,
       from_account_id: fromAccountId,
       to_account_id: toAccountId,
       amount,
+      note,
+      date,
     });
     return response.data;
   },

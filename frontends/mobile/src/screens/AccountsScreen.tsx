@@ -14,6 +14,13 @@ import { formatCurrency, formatDateTime, isDebtAccount, normalizeText, numberFro
 import { useTheme } from '../theme/ThemeContext';
 import { spacing, typography } from '../theme/theme';
 
+const formatDateTimeInput = (value: Date = new Date()): string => {
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())} ${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}`;
+};
+
+const accountTypeToGroup = (accountType: string): string => (accountType === 'credit' ? 'debt' : 'bank');
+
 export const AccountsScreen: React.FC = () => {
   const { theme } = useTheme();
   const { user } = useAuth();
@@ -29,13 +36,14 @@ export const AccountsScreen: React.FC = () => {
   const [accountMessage, setAccountMessage] = useState<string | null>(null);
   const [accountMessageIsError, setAccountMessageIsError] = useState(false);
   const [newAccountName, setNewAccountName] = useState('');
-  const [newAccountType, setNewAccountType] = useState('checking');
-  const [newGroupName, setNewGroupName] = useState('bank');
+  const [newAccountType, setNewAccountType] = useState('asset');
   const [newBalance, setNewBalance] = useState('');
   const [submittingAccount, setSubmittingAccount] = useState(false);
   const [transferFromId, setTransferFromId] = useState<string | null>(null);
   const [transferToId, setTransferToId] = useState<string | null>(null);
   const [transferAmount, setTransferAmount] = useState('');
+  const [transferDateTime, setTransferDateTime] = useState(() => formatDateTimeInput());
+  const [transferNote, setTransferNote] = useState('');
   const [submittingTransfer, setSubmittingTransfer] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -104,11 +112,9 @@ export const AccountsScreen: React.FC = () => {
 
   const accountTypeOptions = useMemo(
     () => [
-      { value: 'checking', label: 'Checking' },
-      { value: 'saving', label: 'Saving' },
-      { value: 'cash', label: 'Cash' },
       { value: 'asset', label: 'Asset' },
-      { value: 'credit_card', label: 'Credit Card' },
+      { value: 'credit', label: 'Credit (Debt)' },
+      { value: 'saving', label: 'Saving' },
     ],
     []
   );
@@ -116,7 +122,7 @@ export const AccountsScreen: React.FC = () => {
   const handleCreateAccount = useCallback(async () => {
     if (!user?.user_id) return;
     const accountName = newAccountName.trim();
-    const groupName = newGroupName.trim() || 'bank';
+    const groupName = accountTypeToGroup(newAccountType);
     const balance = numberFromUnknown(newBalance);
 
     if (!accountName) {
@@ -135,7 +141,6 @@ export const AccountsScreen: React.FC = () => {
         balance,
       });
       setNewAccountName('');
-      setNewGroupName(newAccountType === 'credit_card' ? 'debt' : 'bank');
       setNewBalance('');
       setAccountMessage('Account created successfully.');
       setAccountMessageIsError(false);
@@ -146,7 +151,7 @@ export const AccountsScreen: React.FC = () => {
     } finally {
       setSubmittingAccount(false);
     }
-  }, [loadData, newAccountName, newAccountType, newBalance, newGroupName, user?.user_id]);
+  }, [loadData, newAccountName, newAccountType, newBalance, user?.user_id]);
 
   const handleTransfer = useCallback(async () => {
     if (!user?.user_id) return;
@@ -166,10 +171,19 @@ export const AccountsScreen: React.FC = () => {
 
     try {
       setSubmittingTransfer(true);
-      await financeApi.transferAccounts(user.user_id, Number(transferFromId), Number(transferToId), amount);
+      await financeApi.transferAccounts(
+        user.user_id,
+        Number(transferFromId),
+        Number(transferToId),
+        amount,
+        transferNote.trim(),
+        transferDateTime.trim() || null
+      );
       setTransferMessage(t('accounts.transferSuccess'));
       setTransferMessageIsError(false);
       setTransferAmount('');
+      setTransferDateTime(formatDateTimeInput());
+      setTransferNote('');
       setTransferFromId(null);
       setTransferToId(null);
       await loadData();
@@ -179,7 +193,7 @@ export const AccountsScreen: React.FC = () => {
     } finally {
       setSubmittingTransfer(false);
     }
-  }, [loadData, t, transferAmount, transferFromId, transferToId, user?.user_id]);
+  }, [loadData, t, transferAmount, transferDateTime, transferFromId, transferNote, transferToId, user?.user_id]);
 
   return (
     <ScrollView
@@ -207,7 +221,7 @@ export const AccountsScreen: React.FC = () => {
 
       <Card>
         <Text style={[styles.sectionTitle, { color: theme.heading }]}>Create Account</Text>
-        <Text style={[styles.sectionCaption, { color: theme.muted }]}>Add checking, savings, cash, asset, or credit accounts from mobile.</Text>
+        <Text style={[styles.sectionCaption, { color: theme.muted }]}>Add asset, credit, or saving accounts from mobile.</Text>
         <Input
           label="Account Name"
           placeholder="Account Name"
@@ -219,18 +233,7 @@ export const AccountsScreen: React.FC = () => {
           placeholder="Account Type"
           value={newAccountType}
           options={accountTypeOptions}
-          onChange={(value) => {
-            setNewAccountType(value);
-            if (value === 'credit_card') {
-              setNewGroupName('debt');
-            }
-          }}
-        />
-        <Input
-          label="Group"
-          placeholder="bank"
-          value={newGroupName}
-          onChangeText={setNewGroupName}
+          onChange={setNewAccountType}
         />
         <Input
           label="Opening Balance"
@@ -274,6 +277,18 @@ export const AccountsScreen: React.FC = () => {
           keyboardType="decimal-pad"
           value={transferAmount}
           onChangeText={setTransferAmount}
+        />
+        <Input
+          label="Date & Time"
+          placeholder="YYYY-MM-DD HH:MM:SS"
+          value={transferDateTime}
+          onChangeText={setTransferDateTime}
+        />
+        <Input
+          label="Note"
+          placeholder="Optional note"
+          value={transferNote}
+          onChangeText={setTransferNote}
         />
         {transferMessage ? (
           <Text style={[styles.feedbackText, { color: transferMessageIsError ? theme.dangerStart : theme.secondaryStart }]}>{transferMessage}</Text>

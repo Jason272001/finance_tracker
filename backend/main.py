@@ -486,6 +486,8 @@ class AccountTransferBody(BaseModel):
     from_account_id: int
     to_account_id: int
     amount: float = Field(gt=0.0, le=10_000_000.0)
+    note: Optional[str] = Field(default="", max_length=500)
+    date: Optional[str] = Field(default=None, max_length=64)
 
 
 class BankLinkTokenBody(BaseModel):
@@ -3114,6 +3116,8 @@ def transfer_between_accounts(
         to_account_id=body.to_account_id,
         amount=body.amount,
         user_id=body.user_id,
+        note=body.note,
+        date_value=body.date,
     )
     if not ok:
         raise HTTPException(status_code=400, detail="Transfer failed.")
@@ -3394,6 +3398,7 @@ def create_transaction(body: TxCreateBody, request: Request, authorization: Opti
             category=body.category,
             note=body.note,
             user_id=body.user_id,
+            date_value=body.date,
         )
         return {"ok": True, "txn_id": int(txn_id)}
     except ValueError as e:

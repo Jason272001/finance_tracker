@@ -1816,14 +1816,34 @@ class Transaction:
         r["account_id"] = int(r["account_id"]) if pd.notna(r["account_id"]) else 0
         return r
 
-    def add(self, t_type, amount, account_id, category="", note="", user_id=None):
+    @staticmethod
+    def _normalize_date_value(date_value=None):
+        raw = str(date_value or "").strip()
+        if not raw:
+            return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        candidate = raw.replace("T", " ")
+        if len(candidate) == 16:
+            candidate = f"{candidate}:00"
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+            try:
+                return datetime.strptime(candidate, fmt).strftime("%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                continue
+        try:
+            iso_candidate = raw.replace("Z", "+00:00")
+            return datetime.fromisoformat(iso_candidate).strftime("%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            raise ValueError("Invalid date. Use YYYY-MM-DD HH:MM or YYYY-MM-DD HH:MM:SS.")
+
+    def add(self, t_type, amount, account_id, category="", note="", user_id=None, date_value=None):
         if user_id is None:
             raise ValueError(" Need To login")
 
         with _file_lock(self.path):
             df = self._load()
             next_id = self._next_id(df)
-            d = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            d = self._normalize_date_value(date_value)
             postings = self._build_postings(
                 user_id=user_id,
                 t_type=t_type,
@@ -1871,7 +1891,7 @@ class Transaction:
                 category=old_category,
             )
 
-            allowed = {"type", "amount", "account_id", "category", "note"}
+            allowed = {"type", "amount", "account_id", "category", "note", "date"}
             for k, v in changes.items():
                 if k not in allowed:
                     continue
@@ -1879,6 +1899,8 @@ class Transaction:
                     v = float(v)
                 if k == "account_id":
                     v = int(v)
+                if k == "date":
+                    v = self._normalize_date_value(v)
                 df.at[i, k] = v
 
             new_type = str(df.at[i, "type"])
@@ -2103,7 +2125,7 @@ class Account:
         )
         return True
 
-    def transfer(self, from_account_id, to_account_id, amount, user_id=None):
+    def transfer(self, from_account_id, to_account_id, amount, user_id=None, note="", date_value=None):
         if user_id is None:
             return False
         if int(from_account_id) == int(to_account_id):
@@ -2142,9 +2164,10 @@ class Account:
             t_type="transfer",
             amount=amt,
             account_id=int(from_account_id),
-            category="Transfer",
-            note=f"{from_name} -> {to_name}",
+            category="Transfer Acc to Acc",
+            note=str(note).strip() or f"{from_name} -> {to_name}",
             user_id=int(user_id),
+            date_value=date_value,
         )
         return True
 
