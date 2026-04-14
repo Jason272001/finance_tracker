@@ -302,8 +302,10 @@
           <div class="tx-filter-panel">
             <h3 id="txHistoryFilterTitle">Transaction History Filters</h3>
             <div class="row">
+              <input id="txFilterKeyword" type="search" placeholder="Search keyword" />
               <select id="txFilterAccount"></select>
-              <input id="txFilterDate" type="date" />
+              <input id="txFilterFromTime" type="datetime-local" step="1" placeholder="From Time" />
+              <input id="txFilterToTime" type="datetime-local" step="1" placeholder="To Time" />
               <select id="txFilterCategory"></select>
               <button id="btnClearTxFilters" class="secondary">Clear Filters</button>
             </div>

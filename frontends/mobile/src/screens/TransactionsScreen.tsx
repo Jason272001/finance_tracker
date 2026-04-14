@@ -15,17 +15,11 @@ import { spacing, typography } from '../theme/theme';
 
 const TRANSFER_CATEGORY = 'Transfer Acc to Acc';
 
-const toStartTimestamp = (value: string): number | null => {
+const parseInputTimestamp = (value: string): number | null => {
   const trimmed = value.trim();
   if (!trimmed) return null;
-  const parsed = new Date(`${trimmed}T00:00:00`).getTime();
-  return Number.isNaN(parsed) ? null : parsed;
-};
-
-const toEndTimestamp = (value: string): number | null => {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  const parsed = new Date(`${trimmed}T23:59:59`).getTime();
+  const normalized = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T');
+  const parsed = new Date(normalized).getTime();
   return Number.isNaN(parsed) ? null : parsed;
 };
 
@@ -53,8 +47,8 @@ export const TransactionsScreen: React.FC = () => {
   const [query, setQuery] = useState('');
   const [selectedAccountId, setSelectedAccountId] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [fromTime, setFromTime] = useState('');
+  const [toTime, setToTime] = useState('');
   const [txType, setTxType] = useState('expense');
   const [txAmount, setTxAmount] = useState('');
   const [txAccountId, setTxAccountId] = useState<string | null>(null);
@@ -131,11 +125,11 @@ export const TransactionsScreen: React.FC = () => {
 
   const filteredTransactions = useMemo(() => {
     const q = normalizeText(query);
-    const startTs = toStartTimestamp(startDate);
-    const endTs = toEndTimestamp(endDate);
+    const fromTs = parseInputTimestamp(fromTime);
+    const toTs = parseInputTimestamp(toTime);
 
     return transactions.filter((txn) => {
-      const haystack = [txn.tx_type ?? txn.type, txn.category, txn.note, txn.account_name, txn.date, txn.amount]
+      const haystack = [txn.txn_id, txn.tx_type ?? txn.type, txn.category, txn.note, txn.account_name, txn.date, txn.amount]
         .map(normalizeText)
         .join(' ');
       if (q && !haystack.includes(q)) return false;
@@ -143,11 +137,11 @@ export const TransactionsScreen: React.FC = () => {
       if (selectedCategory !== 'all' && String(txn.category || '').trim() !== selectedCategory) return false;
 
       const txnTs = parseTxnTimestamp(txn.date);
-      if (startTs !== null && (txnTs === null || txnTs < startTs)) return false;
-      if (endTs !== null && (txnTs === null || txnTs > endTs)) return false;
+      if (fromTs !== null && (txnTs === null || txnTs < fromTs)) return false;
+      if (toTs !== null && (txnTs === null || txnTs > toTs)) return false;
       return true;
     });
-  }, [endDate, query, selectedAccountId, selectedCategory, startDate, transactions]);
+  }, [fromTime, query, selectedAccountId, selectedCategory, toTime, transactions]);
 
   const totals = useMemo(() => {
     return filteredTransactions.reduce(
@@ -164,11 +158,11 @@ export const TransactionsScreen: React.FC = () => {
   }, [filteredTransactions]);
 
   const timeframeLabel = useMemo(() => {
-    if (startDate.trim() || endDate.trim()) {
-      return `${startDate.trim() || 'Beginning'} to ${endDate.trim() || 'Today'}`;
+    if (fromTime.trim() || toTime.trim()) {
+      return `${fromTime.trim() || 'Beginning'} to ${toTime.trim() || 'Now'}`;
     }
     return 'All time';
-  }, [endDate, startDate]);
+  }, [fromTime, toTime]);
 
   const handleCreateCategory = useCallback(async () => {
     if (!user?.user_id) return;
@@ -315,8 +309,13 @@ export const TransactionsScreen: React.FC = () => {
 
       <Card>
         <Text style={[styles.heading, { color: theme.heading }]}>Transaction Search</Text>
-        <Text style={[styles.subheading, { color: theme.muted }]}>Filter by keyword, account, category, or date range. The summary updates from the filtered time frame.</Text>
-        <Input placeholder="Search by note, date, amount, or type" value={query} onChangeText={setQuery} />
+        <Text style={[styles.subheading, { color: theme.muted }]}>Filter by keyword, account, category, or time range. The summary updates from the filtered time frame.</Text>
+        <Input
+          label="Keyword Search"
+          placeholder="Search by note, date, amount, type, or account"
+          value={query}
+          onChangeText={setQuery}
+        />
         <OptionSelect
           label="Account Filter"
           placeholder="All Accounts"
@@ -332,17 +331,17 @@ export const TransactionsScreen: React.FC = () => {
           onChange={setSelectedCategory}
         />
         <Input
-          label="Start Date"
-          placeholder="YYYY-MM-DD"
-          value={startDate}
-          onChangeText={setStartDate}
+          label="From Time"
+          placeholder="YYYY-MM-DD HH:MM:SS"
+          value={fromTime}
+          onChangeText={setFromTime}
           autoCapitalize="none"
         />
         <Input
-          label="End Date"
-          placeholder="YYYY-MM-DD"
-          value={endDate}
-          onChangeText={setEndDate}
+          label="To Time"
+          placeholder="YYYY-MM-DD HH:MM:SS"
+          value={toTime}
+          onChangeText={setToTime}
           autoCapitalize="none"
         />
         <View style={styles.summaryHeader}>

@@ -601,6 +601,9 @@ function applyLanguage(lang) {
   if ($("txAmount")) $("txAmount").placeholder = t("amount");
   if ($("txDateTime")) $("txDateTime").placeholder = t("date_time");
   if ($("txNote")) $("txNote").placeholder = t("note");
+  if ($("txFilterKeyword")) $("txFilterKeyword").placeholder = "Search keyword";
+  if ($("txFilterFromTime")) $("txFilterFromTime").placeholder = "From Time";
+  if ($("txFilterToTime")) $("txFilterToTime").placeholder = "To Time";
   if ($("transferAmount")) $("transferAmount").placeholder = t("transfer_amount");
   if ($("transferDateTime")) $("transferDateTime").placeholder = t("date_time");
   if ($("transferNote")) $("transferNote").placeholder = t("note");
@@ -1127,20 +1130,48 @@ function populateTransactionFilterSelects() {
 }
 
 function transactionSortValue(tx) {
-  const parsedDate = Date.parse(String(tx.date || ""));
-  if (!Number.isNaN(parsedDate)) return parsedDate;
+  const parsedDate = parseTransactionTimestamp(tx.date);
+  if (parsedDate !== null) return parsedDate;
   return Number(tx.txn_id || 0);
 }
 
+function parseTransactionTimestamp(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+  const parsed = Date.parse(normalized);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 function getFilteredTransactions() {
+  const keywordFilter = String($("txFilterKeyword")?.value || "").trim().toLowerCase();
   const accountFilter = String($("txFilterAccount")?.value || "");
-  const dateFilter = String($("txFilterDate")?.value || "");
+  const fromTimeFilter = String($("txFilterFromTime")?.value || "");
+  const toTimeFilter = String($("txFilterToTime")?.value || "");
   const categoryFilter = String($("txFilterCategory")?.value || "").trim();
+  const fromTimestamp = fromTimeFilter ? Date.parse(fromTimeFilter) : null;
+  const toTimestamp = toTimeFilter ? Date.parse(toTimeFilter) : null;
+  const accountNameById = new Map(state.accounts.map((a) => [String(a.account_id || ""), String(a.account_name || "")]));
 
   return [...state.tx]
     .filter((tx) => {
+      const txTimestamp = parseTransactionTimestamp(tx.date);
+      const accountName = accountNameById.get(String(tx.account_id || "")) || "";
+      const keywordHaystack = [
+        tx.txn_id,
+        tx.date,
+        tx.type,
+        tx.amount,
+        accountName,
+        tx.category,
+        tx.note,
+      ]
+        .map((item) => String(item ?? "").trim().toLowerCase())
+        .join(" ");
+      if (keywordFilter && !keywordHaystack.includes(keywordFilter)) return false;
       if (accountFilter && String(tx.account_id || "") !== accountFilter) return false;
-      if (dateFilter && String(tx.date || "").slice(0, 10) !== dateFilter) return false;
+      if (fromTimestamp !== null && (txTimestamp === null || txTimestamp < fromTimestamp)) return false;
+      if (toTimestamp !== null && (txTimestamp === null || txTimestamp > toTimestamp)) return false;
       if (categoryFilter && String(tx.category || "").trim() !== categoryFilter) return false;
       return true;
     })
@@ -1863,13 +1894,17 @@ window.addEventListener("load", async () => {
     }
   };
   $("btnCancelTx").onclick = resetTxForm;
+  if ($("txFilterKeyword")) $("txFilterKeyword").oninput = renderTransactions;
   if ($("txFilterAccount")) $("txFilterAccount").onchange = renderTransactions;
-  if ($("txFilterDate")) $("txFilterDate").onchange = renderTransactions;
+  if ($("txFilterFromTime")) $("txFilterFromTime").onchange = renderTransactions;
+  if ($("txFilterToTime")) $("txFilterToTime").onchange = renderTransactions;
   if ($("txFilterCategory")) $("txFilterCategory").onchange = renderTransactions;
   if ($("btnClearTxFilters")) {
     $("btnClearTxFilters").onclick = () => {
+      if ($("txFilterKeyword")) $("txFilterKeyword").value = "";
       if ($("txFilterAccount")) $("txFilterAccount").value = "";
-      if ($("txFilterDate")) $("txFilterDate").value = "";
+      if ($("txFilterFromTime")) $("txFilterFromTime").value = "";
+      if ($("txFilterToTime")) $("txFilterToTime").value = "";
       if ($("txFilterCategory")) $("txFilterCategory").value = "";
       renderTransactions();
     };
