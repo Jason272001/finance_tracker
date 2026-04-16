@@ -183,6 +183,25 @@ function setStatus(msg) {
   if (el) el.textContent = msg || "";
 }
 
+function setPasswordToggleState(inputId, buttonId, reveal = false) {
+  const input = $(inputId);
+  const button = $(buttonId);
+  if (!input || !button) return;
+  input.type = reveal ? "text" : "password";
+  button.textContent = reveal ? "Hide" : "Show";
+  button.setAttribute("aria-pressed", String(reveal));
+}
+
+function bindPasswordToggle(inputId, buttonId) {
+  const input = $(inputId);
+  const button = $(buttonId);
+  if (!input || !button) return;
+  button.onclick = () => {
+    const reveal = input.type === "password";
+    setPasswordToggleState(inputId, buttonId, reveal);
+  };
+}
+
 function disableSubmit(disabled) {
   const btn = $("authSubmit");
   if (btn) btn.disabled = Boolean(disabled);
@@ -252,6 +271,8 @@ function setMode(mode) {
   $("authPass").placeholder = isRecover ? authT("new_password") : authT("password");
   $("authSubmit").textContent = isSignin ? authT("signin") : (isSignup ? authT("signup") : authT("reset_password"));
   document.title = isSignin ? "KeeperBMA - Sign In" : (isSignup ? "KeeperBMA - Sign Up" : "KeeperBMA - Recover Password");
+  setPasswordToggleState("authPass", "authPassToggle", false);
+  setPasswordToggleState("authPassConfirm", "authPassConfirmToggle", false);
   renderSignupPlanBanner();
   if (mode !== "signup" || state.signupPlan) setStatus("");
 }
@@ -368,6 +389,8 @@ window.addEventListener("load", async () => {
   if ($("mobileWebsiteBtn")) {
     $("mobileWebsiteBtn").onclick = () => openWebsite(websiteUrl("/plans"));
   }
+  bindPasswordToggle("authPass", "authPassToggle");
+  bindPasswordToggle("authPassConfirm", "authPassConfirmToggle");
 
   if (paymentState === "success") {
     setStatus(authT("payment_saved"));

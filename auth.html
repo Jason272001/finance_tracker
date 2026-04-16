@@ -98,11 +98,17 @@
         </div>
 
         <label for="authPass" id="labelPassword">Password</label>
-        <input id="authPass" type="password" placeholder="Password" />
+        <div class="password-field">
+          <input id="authPass" type="password" placeholder="Password" />
+          <button id="authPassToggle" class="secondary password-toggle-btn" type="button" aria-pressed="false" aria-controls="authPass">Show</button>
+        </div>
 
         <div id="confirmWrap" class="hidden">
           <label for="authPassConfirm" id="labelConfirmPassword">Confirm Password</label>
-          <input id="authPassConfirm" type="password" placeholder="Confirm Password" />
+          <div class="password-field">
+            <input id="authPassConfirm" type="password" placeholder="Confirm Password" />
+            <button id="authPassConfirmToggle" class="secondary password-toggle-btn" type="button" aria-pressed="false" aria-controls="authPassConfirm">Show</button>
+          </div>
         </div>
 
         <button id="btnForgot" class="secondary full" type="button">Forgot Password?</button>
@@ -125,6 +131,6 @@
     </section>
   </div>
 
-  <script src="./frontends/web/auth.js?v=33"></script>
+  <script src="./frontends/web/auth.js?v=34"></script>
 </body>
 </html>

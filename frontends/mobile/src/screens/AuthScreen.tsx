@@ -131,7 +131,7 @@ export const AuthScreen: React.FC = () => {
           {mode === 'signin' ? (
             <View style={styles.form}>
               <Input label="Username" placeholder="Username" value={username} onChangeText={setUsername} autoCapitalize="none" />
-              <Input label="Password" placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
+              <Input label="Password" placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry showPasswordToggle />
               {paymentInfo ? (
                 <Card style={[styles.noticeCard, { backgroundColor: theme.surface }]}> 
                   <Text style={[styles.noticeTitle, { color: theme.heading }]}>Payment information required</Text>
@@ -150,7 +150,7 @@ export const AuthScreen: React.FC = () => {
             <View style={styles.form}>
               <Input label="Email" placeholder="name@example.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
               <Input label="Recovery Code" placeholder="Enter the code from your email" value={code} onChangeText={setCode} autoCapitalize="none" />
-              <Input label="New Password" placeholder="New password" value={newPassword} onChangeText={setNewPassword} secureTextEntry />
+              <Input label="New Password" placeholder="New password" value={newPassword} onChangeText={setNewPassword} secureTextEntry showPasswordToggle />
               {message ? <Text style={[styles.message, { color: theme.muted }]}>{message}</Text> : null}
               <View style={styles.buttonGap}>
                 <Button title={loading ? 'Sending...' : 'Send Recovery Code'} variant="outline" onPress={handleRecoverRequest} disabled={loading} />
