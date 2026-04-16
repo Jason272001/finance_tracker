@@ -2,7 +2,7 @@
   "expo": {
     "name": "KeeperBMA",
     "slug": "keeperbma",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "scheme": "keeperbma-mobile",
     "icon": "./assets/icon.png",
@@ -16,6 +16,8 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.keeperbma.mobile",
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -29,7 +31,10 @@
     },
     "extra": {
       "apiBaseUrl": "https://api.keeperbma.com",
-      "webBaseUrl": "https://keeperbma.com"
+      "webBaseUrl": "https://keeperbma.com",
+      "eas": {
+        "projectId": "d5825bb2-af37-4418-b38f-215c48afeff2"
+      }
     }
   }
 }
