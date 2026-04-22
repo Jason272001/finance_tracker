@@ -1,5 +1,6 @@
 import React from 'react';
 import { Alert, Image, Linking, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { OptionSelect } from '../components/OptionSelect';
@@ -14,6 +15,7 @@ export const SettingsScreen: React.FC = () => {
   const { theme, isDark, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
   const { language, locale, options, setLanguage, t } = useLanguage();
+  const navigation = useNavigation<any>();
 
   const handleSignOut = async () => {
     await signOut();
@@ -69,7 +71,8 @@ export const SettingsScreen: React.FC = () => {
         <View style={styles.buttonStack}>
           <Button title={t('settings.openWebDashboard')} onPress={openWebDashboard} />
           <Button title={t('settings.manageProfile')} variant="outline" onPress={openWebDashboard} />
-          <Button title={t('settings.contactSupport')} variant="secondary" onPress={contactSupport} />
+          <Button title={t('settings.openSupportChat')} variant="secondary" onPress={() => navigation.navigate('Support')} />
+          <Button title={t('settings.contactSupport')} variant="outline" onPress={contactSupport} />
           <Button
             title={t('settings.signOut')}
             variant="danger"

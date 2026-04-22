@@ -87,3 +87,22 @@ export interface PaymentRequiredInfo {
   paymentUrl?: string | null;
   status?: number;
 }
+
+export interface SupportChatMessageRecord {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface SupportChatResponse {
+  ok: boolean;
+  user_id: number;
+  topic_id: string;
+  topic_title: string;
+  confidence: number;
+  reply: string;
+  steps: string[];
+  suggestions: string[];
+  escalate: boolean;
+  escalation_message?: string | null;
+  contact_email: string;
+}

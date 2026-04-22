@@ -20,7 +20,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <link rel="stylesheet" href="./frontends/web/styles.css?v=42" />
+  <link rel="stylesheet" href="./frontends/web/styles.css?v=43" />
 </head>
 <body>
   <main class="page">
@@ -338,9 +338,34 @@
         </section>
       </div>
     </section>
+
+    <button id="supportLauncher" type="button" class="support-launcher hidden">Chat with Omar</button>
+    <section id="supportWidget" class="support-widget hidden" aria-live="polite">
+      <div class="support-widget-head">
+        <div>
+          <h2 id="supportTitle">Omar</h2>
+          <p id="supportSubtitle" class="muted"></p>
+        </div>
+        <button id="btnCloseSupport" type="button" class="secondary support-head-btn">Close</button>
+      </div>
+      <p id="supportNote" class="muted support-note"></p>
+      <div class="support-quick-questions">
+        <strong id="supportQuickQuestionsLabel">Quick Questions</strong>
+        <div id="supportQuickQuestions" class="support-quick-list"></div>
+      </div>
+      <div id="supportMessages" class="support-messages"></div>
+      <p id="supportStatus" class="error-text"></p>
+      <div class="support-compose">
+        <textarea id="supportInput" rows="4"></textarea>
+        <div class="support-compose-actions">
+          <button id="btnSendSupport" type="button">Send</button>
+          <button id="btnEmailSupport" type="button" class="secondary">Email Support</button>
+        </div>
+      </div>
+    </section>
   </main>
 
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
-  <script src="./frontends/web/web.js?v=44"></script>
+  <script src="./frontends/web/web.js?v=45"></script>
 </body>
 </html>

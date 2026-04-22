@@ -21,6 +21,14 @@ let state = {
   bankConnections: [],
   linkedBankAccounts: [],
   charts: { income: null, expense: null, debt: null },
+  support: {
+    open: false,
+    loading: false,
+    messages: [],
+    suggestions: [],
+    contactEmail: "support@keeperbma.com",
+    status: "",
+  },
 };
 const SIGNUP_PLAN_KEY = "keeperbma_signup_plan";
 const ALLOWED_SIGNUP_PLANS = new Set(["basic", "regular", "business", "premium_plus", "diamond"]);
@@ -155,6 +163,17 @@ const I18N = {
     website_bundle_label: "Website Bundle",
     access_state_active: "Active",
     access_state_locked: "Locked",
+    support_title: "Omar",
+    support_subtitle: "Live help with Omar for common KeeperBMA questions, billing, login, bank sync, missing data, and typical app issues.",
+    support_note: "Omar is trained on common customer questions and troubleshooting paths. If something needs a human, Omar will tell you when to contact support.",
+    support_open: "Chat with Omar",
+    support_close: "Close",
+    support_send: "Send",
+    support_sending: "Sending...",
+    support_placeholder: "Ask about login, billing, coupons, bank sync, missing data, transactions, transfers, or app issues",
+    support_quick_questions: "Quick Questions",
+    support_email: "Email Support",
+    support_fallback: "Support chat is unavailable right now. Please try again in a moment.",
     yes: "Yes",
     no: "No",
   },
@@ -607,6 +626,7 @@ function applyLanguage(lang) {
   if ($("transferAmount")) $("transferAmount").placeholder = t("transfer_amount");
   if ($("transferDateTime")) $("transferDateTime").placeholder = t("date_time");
   if ($("transferNote")) $("transferNote").placeholder = t("note");
+  if ($("supportInput")) $("supportInput").placeholder = t("support_placeholder");
   setPricingHint("", false);
   if ($("profileUsername")) $("profileUsername").placeholder = t("profile_username");
   if ($("profileEmail")) $("profileEmail").placeholder = "name@example.com";
@@ -631,6 +651,7 @@ function applyLanguage(lang) {
   renderTransactions();
   renderSubscription();
   renderBankSync();
+  renderSupportWidget();
   applyTheme(state.theme);
 }
 
@@ -678,6 +699,13 @@ function setScreen(isLoggedIn) {
   landing.style.display = isLoggedIn ? "none" : "flex";
   app.style.display = isLoggedIn ? "block" : "none";
   $("userBadge").textContent = isLoggedIn ? `${t("signed_in")}: ${state.userName}` : "";
+  if (!isLoggedIn) {
+    resetSupportState();
+  }
+  if (isLoggedIn && (!state.support.messages || state.support.messages.length === 0)) {
+    resetSupportState();
+  }
+  renderSupportWidget();
   if (isLoggedIn) renderProfile();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -689,6 +717,8 @@ function showLanding() {
   app.classList.add("hidden");
   landing.style.display = "flex";
   app.style.display = "none";
+  resetSupportState();
+  renderSupportWidget();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -772,6 +802,192 @@ function planLabel(planCode, withWebsite = false) {
   };
   return labels[key] || key || t("plan_basic");
 }
+
+function defaultSupportSuggestions() {
+  return [
+    "Why is my data not showing?",
+    "How do I reset my password?",
+    "How do coupons and billing work?",
+  ];
+}
+
+function initialSupportMessage() {
+  return {
+    role: "assistant",
+    content:
+      "Hi, I'm Omar. I can help with common KeeperBMA questions about login, billing, coupons, bank sync, missing data, transactions, transfers, reports, and typical app issues.",
+    topicTitle: "Omar",
+    steps: [],
+    escalationMessage: "",
+  };
+}
+
+function resetSupportState() {
+  state.support = {
+    open: false,
+    loading: false,
+    messages: [initialSupportMessage()],
+    suggestions: defaultSupportSuggestions(),
+    contactEmail: "support@keeperbma.com",
+    status: "",
+  };
+}
+
+function supportFriendlyErrorMessage(message) {
+  const text = String(message || "").trim();
+  if (/not found/i.test(text) || /HTTP 404/i.test(text)) {
+    return "Omar support chat is not active on this server yet. Please use Email Support for now and try again after the latest backend update is deployed.";
+  }
+  return text || t("support_fallback");
+}
+
+function buildSupportHistoryPayload() {
+  return (state.support.messages || []).slice(-10).map((message) => ({
+    role: message.role === "assistant" ? "assistant" : "user",
+    content: String(message.content || ""),
+  }));
+}
+
+function renderSupportMessages() {
+  const wrap = $("supportMessages");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+
+  (state.support.messages || []).forEach((message) => {
+    const bubble = document.createElement("div");
+    bubble.className = `support-message ${message.role === "user" ? "user" : "assistant"}`;
+
+    if (message.role !== "user" && message.topicTitle) {
+      const title = document.createElement("div");
+      title.className = "support-message-topic";
+      title.textContent = String(message.topicTitle || "");
+      bubble.appendChild(title);
+    }
+
+    const body = document.createElement("div");
+    body.className = "support-message-body";
+    body.textContent = String(message.content || "");
+    bubble.appendChild(body);
+
+    if (Array.isArray(message.steps) && message.steps.length > 0) {
+      const steps = document.createElement("div");
+      steps.className = "support-message-steps";
+      message.steps.forEach((step, index) => {
+        const row = document.createElement("div");
+        row.textContent = `${index + 1}. ${String(step || "")}`;
+        steps.appendChild(row);
+      });
+      bubble.appendChild(steps);
+    }
+
+    if (message.escalationMessage) {
+      const escalation = document.createElement("div");
+      escalation.className = "support-message-escalation";
+      escalation.textContent = String(message.escalationMessage || "");
+      bubble.appendChild(escalation);
+    }
+
+    wrap.appendChild(bubble);
+  });
+
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function renderSupportSuggestions() {
+  const wrap = $("supportQuickQuestions");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  (state.support.suggestions || defaultSupportSuggestions()).forEach((question) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "secondary support-suggestion-btn";
+    btn.textContent = String(question || "");
+    btn.disabled = Boolean(state.support.loading);
+    btn.onclick = () => sendSupportMessage(question);
+    wrap.appendChild(btn);
+  });
+}
+
+function renderSupportWidget() {
+  const widget = $("supportWidget");
+  const launcher = $("supportLauncher");
+  if (!widget || !launcher) return;
+  widget.classList.toggle("hidden", !state.support.open || !state.userId);
+  launcher.classList.toggle("hidden", !state.userId);
+  launcher.textContent = state.support.open ? t("support_close") : t("support_open");
+  if ($("supportTitle")) $("supportTitle").textContent = t("support_title");
+  if ($("supportSubtitle")) $("supportSubtitle").textContent = t("support_subtitle");
+  if ($("supportNote")) $("supportNote").textContent = t("support_note");
+  if ($("supportQuickQuestionsLabel")) $("supportQuickQuestionsLabel").textContent = t("support_quick_questions");
+  if ($("supportInput")) $("supportInput").placeholder = t("support_placeholder");
+  if ($("btnSendSupport")) $("btnSendSupport").textContent = state.support.loading ? t("support_sending") : t("support_send");
+  if ($("btnEmailSupport")) $("btnEmailSupport").textContent = t("support_email");
+  if ($("supportStatus")) $("supportStatus").textContent = String(state.support.status || "");
+  if ($("btnSendSupport")) $("btnSendSupport").disabled = Boolean(state.support.loading);
+  if ($("btnEmailSupport")) $("btnEmailSupport").disabled = Boolean(state.support.loading);
+  renderSupportMessages();
+  renderSupportSuggestions();
+}
+
+function setSupportOpen(open) {
+  state.support.open = Boolean(open);
+  renderSupportWidget();
+}
+
+async function sendSupportMessage(rawMessage = "") {
+  const input = $("supportInput");
+  const message = String(rawMessage || (input ? input.value : "") || "").trim();
+  if (!message || !state.userId || state.support.loading) return;
+
+  state.support.messages.push({
+    role: "user",
+    content: message,
+    steps: [],
+    escalationMessage: "",
+  });
+  if (input) input.value = "";
+  state.support.loading = true;
+  state.support.status = "";
+  renderSupportWidget();
+
+  try {
+    const response = await api("/support/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        user_id: state.userId,
+        message,
+        surface: "web",
+        history: buildSupportHistoryPayload(),
+      }),
+    });
+    state.support.messages.push({
+      role: "assistant",
+      content: String(response.reply || ""),
+      topicTitle: String(response.topic_title || "Omar"),
+      steps: Array.isArray(response.steps) ? response.steps : [],
+      escalationMessage: String(response.escalation_message || ""),
+    });
+    state.support.suggestions = Array.isArray(response.suggestions) && response.suggestions.length
+      ? response.suggestions
+      : defaultSupportSuggestions();
+    state.support.contactEmail = String(response.contact_email || "support@keeperbma.com");
+  } catch (e) {
+    const friendly = supportFriendlyErrorMessage(errMessage(e));
+    state.support.messages.push({
+      role: "assistant",
+      content: friendly,
+      topicTitle: "Omar",
+      steps: [],
+      escalationMessage: "If you still need help right now, use Email Support.",
+    });
+    state.support.status = "";
+  } finally {
+    state.support.loading = false;
+    renderSupportWidget();
+  }
+}
+
+resetSupportState();
 
 function formatShortDate(value) {
   const raw = String(value || "").trim();
@@ -1687,6 +1903,30 @@ window.addEventListener("load", async () => {
   });
   if ($("btnOpenSettings")) $("btnOpenSettings").onclick = () => { window.location.href = "./settings.html"; };
   if ($("btnResolveBilling")) $("btnResolveBilling").onclick = () => { window.location.href = "./settings.html"; };
+  if ($("supportLauncher")) {
+    $("supportLauncher").onclick = () => {
+      setSupportOpen(!state.support.open);
+    };
+  }
+  if ($("btnCloseSupport")) {
+    $("btnCloseSupport").onclick = () => setSupportOpen(false);
+  }
+  if ($("btnSendSupport")) {
+    $("btnSendSupport").onclick = () => sendSupportMessage();
+  }
+  if ($("supportInput")) {
+    $("supportInput").addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        sendSupportMessage();
+      }
+    });
+  }
+  if ($("btnEmailSupport")) {
+    $("btnEmailSupport").onclick = () => {
+      window.location.href = `mailto:${state.support.contactEmail || "support@keeperbma.com"}?subject=${encodeURIComponent("KeeperBMA Support")}`;
+    };
+  }
   if ($("profileImageInput")) {
     $("profileImageInput").onchange = (e) => {
       const file = e.target.files && e.target.files[0];
@@ -1814,6 +2054,7 @@ window.addEventListener("load", async () => {
     state.subscription = {};
     state.bankConnections = [];
     state.linkedBankAccounts = [];
+    resetSupportState();
     showLanding();
     setStatus("authStatus", "");
   };

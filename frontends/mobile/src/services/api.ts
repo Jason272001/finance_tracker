@@ -8,6 +8,8 @@ import {
   CategoryRecord,
   DailyBalanceRecord,
   PaymentRequiredInfo,
+  SupportChatMessageRecord,
+  SupportChatResponse,
   TransactionRecord,
 } from '../types/app';
 
@@ -154,6 +156,23 @@ export const financeApi = {
       amount,
       note,
       date,
+    });
+    return response.data;
+  },
+};
+
+export const supportApi = {
+  async chat(payload: {
+    user_id: number;
+    message: string;
+    surface?: 'mobile' | 'web';
+    history?: SupportChatMessageRecord[];
+  }): Promise<SupportChatResponse> {
+    const response = await api.post<SupportChatResponse>('/support/chat', {
+      user_id: payload.user_id,
+      message: payload.message,
+      surface: payload.surface ?? 'mobile',
+      history: payload.history ?? [],
     });
     return response.data;
   },

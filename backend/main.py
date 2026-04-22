@@ -30,6 +30,7 @@ from backend.plaid_service import (
     transactions_sync,
 )
 from backend.plaid_store import PlaidStore
+from backend.support_ai import build_support_reply
 from core import Account, Admin1957, Category, Coupon, DailyBalance, SPECIAL_COUPON_CODE, Transaction, User
 
 
@@ -524,6 +525,36 @@ class TxUpdateBody(BaseModel):
         key = str(v).strip().lower()
         if key not in {"income", "expense"}:
             raise ValueError("Invalid tx_type")
+        return key
+
+
+class SupportChatHistoryItem(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    role: str = Field(min_length=1, max_length=20)
+    content: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v: str) -> str:
+        key = str(v).strip().lower()
+        if key not in {"user", "assistant"}:
+            raise ValueError("Invalid support chat role")
+        return key
+
+
+class SupportChatBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    user_id: int
+    message: str = Field(min_length=1, max_length=2000)
+    surface: str = Field(default="web", min_length=1, max_length=20)
+    history: list[SupportChatHistoryItem] = Field(default_factory=list)
+
+    @field_validator("surface")
+    @classmethod
+    def validate_surface(cls, v: str) -> str:
+        key = str(v).strip().lower()
+        if key not in {"web", "mobile"}:
+            raise ValueError("Invalid support surface")
         return key
 
 
@@ -1825,6 +1856,31 @@ def auth_session(request: Request, authorization: Optional[str] = Header(default
         "profile_image_url": profile_payload.get("profile_image_url", ""),
         "lifetime_access": bool(subscription.get("is_lifetime", False)),
         **subscription,
+    }
+
+
+@app.post("/support/chat")
+def support_chat(
+    body: SupportChatBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_user(request, authorization, body.user_id)
+    profile = User().get_user_by_id(body.user_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found.")
+    subscription = _build_subscription_payload(profile)
+    response = build_support_reply(
+        message=body.message,
+        history=[item.model_dump() for item in body.history[-12:]],
+        profile=profile,
+        subscription=subscription,
+        surface=body.surface,
+    )
+    return {
+        "ok": True,
+        "user_id": int(body.user_id),
+        **response,
     }
 
 

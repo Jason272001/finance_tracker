@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Home, List, CreditCard, Settings as SettingsIcon } from 'lucide-react-native';
+import { Home, List, CreditCard, Settings as SettingsIcon, MessageCircle } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../theme/ThemeContext';
@@ -11,6 +11,7 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { TransactionsScreen } from '../screens/TransactionsScreen';
 import { AccountsScreen } from '../screens/AccountsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { SupportScreen } from '../screens/SupportScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -59,6 +60,14 @@ const TabNavigator = () => {
         options={{
           title: t('tab.accounts'),
           tabBarIcon: ({ color, size }) => <CreditCard color={color} size={size} />,
+        }}
+      />
+      <Tab.Screen
+        name="Support"
+        component={SupportScreen}
+        options={{
+          title: t('tab.support'),
+          tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size} />,
         }}
       />
       <Tab.Screen
