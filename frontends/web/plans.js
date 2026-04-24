@@ -221,7 +221,7 @@ function renderPlanSegment() {
   const hintEl = $("planTypeHint");
   if (hintEl) {
     hintEl.textContent = segment === "business"
-      ? "Business includes Business, Premium Plus, and Diamond."
+      ? "Business plans include a business workspace, business page, website, and staff operations tools."
       : "Personal includes Basic and Regular.";
   }
 

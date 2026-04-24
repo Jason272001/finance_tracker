@@ -27,6 +27,8 @@ A_PATH=os.path.join(DATA_DIR,"accounts.csv")
 D_PATH=os.path.join(DATA_DIR,"daily_balances.csv")
 C_PATH=os.path.join(DATA_DIR,"category.csv")
 COUPON_PATH = os.path.join(DATA_DIR, "coupons.csv")
+BUSINESS_PATH = os.path.join(DATA_DIR, "businesses.csv")
+BUSINESS_EMPLOYEE_PATH = os.path.join(DATA_DIR, "business_employees.csv")
 DB_BACKEND = str(os.getenv("DB_BACKEND", "postgres")).strip().lower()
 DATABASE_URL = str(os.getenv("DATABASE_URL", "")).strip()
 MYSQL_HOST = os.getenv("MYSQL_HOST", "127.0.0.1")
@@ -1091,6 +1093,683 @@ class User:
                 }
             )
         return out
+
+
+class Business:
+    cols = [
+        "business_id",
+        "owner_user_id",
+        "business_name",
+        "business_type",
+        "industry",
+        "page_slug",
+        "website_slug",
+        "about_text",
+        "phone",
+        "email",
+        "address",
+        "logo_url",
+        "cover_url",
+        "page_enabled",
+        "website_enabled",
+        "created_at",
+        "updated_at",
+    ]
+
+    def __init__(self, path=BUSINESS_PATH):
+        self.path = path
+        self.table = "businesses"
+        if not DB_IS_SQL:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            if not os.path.exists(self.path):
+                pd.DataFrame(columns=self.cols).to_csv(self.path, index=False)
+
+    def _load(self):
+        if DB_IS_SQL:
+            df = _read_table(self.table, self.cols)
+        else:
+            df = pd.read_csv(self.path)
+        for c in self.cols:
+            if c not in df.columns:
+                df[c] = ""
+        for col in [
+            "business_name",
+            "business_type",
+            "industry",
+            "page_slug",
+            "website_slug",
+            "about_text",
+            "phone",
+            "email",
+            "address",
+            "logo_url",
+            "cover_url",
+            "created_at",
+            "updated_at",
+        ]:
+            df[col] = df[col].fillna("").astype(str)
+        return df[self.cols]
+
+    def _save(self, df):
+        if DB_IS_SQL:
+            _write_table(self.table, df)
+        else:
+            _atomic_write_csv(self.path, df)
+
+    def _normalize(self, df):
+        out = df.copy()
+        out["business_id"] = pd.to_numeric(out["business_id"], errors="coerce")
+        out["owner_user_id"] = pd.to_numeric(out["owner_user_id"], errors="coerce")
+        for col in [
+            "business_name",
+            "business_type",
+            "industry",
+            "page_slug",
+            "website_slug",
+            "about_text",
+            "phone",
+            "email",
+            "address",
+            "logo_url",
+            "cover_url",
+            "created_at",
+            "updated_at",
+        ]:
+            out[col] = out[col].fillna("").astype(str)
+        for flag_col in ["page_enabled", "website_enabled"]:
+            out[flag_col] = (
+                out[flag_col]
+                .fillna(False)
+                .astype(str)
+                .str.strip()
+                .str.lower()
+                .isin({"1", "true", "yes", "y"})
+            )
+        return out
+
+    def _next_id(self, df):
+        if df.empty:
+            return 1
+        values = pd.to_numeric(df["business_id"], errors="coerce").dropna()
+        return 1 if values.empty else int(values.max()) + 1
+
+    def _normalize_slug(self, value, fallback=""):
+        raw = str(value or fallback or "").strip().lower()
+        raw = re.sub(r"[^a-z0-9]+", "-", raw).strip("-")
+        if not raw:
+            raw = f"business-{int(time.time())}"
+        return raw[:80]
+
+    def _unique_slug(self, df, column, slug_value, exclude_business_id=None):
+        ndf = self._normalize(df)
+        used = ndf[column].astype(str).str.strip().str.lower()
+        base = self._normalize_slug(slug_value)
+        candidate = base
+        suffix = 2
+        while True:
+            mask = used == candidate
+            if exclude_business_id is not None:
+                bid = pd.to_numeric(ndf["business_id"], errors="coerce")
+                mask = mask & (bid != int(exclude_business_id))
+            if not mask.any():
+                return candidate
+            candidate = f"{base[:70]}-{suffix}"
+            suffix += 1
+
+    def by_owner(self, owner_user_id):
+        if owner_user_id is None:
+            return pd.DataFrame(columns=self.cols)
+        df = self._normalize(self._load())
+        out = df[df["owner_user_id"] == int(owner_user_id)].copy()
+        if out.empty:
+            return pd.DataFrame(columns=self.cols)
+        out = out[out["business_id"].notna()].copy()
+        out["business_id"] = out["business_id"].astype(int)
+        out["owner_user_id"] = out["owner_user_id"].astype(int)
+        out = out.sort_values("business_id")
+        return out[self.cols]
+
+    def accessible_by_user(self, user_id):
+        if user_id is None:
+            return pd.DataFrame(columns=self.cols)
+        owned = self.by_owner(user_id)
+        employee_df = BusinessEmployee().by_linked_user(user_id)
+        if employee_df.empty:
+            return owned
+        business_ids = set(
+            pd.to_numeric(employee_df["business_id"], errors="coerce")
+            .dropna()
+            .astype(int)
+            .tolist()
+        )
+        if not owned.empty:
+            business_ids.update(owned["business_id"].astype(int).tolist())
+        if not business_ids:
+            return pd.DataFrame(columns=self.cols)
+        df = self._normalize(self._load())
+        out = df[df["business_id"].isin(sorted(business_ids))].copy()
+        if out.empty:
+            return pd.DataFrame(columns=self.cols)
+        out["business_id"] = out["business_id"].astype(int)
+        out["owner_user_id"] = out["owner_user_id"].astype(int)
+        out = out.sort_values("business_id")
+        return out[self.cols]
+
+    def get(self, business_id):
+        try:
+            bid = int(business_id)
+        except Exception:
+            return None
+        df = self._normalize(self._load())
+        hit = df[df["business_id"] == bid]
+        if hit.empty:
+            return None
+        row = hit.iloc[0].to_dict()
+        row["business_id"] = int(row["business_id"])
+        row["owner_user_id"] = int(row["owner_user_id"])
+        row["page_enabled"] = bool(row.get("page_enabled", False))
+        row["website_enabled"] = bool(row.get("website_enabled", False))
+        return row
+
+    def get_for_owner(self, business_id, owner_user_id=None):
+        row = self.get(business_id)
+        if not row or owner_user_id is None:
+            return None
+        if int(row.get("owner_user_id", 0) or 0) != int(owner_user_id):
+            return None
+        return row
+
+    def add(
+        self,
+        owner_user_id,
+        business_name,
+        business_type="",
+        industry="",
+        page_slug="",
+        website_slug="",
+        about_text="",
+        phone="",
+        email="",
+        address="",
+        logo_url="",
+        cover_url="",
+        page_enabled=True,
+        website_enabled=True,
+    ):
+        owner = User().get_user_by_id(owner_user_id)
+        if not owner:
+            raise ValueError("Business owner was not found.")
+        name_s = str(business_name or "").strip()
+        if not name_s:
+            raise ValueError("Business name is required.")
+        with _file_lock(self.path):
+            df = self._load()
+            ndf = self._normalize(df)
+            owner_ids = pd.to_numeric(ndf["owner_user_id"], errors="coerce")
+            owner_names = ndf["business_name"].astype(str).str.strip().str.lower()
+            duplicate = (owner_ids == int(owner_user_id)) & (owner_names == name_s.lower())
+            if duplicate.any():
+                raise ValueError("You already have a business with this name.")
+
+            next_id = self._next_id(df)
+            page_slug_s = self._unique_slug(df, "page_slug", page_slug or name_s)
+            website_slug_s = self._unique_slug(df, "website_slug", website_slug or page_slug_s or name_s)
+            now_iso = datetime.utcnow().isoformat() + "Z"
+            new_row = {
+                "business_id": int(next_id),
+                "owner_user_id": int(owner_user_id),
+                "business_name": name_s,
+                "business_type": str(business_type or "").strip(),
+                "industry": str(industry or "").strip(),
+                "page_slug": page_slug_s,
+                "website_slug": website_slug_s,
+                "about_text": str(about_text or "").strip(),
+                "phone": str(phone or "").strip(),
+                "email": str(email or "").strip().lower(),
+                "address": str(address or "").strip(),
+                "logo_url": str(logo_url or "").strip(),
+                "cover_url": str(cover_url or "").strip(),
+                "page_enabled": bool(page_enabled),
+                "website_enabled": bool(website_enabled),
+                "created_at": now_iso,
+                "updated_at": now_iso,
+            }
+            out = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            self._save(out)
+        return int(next_id)
+
+    def update(self, business_id, owner_user_id=None, **changes):
+        if owner_user_id is None:
+            return False
+        with _file_lock(self.path):
+            df = self._load()
+            ndf = self._normalize(df)
+            bid = pd.to_numeric(ndf["business_id"], errors="coerce")
+            owner_ids = pd.to_numeric(ndf["owner_user_id"], errors="coerce")
+            idx = ndf.index[(bid == int(business_id)) & (owner_ids == int(owner_user_id))]
+            if len(idx) == 0:
+                return False
+            i = idx[0]
+
+            current_name = str(df.at[i, "business_name"]).strip()
+            next_name = str(changes.get("business_name", current_name) or current_name).strip()
+            if not next_name:
+                raise ValueError("Business name is required.")
+
+            allowed = {
+                "business_name",
+                "business_type",
+                "industry",
+                "about_text",
+                "phone",
+                "email",
+                "address",
+                "logo_url",
+                "cover_url",
+                "page_enabled",
+                "website_enabled",
+                "page_slug",
+                "website_slug",
+            }
+            for key, value in changes.items():
+                if key not in allowed:
+                    continue
+                if key == "business_name":
+                    same_owner = owner_ids == int(owner_user_id)
+                    owner_names = ndf["business_name"].astype(str).str.strip().str.lower()
+                    duplicate = same_owner & (owner_names == next_name.lower()) & (bid != int(business_id))
+                    if duplicate.any():
+                        raise ValueError("You already have a business with this name.")
+                    df.at[i, key] = next_name
+                    continue
+                if key == "page_slug":
+                    df.at[i, key] = self._unique_slug(df, "page_slug", value or next_name, exclude_business_id=business_id)
+                    continue
+                if key == "website_slug":
+                    fallback_slug = str(changes.get("page_slug") or df.at[i, "page_slug"] or next_name).strip()
+                    df.at[i, key] = self._unique_slug(df, "website_slug", value or fallback_slug, exclude_business_id=business_id)
+                    continue
+                if key in {"page_enabled", "website_enabled"}:
+                    df.at[i, key] = bool(value)
+                    continue
+                if key == "email":
+                    df.at[i, key] = str(value or "").strip().lower()
+                    continue
+                df.at[i, key] = str(value or "").strip()
+
+            if "page_slug" not in changes:
+                df.at[i, "page_slug"] = self._unique_slug(
+                    df,
+                    "page_slug",
+                    str(df.at[i, "page_slug"] or next_name).strip(),
+                    exclude_business_id=business_id,
+                )
+            if "website_slug" not in changes:
+                df.at[i, "website_slug"] = self._unique_slug(
+                    df,
+                    "website_slug",
+                    str(df.at[i, "website_slug"] or df.at[i, "page_slug"] or next_name).strip(),
+                    exclude_business_id=business_id,
+                )
+            df.at[i, "updated_at"] = datetime.utcnow().isoformat() + "Z"
+            self._save(df)
+        return True
+
+
+class BusinessEmployee:
+    permission_columns = [
+        "can_sales",
+        "can_purchase",
+        "can_inventory",
+        "can_reports",
+        "can_customers",
+        "can_suppliers",
+        "can_settings",
+    ]
+    cols = [
+        "employee_id",
+        "business_id",
+        "linked_user_id",
+        "employee_name",
+        "email",
+        "phone",
+        "role_code",
+        "status",
+        *permission_columns,
+        "created_at",
+        "updated_at",
+    ]
+    role_defaults = {
+        "owner": {
+            "can_sales": True,
+            "can_purchase": True,
+            "can_inventory": True,
+            "can_reports": True,
+            "can_customers": True,
+            "can_suppliers": True,
+            "can_settings": True,
+        },
+        "manager": {
+            "can_sales": True,
+            "can_purchase": True,
+            "can_inventory": True,
+            "can_reports": True,
+            "can_customers": True,
+            "can_suppliers": True,
+            "can_settings": True,
+        },
+        "sales": {
+            "can_sales": True,
+            "can_purchase": False,
+            "can_inventory": False,
+            "can_reports": False,
+            "can_customers": True,
+            "can_suppliers": False,
+            "can_settings": False,
+        },
+        "purchase": {
+            "can_sales": False,
+            "can_purchase": True,
+            "can_inventory": True,
+            "can_reports": False,
+            "can_customers": False,
+            "can_suppliers": True,
+            "can_settings": False,
+        },
+        "inventory": {
+            "can_sales": False,
+            "can_purchase": False,
+            "can_inventory": True,
+            "can_reports": False,
+            "can_customers": False,
+            "can_suppliers": False,
+            "can_settings": False,
+        },
+        "accountant": {
+            "can_sales": False,
+            "can_purchase": True,
+            "can_inventory": False,
+            "can_reports": True,
+            "can_customers": False,
+            "can_suppliers": True,
+            "can_settings": False,
+        },
+        "staff": {
+            "can_sales": False,
+            "can_purchase": False,
+            "can_inventory": False,
+            "can_reports": False,
+            "can_customers": False,
+            "can_suppliers": False,
+            "can_settings": False,
+        },
+    }
+    allowed_roles = set(role_defaults.keys())
+    allowed_statuses = {"active", "inactive"}
+
+    def __init__(self, path=BUSINESS_EMPLOYEE_PATH):
+        self.path = path
+        self.table = "business_employees"
+        if not DB_IS_SQL:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            if not os.path.exists(self.path):
+                pd.DataFrame(columns=self.cols).to_csv(self.path, index=False)
+
+    def _load(self):
+        if DB_IS_SQL:
+            df = _read_table(self.table, self.cols)
+        else:
+            df = pd.read_csv(self.path)
+        for c in self.cols:
+            if c not in df.columns:
+                df[c] = ""
+        for col in ["employee_name", "email", "phone", "role_code", "status", "created_at", "updated_at"]:
+            df[col] = df[col].fillna("").astype(str)
+        return df[self.cols]
+
+    def _save(self, df):
+        if DB_IS_SQL:
+            _write_table(self.table, df)
+        else:
+            _atomic_write_csv(self.path, df)
+
+    def _normalize(self, df):
+        out = df.copy()
+        for col in ["employee_id", "business_id", "linked_user_id"]:
+            out[col] = pd.to_numeric(out[col], errors="coerce")
+        for col in ["employee_name", "email", "phone", "role_code", "status", "created_at", "updated_at"]:
+            out[col] = out[col].fillna("").astype(str)
+        for col in self.permission_columns:
+            out[col] = (
+                out[col]
+                .fillna(False)
+                .astype(str)
+                .str.strip()
+                .str.lower()
+                .isin({"1", "true", "yes", "y"})
+            )
+        return out
+
+    def _next_id(self, df):
+        if df.empty:
+            return 1
+        values = pd.to_numeric(df["employee_id"], errors="coerce").dropna()
+        return 1 if values.empty else int(values.max()) + 1
+
+    def _normalize_role(self, role_code):
+        role = str(role_code or "staff").strip().lower()
+        if role not in self.allowed_roles:
+            raise ValueError("Invalid employee role.")
+        return role
+
+    def _normalize_status(self, status):
+        key = str(status or "active").strip().lower()
+        if key not in self.allowed_statuses:
+            raise ValueError("Invalid employee status.")
+        return key
+
+    def _resolve_linked_user_id(self, email="", linked_user_id=None):
+        if linked_user_id not in (None, ""):
+            try:
+                uid = int(linked_user_id)
+            except Exception:
+                raise ValueError("Invalid linked user id.")
+            if uid > 0 and User().get_user_by_id(uid):
+                return uid
+        email_s = str(email or "").strip().lower()
+        if not email_s:
+            return 0
+        user = User().get_user_by_email(email_s)
+        if not user:
+            return 0
+        return int(user.get("user_id") or 0)
+
+    @classmethod
+    def permissions_for_role(cls, role_code):
+        role = str(role_code or "staff").strip().lower()
+        return dict(cls.role_defaults.get(role, cls.role_defaults["staff"]))
+
+    def _merged_permissions(self, role_code, explicit_permissions):
+        resolved = self.permissions_for_role(role_code)
+        for key in self.permission_columns:
+            if key in explicit_permissions and explicit_permissions[key] is not None:
+                resolved[key] = bool(explicit_permissions[key])
+        return resolved
+
+    def by_business(self, business_id):
+        try:
+            bid = int(business_id)
+        except Exception:
+            return pd.DataFrame(columns=self.cols)
+        df = self._normalize(self._load())
+        out = df[df["business_id"] == bid].copy()
+        if out.empty:
+            return pd.DataFrame(columns=self.cols)
+        out["employee_id"] = out["employee_id"].fillna(0).astype(int)
+        out["business_id"] = out["business_id"].fillna(0).astype(int)
+        out["linked_user_id"] = out["linked_user_id"].fillna(0).astype(int)
+        out = out.sort_values("employee_id")
+        return out[self.cols]
+
+    def by_linked_user(self, user_id):
+        if user_id is None:
+            return pd.DataFrame(columns=self.cols)
+        df = self._normalize(self._load())
+        out = df[
+            (df["linked_user_id"] == int(user_id))
+            & (df["status"].astype(str).str.strip().str.lower() == "active")
+        ].copy()
+        if out.empty:
+            return pd.DataFrame(columns=self.cols)
+        out["employee_id"] = out["employee_id"].fillna(0).astype(int)
+        out["business_id"] = out["business_id"].fillna(0).astype(int)
+        out["linked_user_id"] = out["linked_user_id"].fillna(0).astype(int)
+        out = out.sort_values("employee_id")
+        return out[self.cols]
+
+    def get(self, employee_id, business_id=None):
+        try:
+            eid = int(employee_id)
+        except Exception:
+            return None
+        df = self._normalize(self._load())
+        mask = df["employee_id"] == eid
+        if business_id is not None:
+            mask = mask & (df["business_id"] == int(business_id))
+        hit = df[mask]
+        if hit.empty:
+            return None
+        row = hit.iloc[0].to_dict()
+        row["employee_id"] = int(row["employee_id"])
+        row["business_id"] = int(row["business_id"])
+        row["linked_user_id"] = int(row["linked_user_id"]) if pd.notna(row["linked_user_id"]) else 0
+        for col in self.permission_columns:
+            row[col] = bool(row.get(col, False))
+        return row
+
+    def get_linked_member(self, business_id, user_id):
+        df = self.by_linked_user(user_id)
+        if df.empty:
+            return None
+        hit = df[df["business_id"] == int(business_id)]
+        if hit.empty:
+            return None
+        return self.get(int(hit.iloc[0]["employee_id"]), business_id=business_id)
+
+    def add(
+        self,
+        business_id,
+        employee_name,
+        email="",
+        phone="",
+        role_code="staff",
+        status="active",
+        linked_user_id=None,
+        **permissions,
+    ):
+        name_s = str(employee_name or "").strip()
+        if not name_s:
+            raise ValueError("Employee name is required.")
+        role_s = self._normalize_role(role_code)
+        status_s = self._normalize_status(status)
+        email_s = str(email or "").strip().lower()
+        phone_s = str(phone or "").strip()
+        linked_uid = self._resolve_linked_user_id(email=email_s, linked_user_id=linked_user_id)
+        permission_values = self._merged_permissions(role_s, permissions)
+
+        with _file_lock(self.path):
+            df = self._load()
+            ndf = self._normalize(df)
+            business_ids = pd.to_numeric(ndf["business_id"], errors="coerce")
+            emails = ndf["email"].astype(str).str.strip().str.lower()
+            duplicate = (business_ids == int(business_id)) & (emails == email_s) if email_s else pd.Series(False, index=ndf.index)
+            if duplicate.any():
+                raise ValueError("An employee with this email already exists for the business.")
+            next_id = self._next_id(df)
+            now_iso = datetime.utcnow().isoformat() + "Z"
+            new_row = {
+                "employee_id": int(next_id),
+                "business_id": int(business_id),
+                "linked_user_id": int(linked_uid) if linked_uid else "",
+                "employee_name": name_s,
+                "email": email_s,
+                "phone": phone_s,
+                "role_code": role_s,
+                "status": status_s,
+                "created_at": now_iso,
+                "updated_at": now_iso,
+            }
+            for key in self.permission_columns:
+                new_row[key] = bool(permission_values.get(key, False))
+            out = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            self._save(out)
+        return int(next_id)
+
+    def update(self, employee_id, business_id=None, **changes):
+        with _file_lock(self.path):
+            df = self._load()
+            ndf = self._normalize(df)
+            eid = pd.to_numeric(ndf["employee_id"], errors="coerce")
+            mask = eid == int(employee_id)
+            if business_id is not None:
+                mask = mask & (pd.to_numeric(ndf["business_id"], errors="coerce") == int(business_id))
+            idx = ndf.index[mask]
+            if len(idx) == 0:
+                return False
+            i = idx[0]
+
+            role_s = self._normalize_role(changes.get("role_code", df.at[i, "role_code"]))
+            status_s = self._normalize_status(changes.get("status", df.at[i, "status"]))
+            next_email = str(changes.get("email", df.at[i, "email"]) or "").strip().lower()
+            if next_email:
+                business_mask = pd.to_numeric(ndf["business_id"], errors="coerce") == int(df.at[i, "business_id"])
+                duplicate_email = (
+                    business_mask
+                    & (ndf["email"].astype(str).str.strip().str.lower() == next_email)
+                    & (eid != int(employee_id))
+                )
+                if duplicate_email.any():
+                    raise ValueError("An employee with this email already exists for the business.")
+
+            explicit_permissions = {key: ndf.at[i, key] for key in self.permission_columns}
+            for key in self.permission_columns:
+                if key in changes:
+                    explicit_permissions[key] = changes.get(key)
+            merged_permissions = self._merged_permissions(role_s, explicit_permissions)
+            linked_uid = self._resolve_linked_user_id(
+                email=next_email,
+                linked_user_id=changes.get("linked_user_id", ndf.at[i, "linked_user_id"]),
+            )
+
+            allowed = {"employee_name", "email", "phone"}
+            for key, value in changes.items():
+                if key in allowed:
+                    if key == "email":
+                        df.at[i, key] = next_email
+                    else:
+                        df.at[i, key] = str(value or "").strip()
+            df.at[i, "role_code"] = role_s
+            df.at[i, "status"] = status_s
+            df.at[i, "linked_user_id"] = int(linked_uid) if linked_uid else ""
+            for key in self.permission_columns:
+                df.at[i, key] = bool(merged_permissions.get(key, False))
+            df.at[i, "updated_at"] = datetime.utcnow().isoformat() + "Z"
+            self._save(df)
+        return True
+
+    def delete(self, employee_id, business_id=None):
+        with _file_lock(self.path):
+            df = self._load()
+            ndf = self._normalize(df)
+            eid = pd.to_numeric(ndf["employee_id"], errors="coerce")
+            mask = eid == int(employee_id)
+            if business_id is not None:
+                mask = mask & (pd.to_numeric(ndf["business_id"], errors="coerce") == int(business_id))
+            out = df[~mask].copy()
+            if len(out) == len(df):
+                return False
+            self._save(out)
+        return True
 
 
 class Admin1957:

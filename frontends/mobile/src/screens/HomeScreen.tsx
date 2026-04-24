@@ -23,6 +23,7 @@ import { AccountRecord, DailyBalanceRecord, TransactionRecord } from '../types/a
 import { useTheme } from '../theme/ThemeContext';
 import { spacing, typography } from '../theme/theme';
 import {
+  formatPlanName,
   formatCurrency,
   formatDateTime,
   isDebtAccount,
@@ -174,7 +175,7 @@ export const HomeScreen: React.FC = () => {
 
   const recentTransactions = transactions.slice(0, 6);
   const latestBalance = dailyBalances[0];
-  const planName = user?.is_lifetime ? 'Lifetime' : user?.plan_code ?? 'Unknown';
+  const planName = formatPlanName(user?.plan_code, Boolean(user?.is_lifetime));
   const bankSyncAllowed = Boolean(user?.is_lifetime || user?.feature_flags?.bank_sync);
 
   const chartConfig = useMemo(

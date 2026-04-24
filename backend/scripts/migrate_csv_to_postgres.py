@@ -92,6 +92,52 @@ TABLE_MIGRATIONS = [
             "created_at",
         ],
     ),
+    (
+        "businesses",
+        "businesses.csv",
+        [
+            "business_id",
+            "owner_user_id",
+            "business_name",
+            "business_type",
+            "industry",
+            "page_slug",
+            "website_slug",
+            "about_text",
+            "phone",
+            "email",
+            "address",
+            "logo_url",
+            "cover_url",
+            "page_enabled",
+            "website_enabled",
+            "created_at",
+            "updated_at",
+        ],
+    ),
+    (
+        "business_employees",
+        "business_employees.csv",
+        [
+            "employee_id",
+            "business_id",
+            "linked_user_id",
+            "employee_name",
+            "email",
+            "phone",
+            "role_code",
+            "status",
+            "can_sales",
+            "can_purchase",
+            "can_inventory",
+            "can_reports",
+            "can_customers",
+            "can_suppliers",
+            "can_settings",
+            "created_at",
+            "updated_at",
+        ],
+    ),
 ]
 
 
@@ -244,6 +290,46 @@ def create_tables(engine):
         created_by_admin_id INTEGER,
         created_at TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS businesses (
+        business_id INTEGER PRIMARY KEY,
+        owner_user_id INTEGER,
+        business_name TEXT,
+        business_type TEXT,
+        industry TEXT,
+        page_slug TEXT,
+        website_slug TEXT,
+        about_text TEXT,
+        phone TEXT,
+        email TEXT,
+        address TEXT,
+        logo_url TEXT,
+        cover_url TEXT,
+        page_enabled BOOLEAN,
+        website_enabled BOOLEAN,
+        created_at TEXT,
+        updated_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS business_employees (
+        employee_id INTEGER PRIMARY KEY,
+        business_id INTEGER,
+        linked_user_id INTEGER,
+        employee_name TEXT,
+        email TEXT,
+        phone TEXT,
+        role_code TEXT,
+        status TEXT,
+        can_sales BOOLEAN,
+        can_purchase BOOLEAN,
+        can_inventory BOOLEAN,
+        can_reports BOOLEAN,
+        can_customers BOOLEAN,
+        can_suppliers BOOLEAN,
+        can_settings BOOLEAN,
+        created_at TEXT,
+        updated_at TEXT
+    );
     """
     with engine.begin() as conn:
         for stmt in ddl.split(";"):
@@ -286,6 +372,38 @@ def create_tables(engine):
             'ALTER TABLE coupons ADD COLUMN IF NOT EXISTS expires_at TEXT',
             'ALTER TABLE coupons ADD COLUMN IF NOT EXISTS created_by_admin_id INTEGER',
             'ALTER TABLE coupons ADD COLUMN IF NOT EXISTS created_at TEXT',
+            'ALTER TABLE businesses ADD COLUMN IF NOT EXISTS owner_user_id INTEGER',
+            'ALTER TABLE businesses ADD COLUMN IF NOT EXISTS business_name TEXT',
+            'ALTER TABLE businesses ADD COLUMN IF NOT EXISTS business_type TEXT',
+            'ALTER TABLE businesses ADD COLUMN IF NOT EXISTS industry TEXT',
+            'ALTER TABLE businesses ADD COLUMN IF NOT EXISTS page_slug TEXT',
+            'ALTER TABLE businesses ADD COLUMN IF NOT EXISTS website_slug TEXT',
+            'ALTER TABLE businesses ADD COLUMN IF NOT EXISTS about_text TEXT',
+            'ALTER TABLE businesses ADD COLUMN IF NOT EXISTS phone TEXT',
+            'ALTER TABLE businesses ADD COLUMN IF NOT EXISTS email TEXT',
+            'ALTER TABLE businesses ADD COLUMN IF NOT EXISTS address TEXT',
+            'ALTER TABLE businesses ADD COLUMN IF NOT EXISTS logo_url TEXT',
+            'ALTER TABLE businesses ADD COLUMN IF NOT EXISTS cover_url TEXT',
+            'ALTER TABLE businesses ADD COLUMN IF NOT EXISTS page_enabled BOOLEAN',
+            'ALTER TABLE businesses ADD COLUMN IF NOT EXISTS website_enabled BOOLEAN',
+            'ALTER TABLE businesses ADD COLUMN IF NOT EXISTS created_at TEXT',
+            'ALTER TABLE businesses ADD COLUMN IF NOT EXISTS updated_at TEXT',
+            'ALTER TABLE business_employees ADD COLUMN IF NOT EXISTS business_id INTEGER',
+            'ALTER TABLE business_employees ADD COLUMN IF NOT EXISTS linked_user_id INTEGER',
+            'ALTER TABLE business_employees ADD COLUMN IF NOT EXISTS employee_name TEXT',
+            'ALTER TABLE business_employees ADD COLUMN IF NOT EXISTS email TEXT',
+            'ALTER TABLE business_employees ADD COLUMN IF NOT EXISTS phone TEXT',
+            'ALTER TABLE business_employees ADD COLUMN IF NOT EXISTS role_code TEXT',
+            'ALTER TABLE business_employees ADD COLUMN IF NOT EXISTS status TEXT',
+            'ALTER TABLE business_employees ADD COLUMN IF NOT EXISTS can_sales BOOLEAN',
+            'ALTER TABLE business_employees ADD COLUMN IF NOT EXISTS can_purchase BOOLEAN',
+            'ALTER TABLE business_employees ADD COLUMN IF NOT EXISTS can_inventory BOOLEAN',
+            'ALTER TABLE business_employees ADD COLUMN IF NOT EXISTS can_reports BOOLEAN',
+            'ALTER TABLE business_employees ADD COLUMN IF NOT EXISTS can_customers BOOLEAN',
+            'ALTER TABLE business_employees ADD COLUMN IF NOT EXISTS can_suppliers BOOLEAN',
+            'ALTER TABLE business_employees ADD COLUMN IF NOT EXISTS can_settings BOOLEAN',
+            'ALTER TABLE business_employees ADD COLUMN IF NOT EXISTS created_at TEXT',
+            'ALTER TABLE business_employees ADD COLUMN IF NOT EXISTS updated_at TEXT',
         ]:
             conn.execute(text(stmt))
     print("[ok] tables ensured")
@@ -347,6 +465,28 @@ def migrate_table(engine, table_name, csv_path, cols, *, replace=False, allow_em
             if bool_col in df.columns:
                 df[bool_col] = df[bool_col].astype(str).str.lower().isin(["1", "true", "yes"])
         for int_col in ["max_uses", "used_count", "created_by_admin_id"]:
+            if int_col in df.columns:
+                df[int_col] = pd.to_numeric(df[int_col], errors="coerce")
+    if table_name == "businesses":
+        for bool_col in ["page_enabled", "website_enabled"]:
+            if bool_col in df.columns:
+                df[bool_col] = df[bool_col].astype(str).str.lower().isin(["1", "true", "yes"])
+        for int_col in ["business_id", "owner_user_id"]:
+            if int_col in df.columns:
+                df[int_col] = pd.to_numeric(df[int_col], errors="coerce")
+    if table_name == "business_employees":
+        for bool_col in [
+            "can_sales",
+            "can_purchase",
+            "can_inventory",
+            "can_reports",
+            "can_customers",
+            "can_suppliers",
+            "can_settings",
+        ]:
+            if bool_col in df.columns:
+                df[bool_col] = df[bool_col].astype(str).str.lower().isin(["1", "true", "yes"])
+        for int_col in ["employee_id", "business_id", "linked_user_id"]:
             if int_col in df.columns:
                 df[int_col] = pd.to_numeric(df[int_col], errors="coerce")
     if "amount" in df.columns:

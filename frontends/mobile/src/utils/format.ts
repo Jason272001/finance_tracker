@@ -54,3 +54,26 @@ export const isDebtAccount = (accountType?: string | null): boolean => {
   const value = normalizeText(accountType);
   return value === 'credit' || value === 'credit_card' || value === 'loan';
 };
+
+export const formatPlanName = (planCode?: string | null, isLifetime = false): string => {
+  if (isLifetime) {
+    return 'Lifetime (All plans unlocked)';
+  }
+
+  switch (normalizeText(planCode)) {
+    case 'basic':
+      return 'Basic';
+    case 'regular':
+      return 'Regular';
+    case 'business':
+      return 'Business';
+    case 'premium_plus':
+      return 'Premium Plus';
+    case 'diamond':
+      return 'Diamond';
+    case 'lifetime':
+      return 'Lifetime (All plans unlocked)';
+    default:
+      return planCode ? String(planCode) : 'Unknown';
+  }
+};

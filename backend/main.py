@@ -31,7 +31,18 @@ from backend.plaid_service import (
 )
 from backend.plaid_store import PlaidStore
 from backend.support_ai import build_support_reply
-from core import Account, Admin1957, Category, Coupon, DailyBalance, SPECIAL_COUPON_CODE, Transaction, User
+from core import (
+    Account,
+    Admin1957,
+    Business,
+    BusinessEmployee,
+    Category,
+    Coupon,
+    DailyBalance,
+    SPECIAL_COUPON_CODE,
+    Transaction,
+    User,
+)
 
 
 app = FastAPI(title="KeeperBMA Backend", version="1.1.0")
@@ -558,6 +569,114 @@ class SupportChatBody(BaseModel):
         return key
 
 
+class BusinessCreateBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    user_id: int
+    business_name: str = Field(min_length=1, max_length=120)
+    business_type: Optional[str] = Field(default="", max_length=80)
+    industry: Optional[str] = Field(default="", max_length=120)
+    page_slug: Optional[str] = Field(default="", max_length=80)
+    website_slug: Optional[str] = Field(default="", max_length=80)
+    about_text: Optional[str] = Field(default="", max_length=2000)
+    phone: Optional[str] = Field(default="", max_length=40)
+    email: Optional[str] = Field(default="", max_length=200)
+    address: Optional[str] = Field(default="", max_length=240)
+    logo_url: Optional[str] = Field(default="", max_length=2_000_000)
+    cover_url: Optional[str] = Field(default="", max_length=2_000_000)
+    page_enabled: bool = True
+    website_enabled: bool = True
+
+
+class BusinessUpdateBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    user_id: int
+    business_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    business_type: Optional[str] = Field(default=None, max_length=80)
+    industry: Optional[str] = Field(default=None, max_length=120)
+    page_slug: Optional[str] = Field(default=None, max_length=80)
+    website_slug: Optional[str] = Field(default=None, max_length=80)
+    about_text: Optional[str] = Field(default=None, max_length=2000)
+    phone: Optional[str] = Field(default=None, max_length=40)
+    email: Optional[str] = Field(default=None, max_length=200)
+    address: Optional[str] = Field(default=None, max_length=240)
+    logo_url: Optional[str] = Field(default=None, max_length=2_000_000)
+    cover_url: Optional[str] = Field(default=None, max_length=2_000_000)
+    page_enabled: Optional[bool] = None
+    website_enabled: Optional[bool] = None
+
+
+class BusinessEmployeeCreateBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    user_id: int
+    employee_name: str = Field(min_length=1, max_length=120)
+    email: Optional[str] = Field(default="", max_length=200)
+    phone: Optional[str] = Field(default="", max_length=40)
+    role_code: str = Field(default="staff", min_length=1, max_length=40)
+    status: str = Field(default="active", min_length=1, max_length=20)
+    linked_user_id: Optional[int] = None
+    can_sales: Optional[bool] = None
+    can_purchase: Optional[bool] = None
+    can_inventory: Optional[bool] = None
+    can_reports: Optional[bool] = None
+    can_customers: Optional[bool] = None
+    can_suppliers: Optional[bool] = None
+    can_settings: Optional[bool] = None
+
+    @field_validator("role_code")
+    @classmethod
+    def validate_role_code(cls, v: str) -> str:
+        key = str(v or "").strip().lower()
+        if key not in BusinessEmployee.allowed_roles:
+            raise ValueError("Invalid employee role")
+        return key
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: str) -> str:
+        key = str(v or "").strip().lower()
+        if key not in BusinessEmployee.allowed_statuses:
+            raise ValueError("Invalid employee status")
+        return key
+
+
+class BusinessEmployeeUpdateBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    user_id: int
+    employee_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    email: Optional[str] = Field(default=None, max_length=200)
+    phone: Optional[str] = Field(default=None, max_length=40)
+    role_code: Optional[str] = Field(default=None, min_length=1, max_length=40)
+    status: Optional[str] = Field(default=None, min_length=1, max_length=20)
+    linked_user_id: Optional[int] = None
+    can_sales: Optional[bool] = None
+    can_purchase: Optional[bool] = None
+    can_inventory: Optional[bool] = None
+    can_reports: Optional[bool] = None
+    can_customers: Optional[bool] = None
+    can_suppliers: Optional[bool] = None
+    can_settings: Optional[bool] = None
+
+    @field_validator("role_code")
+    @classmethod
+    def validate_role_code(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        key = str(v or "").strip().lower()
+        if key not in BusinessEmployee.allowed_roles:
+            raise ValueError("Invalid employee role")
+        return key
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        key = str(v or "").strip().lower()
+        if key not in BusinessEmployee.allowed_statuses:
+            raise ValueError("Invalid employee status")
+        return key
+
+
 def _issue_token(user_id: int, ttl_seconds: int = TOKEN_TTL_SECONDS) -> str:
     exp = int(time.time()) + int(ttl_seconds)
     payload = f"{int(user_id)}.{exp}"
@@ -882,8 +1001,10 @@ SUBSCRIPTION_PLANS = [
         "price_annual": 250,
         "features": [
             "All Regular features",
-            "POS and inventory foundation",
-            "Sales and expense analytics",
+            "1 business workspace with business profile",
+            "1 public business page and 1 starter business website",
+            "Employee management with role-based access",
+            "Sales, purchase, customer, supplier, and product foundations",
         ],
     },
     {
@@ -895,9 +1016,10 @@ SUBSCRIPTION_PLANS = [
         "price_with_website_annual": 700,
         "features": [
             "All Business features",
-            "Advanced analytics",
-            "AI insights foundation",
-            "Optional portfolio website package",
+            "AI business tools and image optimization",
+            "Advanced reports and analytics",
+            "Stronger branding and website customization",
+            "Optional expanded website package",
         ],
     },
     {
@@ -907,8 +1029,9 @@ SUBSCRIPTION_PLANS = [
         "price_annual": 700,
         "features": [
             "All Premium Plus features",
-            "Portfolio website included",
-            "Bank sync and advanced analytics",
+            "Full website bundle included",
+            "Advanced employee roles and management depth",
+            "Bank sync and highest-tier analytics",
         ],
     },
     {
@@ -1408,6 +1531,115 @@ def _require_bank_sync_access(request: Request, authorization: Optional[str], ex
             detail="Bank sync is not configured yet. Add Plaid credentials to the backend.",
         )
     return profile
+
+
+def _require_business_feature_access(
+    request: Request,
+    authorization: Optional[str],
+    expected_user_id: int,
+    feature_key: str = "business_tools",
+) -> dict:
+    profile = _require_app_access(request, authorization, expected_user_id)
+    subscription = _build_subscription_payload(profile)
+    feature_flags = subscription.get("feature_flags") or {}
+    if not bool(feature_flags.get(feature_key) or feature_flags.get("business_tools")):
+        raise HTTPException(
+            status_code=403,
+            detail="Business workspace features are available on Business, Premium Plus, Diamond, and Lifetime.",
+        )
+    return profile
+
+
+def _business_limit_for_profile(profile: dict) -> int:
+    subscription = _build_subscription_payload(profile)
+    feature_flags = subscription.get("feature_flags") or {}
+    if not bool(feature_flags.get("business_profile")):
+        return 0
+    # Phase 1 business plan starts with one business workspace per account.
+    return 1
+
+
+def _business_permissions_payload(row: Optional[dict], *, is_owner: bool = False) -> dict:
+    if is_owner:
+        return BusinessEmployee.permissions_for_role("owner")
+    payload = {}
+    for key in BusinessEmployee.permission_columns:
+        payload[key] = bool((row or {}).get(key, False))
+    return payload
+
+
+def _build_business_payload(row: dict, access_row: Optional[dict] = None) -> dict:
+    business_id = _coerce_int(row.get("business_id"), 0)
+    owner_user_id = _coerce_int(row.get("owner_user_id"), 0)
+    is_owner = str((access_row or {}).get("role_code", "")).strip().lower() == "owner"
+    access_role = "owner" if is_owner else str((access_row or {}).get("role_code", "staff")).strip().lower() or "staff"
+    return {
+        "business_id": business_id,
+        "owner_user_id": owner_user_id,
+        "business_name": str(row.get("business_name", "")).strip(),
+        "business_type": str(row.get("business_type", "")).strip(),
+        "industry": str(row.get("industry", "")).strip(),
+        "page_slug": str(row.get("page_slug", "")).strip(),
+        "website_slug": str(row.get("website_slug", "")).strip(),
+        "about_text": str(row.get("about_text", "")).strip(),
+        "phone": str(row.get("phone", "")).strip(),
+        "email": str(row.get("email", "")).strip(),
+        "address": str(row.get("address", "")).strip(),
+        "logo_url": str(row.get("logo_url", "")).strip(),
+        "cover_url": str(row.get("cover_url", "")).strip(),
+        "page_enabled": bool(row.get("page_enabled", False)),
+        "website_enabled": bool(row.get("website_enabled", False)),
+        "created_at": str(row.get("created_at", "")).strip(),
+        "updated_at": str(row.get("updated_at", "")).strip(),
+        "access_role": access_role,
+        "is_owner": bool(is_owner),
+        "permissions": _business_permissions_payload(access_row, is_owner=is_owner),
+    }
+
+
+def _build_business_employee_payload(row: dict) -> dict:
+    permissions = {}
+    for key in BusinessEmployee.permission_columns:
+        permissions[key] = bool(row.get(key, False))
+    return {
+        "employee_id": _coerce_int(row.get("employee_id"), 0),
+        "business_id": _coerce_int(row.get("business_id"), 0),
+        "linked_user_id": _coerce_int(row.get("linked_user_id"), 0),
+        "employee_name": str(row.get("employee_name", "")).strip(),
+        "email": str(row.get("email", "")).strip(),
+        "phone": str(row.get("phone", "")).strip(),
+        "role_code": str(row.get("role_code", "")).strip().lower(),
+        "status": str(row.get("status", "")).strip().lower(),
+        "created_at": str(row.get("created_at", "")).strip(),
+        "updated_at": str(row.get("updated_at", "")).strip(),
+        "permissions": permissions,
+    }
+
+
+def _resolve_business_access(expected_user_id: int, business_id: int) -> tuple[dict, Optional[dict]]:
+    business = Business().get(business_id)
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found.")
+    if int(business.get("owner_user_id", 0) or 0) == int(expected_user_id):
+        return business, {"role_code": "owner", **BusinessEmployee.permissions_for_role("owner")}
+    member = BusinessEmployee().get_linked_member(business_id, expected_user_id)
+    if not member:
+        raise HTTPException(status_code=403, detail="Business access denied.")
+    return business, member
+
+
+def _require_business_management_access(
+    request: Request,
+    authorization: Optional[str],
+    expected_user_id: int,
+    business_id: int,
+) -> tuple[dict, dict]:
+    _require_business_feature_access(request, authorization, expected_user_id, feature_key="employee_management")
+    business, access_row = _resolve_business_access(expected_user_id, business_id)
+    permissions = _business_permissions_payload(access_row, is_owner=str(access_row.get("role_code", "")).strip().lower() == "owner")
+    if str(access_row.get("role_code", "")).strip().lower() != "owner" and not bool(permissions.get("can_settings")):
+        raise HTTPException(status_code=403, detail="Only business owners or managers with settings access can manage staff.")
+    return business, access_row
 
 
 def _plaid_account_type_to_keeper(account_type: str, subtype: str) -> str:
@@ -3078,6 +3310,255 @@ async def stripe_webhook(
                 )
 
     return {"ok": True}
+
+
+@app.get("/businesses")
+def list_businesses(request: Request, user_id: int, authorization: Optional[str] = Header(default=None)):
+    profile = _require_business_feature_access(request, authorization, user_id, feature_key="business_profile")
+    businesses = Business().accessible_by_user(user_id)
+    employee_store = BusinessEmployee()
+    items = []
+    for row in _records_from_frame(businesses):
+        if _coerce_int(row.get("owner_user_id"), 0) == int(user_id):
+            access_row = {"role_code": "owner"}
+        else:
+            access_row = employee_store.get_linked_member(_coerce_int(row.get("business_id"), 0), user_id)
+        items.append(_build_business_payload(row, access_row=access_row))
+    return {
+        "ok": True,
+        "max_businesses": _business_limit_for_profile(profile),
+        "items": items,
+    }
+
+
+@app.get("/businesses/{business_id}")
+def get_business(
+    business_id: int,
+    request: Request,
+    user_id: int,
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_business_feature_access(request, authorization, user_id, feature_key="business_profile")
+    business, access_row = _resolve_business_access(user_id, business_id)
+    return {"ok": True, "business": _build_business_payload(business, access_row=access_row)}
+
+
+@app.post("/businesses")
+def create_business(body: BusinessCreateBody, request: Request, authorization: Optional[str] = Header(default=None)):
+    profile = _require_business_feature_access(request, authorization, body.user_id, feature_key="business_profile")
+    subscription = _build_subscription_payload(profile)
+    feature_flags = subscription.get("feature_flags") or {}
+    max_businesses = _business_limit_for_profile(profile)
+    existing = Business().by_owner(body.user_id)
+    if max_businesses > 0 and len(existing.index) >= max_businesses:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Your current plan supports up to {max_businesses} business workspace."
+            + ("" if max_businesses == 1 else "s"),
+        )
+    if body.page_enabled and not bool(feature_flags.get("business_page")):
+        raise HTTPException(status_code=403, detail="Your current plan does not include a business page.")
+    if body.website_enabled and not bool(feature_flags.get("business_website")):
+        raise HTTPException(status_code=403, detail="Your current plan does not include a business website.")
+    try:
+        business_id = Business().add(
+            owner_user_id=body.user_id,
+            business_name=body.business_name,
+            business_type=body.business_type or "",
+            industry=body.industry or "",
+            page_slug=body.page_slug or "",
+            website_slug=body.website_slug or "",
+            about_text=body.about_text or "",
+            phone=body.phone or "",
+            email=body.email or "",
+            address=body.address or "",
+            logo_url=body.logo_url or "",
+            cover_url=body.cover_url or "",
+            page_enabled=body.page_enabled,
+            website_enabled=body.website_enabled,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    business = Business().get(business_id) or {}
+    return {"ok": True, "business": _build_business_payload(business, access_row={"role_code": "owner"})}
+
+
+@app.put("/businesses/{business_id}")
+def update_business(
+    business_id: int,
+    body: BusinessUpdateBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    profile = _require_business_feature_access(request, authorization, body.user_id, feature_key="business_profile")
+    business, access_row = _resolve_business_access(body.user_id, business_id)
+    if str(access_row.get("role_code", "")).strip().lower() != "owner":
+        raise HTTPException(status_code=403, detail="Only the business owner can update the business profile.")
+    subscription = _build_subscription_payload(profile)
+    feature_flags = subscription.get("feature_flags") or {}
+    if body.page_enabled is True and not bool(feature_flags.get("business_page")):
+        raise HTTPException(status_code=403, detail="Your current plan does not include a business page.")
+    if body.website_enabled is True and not bool(feature_flags.get("business_website")):
+        raise HTTPException(status_code=403, detail="Your current plan does not include a business website.")
+    changes = {}
+    for key in [
+        "business_name",
+        "business_type",
+        "industry",
+        "page_slug",
+        "website_slug",
+        "about_text",
+        "phone",
+        "email",
+        "address",
+        "logo_url",
+        "cover_url",
+        "page_enabled",
+        "website_enabled",
+    ]:
+        value = getattr(body, key)
+        if value is not None:
+            changes[key] = value
+    try:
+        ok = Business().update(business_id, owner_user_id=body.user_id, **changes)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not ok:
+        raise HTTPException(status_code=404, detail="Business not found.")
+    updated = Business().get(business_id) or business
+    return {"ok": True, "business": _build_business_payload(updated, access_row={"role_code": "owner"})}
+
+
+@app.get("/businesses/{business_id}/employees")
+def list_business_employees(
+    business_id: int,
+    request: Request,
+    user_id: int,
+    authorization: Optional[str] = Header(default=None),
+):
+    business, access_row = _require_business_management_access(request, authorization, user_id, business_id)
+    rows = BusinessEmployee().by_business(business_id)
+    items = [_build_business_employee_payload(row) for row in _records_from_frame(rows)]
+    return {
+        "ok": True,
+        "business": _build_business_payload(business, access_row=access_row),
+        "items": items,
+    }
+
+
+@app.post("/businesses/{business_id}/employees")
+def create_business_employee(
+    business_id: int,
+    body: BusinessEmployeeCreateBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    business, access_row = _require_business_management_access(request, authorization, body.user_id, business_id)
+    access_role = str(access_row.get("role_code", "")).strip().lower()
+    if access_role != "owner":
+        requested_role = str(body.role_code or "").strip().lower()
+        if requested_role in {"owner", "manager"} or bool(body.can_settings):
+            raise HTTPException(status_code=403, detail="Only the business owner can grant manager or owner access.")
+    try:
+        employee_id = BusinessEmployee().add(
+            business_id=business_id,
+            employee_name=body.employee_name,
+            email=body.email or "",
+            phone=body.phone or "",
+            role_code=body.role_code,
+            status=body.status,
+            linked_user_id=body.linked_user_id,
+            can_sales=body.can_sales,
+            can_purchase=body.can_purchase,
+            can_inventory=body.can_inventory,
+            can_reports=body.can_reports,
+            can_customers=body.can_customers,
+            can_suppliers=body.can_suppliers,
+            can_settings=body.can_settings,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    employee = BusinessEmployee().get(employee_id, business_id=business_id) or {}
+    return {
+        "ok": True,
+        "business": _build_business_payload(business, access_row=access_row),
+        "employee": _build_business_employee_payload(employee),
+    }
+
+
+@app.put("/businesses/{business_id}/employees/{employee_id}")
+def update_business_employee(
+    business_id: int,
+    employee_id: int,
+    body: BusinessEmployeeUpdateBody,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    business, access_row = _require_business_management_access(request, authorization, body.user_id, business_id)
+    current = BusinessEmployee().get(employee_id, business_id=business_id)
+    if not current:
+        raise HTTPException(status_code=404, detail="Employee not found.")
+    access_role = str(access_row.get("role_code", "")).strip().lower()
+    target_role = str(body.role_code or current.get("role_code", "")).strip().lower()
+    target_can_settings = current.get("can_settings", False) if body.can_settings is None else bool(body.can_settings)
+    if access_role != "owner":
+        if target_role in {"owner", "manager"} or bool(target_can_settings):
+            raise HTTPException(status_code=403, detail="Only the business owner can grant manager or owner access.")
+        if str(current.get("role_code", "")).strip().lower() == "owner":
+            raise HTTPException(status_code=403, detail="Only the business owner can change owner access.")
+    changes = {}
+    for key in [
+        "employee_name",
+        "email",
+        "phone",
+        "role_code",
+        "status",
+        "linked_user_id",
+        "can_sales",
+        "can_purchase",
+        "can_inventory",
+        "can_reports",
+        "can_customers",
+        "can_suppliers",
+        "can_settings",
+    ]:
+        value = getattr(body, key)
+        if value is not None:
+            changes[key] = value
+    try:
+        ok = BusinessEmployee().update(employee_id, business_id=business_id, **changes)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not ok:
+        raise HTTPException(status_code=404, detail="Employee not found.")
+    updated = BusinessEmployee().get(employee_id, business_id=business_id) or current
+    return {
+        "ok": True,
+        "business": _build_business_payload(business, access_row=access_row),
+        "employee": _build_business_employee_payload(updated),
+    }
+
+
+@app.delete("/businesses/{business_id}/employees/{employee_id}")
+def delete_business_employee(
+    business_id: int,
+    employee_id: int,
+    request: Request,
+    user_id: int,
+    authorization: Optional[str] = Header(default=None),
+):
+    _, access_row = _require_business_management_access(request, authorization, user_id, business_id)
+    current = BusinessEmployee().get(employee_id, business_id=business_id)
+    if not current:
+        raise HTTPException(status_code=404, detail="Employee not found.")
+    if str(current.get("role_code", "")).strip().lower() == "owner":
+        raise HTTPException(status_code=400, detail="Use business ownership transfer before removing the owner.")
+    if str(access_row.get("role_code", "")).strip().lower() != "owner" and bool(current.get("can_settings", False)):
+        raise HTTPException(status_code=403, detail="Only the business owner can remove managers with settings access.")
+    ok = BusinessEmployee().delete(employee_id, business_id=business_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Employee not found.")
+    return {"ok": True, "deleted_employee_id": int(employee_id), "business_id": int(business_id)}
 
 
 @app.get("/accounts")

@@ -5,6 +5,9 @@ import {
   AuthUser,
   BankAccountRecord,
   BankConnectionRecord,
+  BusinessEmployeeRecord,
+  BusinessListResponse,
+  BusinessRecord,
   CategoryRecord,
   DailyBalanceRecord,
   PaymentRequiredInfo,
@@ -174,6 +177,132 @@ export const supportApi = {
       surface: payload.surface ?? 'mobile',
       history: payload.history ?? [],
     });
+    return response.data;
+  },
+};
+
+export const businessApi = {
+  async getBusinesses(userId: number): Promise<BusinessListResponse> {
+    const response = await api.get<BusinessListResponse>('/businesses', { params: { user_id: userId } });
+    return response.data;
+  },
+  async getBusiness(businessId: number, userId: number): Promise<{ ok: boolean; business: BusinessRecord }> {
+    const response = await api.get<{ ok: boolean; business: BusinessRecord }>(`/businesses/${businessId}`, {
+      params: { user_id: userId },
+    });
+    return response.data;
+  },
+  async createBusiness(payload: {
+    user_id: number;
+    business_name: string;
+    business_type?: string;
+    industry?: string;
+    page_slug?: string;
+    website_slug?: string;
+    about_text?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    logo_url?: string;
+    cover_url?: string;
+    page_enabled?: boolean;
+    website_enabled?: boolean;
+  }): Promise<{ ok: boolean; business: BusinessRecord }> {
+    const response = await api.post<{ ok: boolean; business: BusinessRecord }>('/businesses', payload);
+    return response.data;
+  },
+  async updateBusiness(
+    businessId: number,
+    payload: {
+      user_id: number;
+      business_name?: string;
+      business_type?: string;
+      industry?: string;
+      page_slug?: string;
+      website_slug?: string;
+      about_text?: string;
+      phone?: string;
+      email?: string;
+      address?: string;
+      logo_url?: string;
+      cover_url?: string;
+      page_enabled?: boolean;
+      website_enabled?: boolean;
+    }
+  ): Promise<{ ok: boolean; business: BusinessRecord }> {
+    const response = await api.put<{ ok: boolean; business: BusinessRecord }>(`/businesses/${businessId}`, payload);
+    return response.data;
+  },
+  async getEmployees(
+    businessId: number,
+    userId: number
+  ): Promise<{ ok: boolean; business: BusinessRecord; items: BusinessEmployeeRecord[] }> {
+    const response = await api.get<{ ok: boolean; business: BusinessRecord; items: BusinessEmployeeRecord[] }>(
+      `/businesses/${businessId}/employees`,
+      { params: { user_id: userId } }
+    );
+    return response.data;
+  },
+  async createEmployee(
+    businessId: number,
+    payload: {
+      user_id: number;
+      employee_name: string;
+      email?: string;
+      phone?: string;
+      role_code: string;
+      status?: string;
+      linked_user_id?: number | null;
+      can_sales?: boolean;
+      can_purchase?: boolean;
+      can_inventory?: boolean;
+      can_reports?: boolean;
+      can_customers?: boolean;
+      can_suppliers?: boolean;
+      can_settings?: boolean;
+    }
+  ): Promise<{ ok: boolean; business: BusinessRecord; employee: BusinessEmployeeRecord }> {
+    const response = await api.post<{ ok: boolean; business: BusinessRecord; employee: BusinessEmployeeRecord }>(
+      `/businesses/${businessId}/employees`,
+      payload
+    );
+    return response.data;
+  },
+  async updateEmployee(
+    businessId: number,
+    employeeId: number,
+    payload: {
+      user_id: number;
+      employee_name?: string;
+      email?: string;
+      phone?: string;
+      role_code?: string;
+      status?: string;
+      linked_user_id?: number | null;
+      can_sales?: boolean;
+      can_purchase?: boolean;
+      can_inventory?: boolean;
+      can_reports?: boolean;
+      can_customers?: boolean;
+      can_suppliers?: boolean;
+      can_settings?: boolean;
+    }
+  ): Promise<{ ok: boolean; business: BusinessRecord; employee: BusinessEmployeeRecord }> {
+    const response = await api.put<{ ok: boolean; business: BusinessRecord; employee: BusinessEmployeeRecord }>(
+      `/businesses/${businessId}/employees/${employeeId}`,
+      payload
+    );
+    return response.data;
+  },
+  async deleteEmployee(
+    businessId: number,
+    employeeId: number,
+    userId: number
+  ): Promise<{ ok: boolean; deleted_employee_id: number; business_id: number }> {
+    const response = await api.delete<{ ok: boolean; deleted_employee_id: number; business_id: number }>(
+      `/businesses/${businessId}/employees/${employeeId}`,
+      { params: { user_id: userId } }
+    );
     return response.data;
   },
 };

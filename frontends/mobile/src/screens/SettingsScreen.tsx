@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { WEB_BASE_URL } from '../constants/config';
 import { useTheme } from '../theme/ThemeContext';
-import { formatShortDate } from '../utils/format';
+import { formatPlanName, formatShortDate } from '../utils/format';
 import { spacing, typography } from '../theme/theme';
 
 export const SettingsScreen: React.FC = () => {
@@ -39,7 +39,7 @@ export const SettingsScreen: React.FC = () => {
       <Card>
         <Text style={[styles.sectionTitle, { color: theme.heading }]}>{t('settings.account')}</Text>
         <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: theme.muted }]}>{t('settings.phone')}</Text><Text style={[styles.infoValue, { color: theme.text }]}>{user?.phone || '-'}</Text></View>
-        <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: theme.muted }]}>{t('settings.plan')}</Text><Text style={[styles.infoValue, { color: theme.text }]}>{user?.is_lifetime ? 'Lifetime' : user?.plan_code || '-'}</Text></View>
+        <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: theme.muted }]}>{t('settings.plan')}</Text><Text style={[styles.infoValue, { color: theme.text }]}>{formatPlanName(user?.plan_code, Boolean(user?.is_lifetime))}</Text></View>
         <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: theme.muted }]}>{t('settings.billingCycle')}</Text><Text style={[styles.infoValue, { color: theme.text }]}>{user?.billing_cycle || '-'}</Text></View>
         <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: theme.muted }]}>{t('settings.paymentStatus')}</Text><Text style={[styles.infoValue, { color: theme.text }]}>{user?.payment_status || '-'}</Text></View>
         <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: theme.muted }]}>{t('settings.trialEnds')}</Text><Text style={[styles.infoValue, { color: theme.text }]}>{formatShortDate(user?.trial_ends_at, locale)}</Text></View>
