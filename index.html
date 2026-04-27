@@ -20,7 +20,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <link rel="stylesheet" href="./frontends/web/styles.css?v=43" />
+  <link rel="stylesheet" href="./frontends/web/styles.css?v=44" />
 </head>
 <body>
   <main class="page">
@@ -113,6 +113,14 @@
           <h1>KeeperBMA</h1>
         </div>
         <div class="top-right">
+          <div class="app-mode-shell">
+            <span id="appModeLabel">App Mode</span>
+            <div id="appModeSwitch" class="toggle-switch mode-toggle" data-state="left">
+              <span class="toggle-thumb" aria-hidden="true"></span>
+              <button id="btnModePersonal" type="button" class="active">Personal</button>
+              <button id="btnModeBusiness" type="button">Business</button>
+            </div>
+          </div>
           <div class="theme-switch compact">
             <span id="appThemeLabel">Theme</span>
             <button id="appThemeToggle" type="button" class="theme-toggle" aria-pressed="false">
@@ -136,210 +144,328 @@
         </div>
       </header>
 
-      <section id="billingLockCard" class="card billing-lock-banner hidden">
-        <div class="billing-lock-copy">
-          <h2 id="billingLockTitle">Subscription Active</h2>
-          <p id="billingLockMessage" class="muted"></p>
-        </div>
-        <div class="billing-lock-actions">
-          <button id="btnResolveBilling" class="accent">Manage Billing</button>
-        </div>
-      </section>
-
-      <section class="kpi-grid">
-        <article class="kpi-card">
-          <h3 id="kpiLabelAvailable">Current Available Balance</h3>
-          <p id="kpiNetWorth">$0.00</p>
-        </article>
-        <article class="kpi-card debt">
-          <h3 id="kpiLabelDebt">Total Debt</h3>
-          <p id="kpiDebt">$0.00</p>
-        </article>
-        <article class="kpi-card income">
-          <h3 id="kpiLabelIncome">Total Income</h3>
-          <p id="kpiIncome">$0.00</p>
-        </article>
-        <article class="kpi-card expense">
-          <h3 id="kpiLabelExpense">Total Expense</h3>
-          <p id="kpiExpense">$0.00</p>
-        </article>
-      </section>
-
-      <section class="card">
-        <h2 id="summaryExportTitle">Summary Export</h2>
-        <div class="row">
-          <input id="sumStart" type="date" />
-          <input id="sumEnd" type="date" />
-          <button id="btnApplySummary">Apply Range</button>
-          <button id="btnResetSummary">Reset</button>
-          <button id="btnDownloadPdf" class="secondary">Download PDF</button>
-        </div>
-      </section>
-
-      <section class="card app-status">
-        <p id="health" class="muted"></p>
-      </section>
-
-      <section class="card charts">
-        <h2 id="summaryChartsTitle">Summary Charts</h2>
-        <div class="chart-grid">
-          <div class="chart-card">
-            <h3 id="incomeChartTitle">Income by Category</h3>
-            <canvas id="incomeChart"></canvas>
+      <div id="personalWorkspace" class="workspace-shell">
+        <section id="billingLockCard" class="card billing-lock-banner hidden">
+          <div class="billing-lock-copy">
+            <h2 id="billingLockTitle">Subscription Active</h2>
+            <p id="billingLockMessage" class="muted"></p>
           </div>
-          <div class="chart-card">
-            <h3 id="expenseChartTitle">Expense by Category</h3>
-            <canvas id="expenseChart"></canvas>
+          <div class="billing-lock-actions">
+            <button id="btnResolveBilling" class="accent">Manage Billing</button>
           </div>
-          <div class="chart-card">
-            <h3 id="debtChartTitle">Debt by Account</h3>
-            <canvas id="debtChart"></canvas>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <section class="card">
-        <h2 id="dailySummaryTitle">Daily Balance Summary</h2>
-        <table class="mobile-stack">
-          <thead>
-            <tr>
-              <th id="dailyColDate">Date</th>
-              <th id="dailyColIncome">Income</th>
-              <th id="dailyColExpense">Expense</th>
-              <th id="dailyColNet">Net</th>
-              <th id="dailyColSnapshot">Snapshot</th>
-            </tr>
-          </thead>
-          <tbody id="dailyRows"></tbody>
-        </table>
-      </section>
+        <section class="kpi-grid">
+          <article class="kpi-card">
+            <h3 id="kpiLabelAvailable">Current Available Balance</h3>
+            <p id="kpiNetWorth">$0.00</p>
+          </article>
+          <article class="kpi-card debt">
+            <h3 id="kpiLabelDebt">Total Debt</h3>
+            <p id="kpiDebt">$0.00</p>
+          </article>
+          <article class="kpi-card income">
+            <h3 id="kpiLabelIncome">Total Income</h3>
+            <p id="kpiIncome">$0.00</p>
+          </article>
+          <article class="kpi-card expense">
+            <h3 id="kpiLabelExpense">Total Expense</h3>
+            <p id="kpiExpense">$0.00</p>
+          </article>
+        </section>
 
-      <div class="grid">
         <section class="card">
-          <h2 id="accountsTitle">Accounts</h2>
+          <h2 id="summaryExportTitle">Summary Export</h2>
           <div class="row">
-            <input id="accName" placeholder="Account Name" />
-            <select id="accType">
-              <option value="asset">asset</option>
-              <option value="credit">credit (debt)</option>
-              <option value="saving">saving</option>
-            </select>
-            <input id="accBal" type="number" step="0.01" placeholder="Balance" value="0" />
+            <input id="sumStart" type="date" />
+            <input id="sumEnd" type="date" />
+            <button id="btnApplySummary">Apply Range</button>
+            <button id="btnResetSummary">Reset</button>
+            <button id="btnDownloadPdf" class="secondary">Download PDF</button>
           </div>
-          <button id="btnAddAccount">Add Account</button>
-          <button id="btnCancelAccount" class="secondary hidden">Cancel Edit</button>
+        </section>
+
+        <section class="card app-status">
+          <p id="health" class="muted"></p>
+        </section>
+
+        <section class="card charts">
+          <h2 id="summaryChartsTitle">Summary Charts</h2>
+          <div class="chart-grid">
+            <div class="chart-card">
+              <h3 id="incomeChartTitle">Income by Category</h3>
+              <canvas id="incomeChart"></canvas>
+            </div>
+            <div class="chart-card">
+              <h3 id="expenseChartTitle">Expense by Category</h3>
+              <canvas id="expenseChart"></canvas>
+            </div>
+            <div class="chart-card">
+              <h3 id="debtChartTitle">Debt by Account</h3>
+              <canvas id="debtChart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2 id="dailySummaryTitle">Daily Balance Summary</h2>
           <table class="mobile-stack">
             <thead>
               <tr>
-                <th id="accountsColName">Name</th>
-                <th id="accountsColType">Type</th>
-                <th id="accountsColBalance">Balance</th>
-                <th id="accountsColActions">Actions</th>
+                <th id="dailyColDate">Date</th>
+                <th id="dailyColIncome">Income</th>
+                <th id="dailyColExpense">Expense</th>
+                <th id="dailyColNet">Net</th>
+                <th id="dailyColSnapshot">Snapshot</th>
               </tr>
             </thead>
-            <tbody id="accountsRows"></tbody>
+            <tbody id="dailyRows"></tbody>
           </table>
         </section>
 
-        <section class="card">
-          <h2 id="categoriesTitle">Categories</h2>
-          <div class="row">
-            <input id="catName" placeholder="Category Name" />
-            <button id="btnAddCategory">Add Category</button>
+        <div class="grid">
+          <section class="card">
+            <h2 id="accountsTitle">Accounts</h2>
+            <div class="row">
+              <input id="accName" placeholder="Account Name" />
+              <select id="accType">
+                <option value="asset">asset</option>
+                <option value="credit">credit (debt)</option>
+                <option value="saving">saving</option>
+              </select>
+              <input id="accBal" type="number" step="0.01" placeholder="Balance" value="0" />
+            </div>
+            <button id="btnAddAccount">Add Account</button>
+            <button id="btnCancelAccount" class="secondary hidden">Cancel Edit</button>
+            <table class="mobile-stack">
+              <thead>
+                <tr>
+                  <th id="accountsColName">Name</th>
+                  <th id="accountsColType">Type</th>
+                  <th id="accountsColBalance">Balance</th>
+                  <th id="accountsColActions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="accountsRows"></tbody>
+            </table>
+          </section>
+
+          <section class="card">
+            <h2 id="categoriesTitle">Categories</h2>
+            <div class="row">
+              <input id="catName" placeholder="Category Name" />
+              <button id="btnAddCategory">Add Category</button>
+            </div>
+            <div id="categories" class="chips"></div>
+          </section>
+
+          <section class="card span-2">
+            <div class="section-head">
+              <div>
+                <h2 id="bankSyncTitle">Bank Sync</h2>
+                <p id="bankSyncHint" class="muted">Connect bank accounts to import balances and transactions automatically.</p>
+              </div>
+              <div class="row compact">
+                <button id="btnConnectBank" class="secondary">Connect Bank</button>
+                <button id="btnSyncBank" class="accent">Sync Transactions</button>
+              </div>
+            </div>
+            <div id="bankSyncUpgrade" class="callout hidden"></div>
+            <p id="bankSyncStatus" class="muted">Regular and above can connect bank accounts with Plaid.</p>
+            <div class="bank-sync-grid">
+              <div class="stack-list-card">
+                <h3 id="linkedConnectionsTitle">Linked Institutions</h3>
+                <div id="bankConnectionsList" class="stack-list"></div>
+              </div>
+              <div class="stack-list-card">
+                <h3 id="linkedAccountsTitle">Imported Accounts</h3>
+                <div id="linkedBankAccountsList" class="stack-list"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card span-2">
+            <h2 id="transactionsTitle">Transactions</h2>
+            <div class="row">
+              <select id="txType">
+                <option>income</option>
+                <option>expense</option>
+              </select>
+              <input id="txAmount" type="number" step="0.01" placeholder="Amount" />
+              <select id="txAccount"></select>
+              <select id="txCategory"></select>
+              <input id="txDateTime" type="datetime-local" step="1" />
+              <input id="txNote" placeholder="Note" />
+            </div>
+            <button id="btnAddTx">Add Transaction</button>
+            <button id="btnCancelTx" class="secondary hidden">Cancel Edit</button>
+            <div class="transfer-panel">
+              <h3 id="transferTitle">Money Transfer</h3>
+              <p id="transferHint" class="muted">Move money between accounts without counting it as income or expense.</p>
+              <div class="row">
+                <select id="transferFromAccount"></select>
+                <select id="transferToAccount"></select>
+                <input id="transferAmount" type="number" step="0.01" placeholder="Transfer Amount" />
+                <input id="transferDateTime" type="datetime-local" step="1" />
+                <input id="transferNote" placeholder="Note" />
+              </div>
+              <button id="btnTransferMoney" class="accent">Transfer Money</button>
+            </div>
+            <div class="tx-filter-panel">
+              <h3 id="txHistoryFilterTitle">Transaction History Filters</h3>
+              <div class="row">
+                <input id="txFilterKeyword" type="search" placeholder="Search keyword" />
+                <select id="txFilterAccount"></select>
+                <input id="txFilterFromTime" type="datetime-local" step="1" placeholder="From Time" />
+                <input id="txFilterToTime" type="datetime-local" step="1" placeholder="To Time" />
+                <select id="txFilterCategory"></select>
+                <button id="btnClearTxFilters" class="secondary">Clear Filters</button>
+              </div>
+              <div class="tx-filter-totals">
+                <div class="tx-filter-total income">
+                  <span id="txFilterIncomeLabel">Filtered Income</span>
+                  <strong id="txFilteredIncome">$0.00</strong>
+                </div>
+                <div class="tx-filter-total expense">
+                  <span id="txFilterExpenseLabel">Filtered Expense</span>
+                  <strong id="txFilteredExpense">$0.00</strong>
+                </div>
+              </div>
+            </div>
+            <table class="mobile-stack">
+              <thead>
+                <tr>
+                  <th id="txColId">ID</th>
+                  <th id="txColDate">Date</th>
+                  <th id="txColType">Type</th>
+                  <th id="txColAmount">Amount</th>
+                  <th id="txColAccount">Account</th>
+                  <th id="txColCategory">Category</th>
+                  <th id="txColNote">Note</th>
+                  <th id="txColActions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="txRows"></tbody>
+            </table>
+          </section>
+        </div>
+      </div>
+
+      <section id="businessWorkspace" class="workspace-shell hidden">
+        <section class="card business-hero">
+          <div>
+            <h2 id="businessWorkspaceTitle">Business Workspace</h2>
+            <p id="businessWorkspaceHint" class="muted">Switch into business mode to manage your business profile, employee access, and POS-ready plan tools.</p>
           </div>
-          <div id="categories" class="chips"></div>
+          <p id="businessModePlan" class="muted"></p>
         </section>
 
-        <section class="card span-2">
+        <section id="businessUpgradeCard" class="card business-upgrade-card hidden"></section>
+
+        <section class="card">
           <div class="section-head">
             <div>
-              <h2 id="bankSyncTitle">Bank Sync</h2>
-              <p id="bankSyncHint" class="muted">Connect bank accounts to import balances and transactions automatically.</p>
+              <h2 id="businessProfileTitle">Business Profile</h2>
+              <p id="businessProfileHint" class="muted">Create or update your business workspace, page slug, and website slug.</p>
             </div>
             <div class="row compact">
-              <button id="btnConnectBank" class="secondary">Connect Bank</button>
-              <button id="btnSyncBank" class="accent">Sync Transactions</button>
+              <select id="businessSelect"></select>
+              <button id="btnNewBusiness" class="secondary">New Business</button>
             </div>
           </div>
-          <div id="bankSyncUpgrade" class="callout hidden"></div>
-          <p id="bankSyncStatus" class="muted">Regular and above can connect bank accounts with Plaid.</p>
-          <div class="bank-sync-grid">
-            <div class="stack-list-card">
-              <h3 id="linkedConnectionsTitle">Linked Institutions</h3>
-              <div id="bankConnectionsList" class="stack-list"></div>
-            </div>
-            <div class="stack-list-card">
-              <h3 id="linkedAccountsTitle">Imported Accounts</h3>
-              <div id="linkedBankAccountsList" class="stack-list"></div>
-            </div>
+          <div class="row">
+            <input id="businessName" placeholder="Business Name" />
+            <select id="businessType">
+              <option value="retail">Retail</option>
+              <option value="service">Service</option>
+              <option value="consulting">Consulting</option>
+              <option value="healthcare">Healthcare</option>
+              <option value="restaurant">Restaurant</option>
+              <option value="education">Education</option>
+              <option value="other">Other</option>
+            </select>
+            <input id="businessIndustry" placeholder="Industry" />
           </div>
+          <div class="row">
+            <input id="businessPhone" placeholder="Business Phone" />
+            <input id="businessEmail" type="email" placeholder="Business Email" />
+            <input id="businessAddress" placeholder="Business Address" />
+          </div>
+          <div class="row">
+            <input id="businessPageSlug" placeholder="Business Page Slug" />
+            <input id="businessWebsiteSlug" placeholder="Business Website Slug" />
+          </div>
+          <div class="row">
+            <input id="businessLogoUrl" placeholder="Logo URL" />
+            <input id="businessCoverUrl" placeholder="Cover Image URL" />
+          </div>
+          <div class="row">
+            <textarea id="businessAboutText" rows="4" placeholder="About your business"></textarea>
+          </div>
+          <div class="business-inline-grid">
+            <label class="checkbox-chip"><input id="businessPageEnabled" type="checkbox" checked /> <span id="businessPageEnabledLabel">Enable Business Page</span></label>
+            <label class="checkbox-chip"><input id="businessWebsiteEnabled" type="checkbox" checked /> <span id="businessWebsiteEnabledLabel">Enable Starter Website</span></label>
+          </div>
+          <div class="row compact">
+            <button id="btnSaveBusiness">Save Business</button>
+          </div>
+          <p id="businessStatus" class="muted"></p>
         </section>
 
-        <section class="card span-2">
-          <h2 id="transactionsTitle">Transactions</h2>
-          <div class="row">
-            <select id="txType">
-              <option>income</option>
-              <option>expense</option>
-            </select>
-            <input id="txAmount" type="number" step="0.01" placeholder="Amount" />
-            <select id="txAccount"></select>
-            <select id="txCategory"></select>
-            <input id="txDateTime" type="datetime-local" step="1" />
-            <input id="txNote" placeholder="Note" />
-          </div>
-          <button id="btnAddTx">Add Transaction</button>
-          <button id="btnCancelTx" class="secondary hidden">Cancel Edit</button>
-          <div class="transfer-panel">
-            <h3 id="transferTitle">Money Transfer</h3>
-            <p id="transferHint" class="muted">Move money between accounts without counting it as income or expense.</p>
-            <div class="row">
-              <select id="transferFromAccount"></select>
-              <select id="transferToAccount"></select>
-              <input id="transferAmount" type="number" step="0.01" placeholder="Transfer Amount" />
-              <input id="transferDateTime" type="datetime-local" step="1" />
-              <input id="transferNote" placeholder="Note" />
-            </div>
-            <button id="btnTransferMoney" class="accent">Transfer Money</button>
-          </div>
-          <div class="tx-filter-panel">
-            <h3 id="txHistoryFilterTitle">Transaction History Filters</h3>
-            <div class="row">
-              <input id="txFilterKeyword" type="search" placeholder="Search keyword" />
-              <select id="txFilterAccount"></select>
-              <input id="txFilterFromTime" type="datetime-local" step="1" placeholder="From Time" />
-              <input id="txFilterToTime" type="datetime-local" step="1" placeholder="To Time" />
-              <select id="txFilterCategory"></select>
-              <button id="btnClearTxFilters" class="secondary">Clear Filters</button>
-            </div>
-            <div class="tx-filter-totals">
-              <div class="tx-filter-total income">
-                <span id="txFilterIncomeLabel">Filtered Income</span>
-                <strong id="txFilteredIncome">$0.00</strong>
-              </div>
-              <div class="tx-filter-total expense">
-                <span id="txFilterExpenseLabel">Filtered Expense</span>
-                <strong id="txFilteredExpense">$0.00</strong>
-              </div>
-            </div>
-          </div>
-          <table class="mobile-stack">
-            <thead>
-              <tr>
-                <th id="txColId">ID</th>
-                <th id="txColDate">Date</th>
-                <th id="txColType">Type</th>
-                <th id="txColAmount">Amount</th>
-                <th id="txColAccount">Account</th>
-                <th id="txColCategory">Category</th>
-                <th id="txColNote">Note</th>
-                <th id="txColActions">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="txRows"></tbody>
-          </table>
+        <section class="card">
+          <h2 id="businessModulesTitle">Plan Modules</h2>
+          <p id="businessModulesHint" class="muted">These business and POS-ready features follow your current subscription plan.</p>
+          <div id="businessModules" class="business-modules"></div>
         </section>
-      </div>
+
+        <section class="card">
+          <div class="section-head">
+            <div>
+              <h2 id="businessEmployeesTitle">Employees and Access</h2>
+              <p id="businessEmployeesHint" class="muted">Manage staff roles and permissions from the business workspace.</p>
+            </div>
+            <div class="row compact">
+              <select id="businessEmployeeSelect"></select>
+              <button id="btnNewEmployee" class="secondary">New Employee</button>
+            </div>
+          </div>
+          <div class="row">
+            <input id="businessEmployeeName" placeholder="Employee Name" />
+            <input id="businessEmployeeEmail" type="email" placeholder="Employee Email" />
+            <input id="businessEmployeePhone" placeholder="Employee Phone" />
+          </div>
+          <div class="row">
+            <select id="businessEmployeeRole">
+              <option value="owner">Owner</option>
+              <option value="manager">Manager</option>
+              <option value="sales">Sales</option>
+              <option value="purchase">Purchase</option>
+              <option value="inventory">Inventory</option>
+              <option value="accountant">Accountant</option>
+              <option value="staff">Staff</option>
+            </select>
+            <select id="businessEmployeeStatus">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          <div class="business-permissions-grid">
+            <label class="checkbox-chip"><input id="permSales" type="checkbox" /> <span id="permSalesLabel">Sales Access</span></label>
+            <label class="checkbox-chip"><input id="permPurchase" type="checkbox" /> <span id="permPurchaseLabel">Purchase Access</span></label>
+            <label class="checkbox-chip"><input id="permInventory" type="checkbox" /> <span id="permInventoryLabel">Inventory Access</span></label>
+            <label class="checkbox-chip"><input id="permReports" type="checkbox" /> <span id="permReportsLabel">Reports Access</span></label>
+            <label class="checkbox-chip"><input id="permCustomers" type="checkbox" /> <span id="permCustomersLabel">Customer Access</span></label>
+            <label class="checkbox-chip"><input id="permSuppliers" type="checkbox" /> <span id="permSuppliersLabel">Supplier Access</span></label>
+            <label class="checkbox-chip"><input id="permSettings" type="checkbox" /> <span id="permSettingsLabel">Settings Access</span></label>
+          </div>
+          <div class="row compact">
+            <button id="btnSaveEmployee">Save Employee</button>
+            <button id="btnDeleteEmployee" class="danger">Delete Employee</button>
+          </div>
+          <p id="businessEmployeeStatusMsg" class="muted"></p>
+          <div id="businessEmployeesList" class="stack-list business-employees-list"></div>
+        </section>
+      </section>
     </section>
 
     <button id="supportLauncher" type="button" class="support-launcher hidden">Chat with Omar</button>
@@ -369,6 +495,6 @@
   </main>
 
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
-  <script src="./frontends/web/web.js?v=45"></script>
+  <script src="./frontends/web/web.js?v=46"></script>
 </body>
 </html>

@@ -6,6 +6,7 @@ let state = {
   userId: 0,
   userName: "",
   theme: "light",
+  appMode: "personal",
   accounts: [],
   categories: [],
   tx: [],
@@ -20,6 +21,10 @@ let state = {
   subscription: {},
   bankConnections: [],
   linkedBankAccounts: [],
+  businesses: [],
+  businessEmployees: [],
+  selectedBusinessId: 0,
+  selectedEmployeeId: 0,
   charts: { income: null, expense: null, debt: null },
   support: {
     open: false,
@@ -31,9 +36,126 @@ let state = {
   },
 };
 const SIGNUP_PLAN_KEY = "keeperbma_signup_plan";
+const APP_MODE_KEY = "keeperbma_app_mode";
 const ALLOWED_SIGNUP_PLANS = new Set(["basic", "regular", "business", "premium_plus", "diamond"]);
 const ALLOWED_ACCOUNT_TYPES = new Set(["checking", "credit", "credit_card", "saving", "savings", "cash", "asset"]);
 const UI_ACCOUNT_TYPES = new Set(["asset", "credit", "saving"]);
+const BUSINESS_PERMISSION_KEYS = [
+  "can_sales",
+  "can_purchase",
+  "can_inventory",
+  "can_reports",
+  "can_customers",
+  "can_suppliers",
+  "can_settings",
+];
+const BUSINESS_MODULES = [
+  {
+    key: "business_page",
+    title: "Business Page",
+    description: "Public page with business details, services, contact information, and brand identity.",
+  },
+  {
+    key: "business_website",
+    title: "Starter Website",
+    description: "Starter business website bundle linked to your business workspace.",
+  },
+  {
+    key: "employee_management",
+    title: "Employee Access",
+    description: "Control staff roles and permissions from one shared business account.",
+  },
+  {
+    key: "sales_tools",
+    title: "Sales and POS",
+    description: "POS-ready sales tools are unlocked through the business workspace.",
+  },
+  {
+    key: "purchase_tools",
+    title: "Purchases",
+    description: "Track purchase workflows and vendor-side operations.",
+  },
+  {
+    key: "customer_records",
+    title: "Customers",
+    description: "Customer records stay attached to the business workspace.",
+  },
+  {
+    key: "supplier_records",
+    title: "Suppliers",
+    description: "Supplier and procurement records are part of the business plan.",
+  },
+  {
+    key: "product_catalog",
+    title: "Products and Inventory",
+    description: "Product and inventory tools are reserved for business-capable plans.",
+  },
+];
+const BUSINESS_ROLE_DEFAULTS = {
+  owner: {
+    can_sales: true,
+    can_purchase: true,
+    can_inventory: true,
+    can_reports: true,
+    can_customers: true,
+    can_suppliers: true,
+    can_settings: true,
+  },
+  manager: {
+    can_sales: true,
+    can_purchase: true,
+    can_inventory: true,
+    can_reports: true,
+    can_customers: true,
+    can_suppliers: true,
+    can_settings: true,
+  },
+  sales: {
+    can_sales: true,
+    can_purchase: false,
+    can_inventory: false,
+    can_reports: false,
+    can_customers: true,
+    can_suppliers: false,
+    can_settings: false,
+  },
+  purchase: {
+    can_sales: false,
+    can_purchase: true,
+    can_inventory: true,
+    can_reports: false,
+    can_customers: false,
+    can_suppliers: true,
+    can_settings: false,
+  },
+  inventory: {
+    can_sales: false,
+    can_purchase: false,
+    can_inventory: true,
+    can_reports: false,
+    can_customers: false,
+    can_suppliers: false,
+    can_settings: false,
+  },
+  accountant: {
+    can_sales: false,
+    can_purchase: true,
+    can_inventory: false,
+    can_reports: true,
+    can_customers: false,
+    can_suppliers: true,
+    can_settings: false,
+  },
+  staff: {
+    can_sales: false,
+    can_purchase: false,
+    can_inventory: false,
+    can_reports: false,
+    can_customers: false,
+    can_suppliers: false,
+    can_settings: false,
+  },
+};
 
 const I18N = {
   en: {
@@ -174,6 +296,39 @@ const I18N = {
     support_quick_questions: "Quick Questions",
     support_email: "Email Support",
     support_fallback: "Support chat is unavailable right now. Please try again in a moment.",
+    mode_label: "App Mode",
+    mode_personal: "Personal",
+    mode_business: "Business",
+    business_workspace_title: "Business Workspace",
+    business_workspace_hint: "Switch into business mode to manage your business profile, employee access, and POS-ready plan tools.",
+    business_workspace_plan_prefix: "Current plan",
+    business_locked: "Business workspace access is available on Business, Premium Plus, Diamond, and Lifetime plans.",
+    business_lifetime_unlocked: "Lifetime users can access every business and POS-ready plan feature on web and mobile.",
+    business_profile_title: "Business Profile",
+    business_profile_hint: "Create or update your business workspace, public page slug, and website slug.",
+    business_modules_title: "Plan Modules",
+    business_modules_hint: "These business and POS-ready features follow your current subscription plan.",
+    business_employees_title: "Employees and Access",
+    business_employees_hint: "Manage staff roles and permissions from the business workspace.",
+    business_new: "New Business",
+    business_save: "Save Business",
+    business_saved: "Business profile saved successfully.",
+    business_created: "Business workspace created successfully.",
+    business_name_required: "Business name is required.",
+    business_no_workspace: "No business workspace yet. Create your first business workspace to get started.",
+    business_read_only: "You have read-only business access. Only the owner can edit the business profile.",
+    business_employee_saved: "Employee saved successfully.",
+    business_employee_deleted: "Employee removed successfully.",
+    business_employee_name_required: "Employee name is required.",
+    business_employee_none: "No employees yet. Add your first employee to start role-based access.",
+    business_employee_locked: "Only the business owner or a manager with settings access can manage employees.",
+    business_included: "Included",
+    business_locked_badge: "Locked",
+    business_select_placeholder: "Select Business Workspace",
+    business_select_employee_placeholder: "Select Employee",
+    business_delete_employee: "Delete Employee",
+    business_new_employee: "New Employee",
+    business_confirm_delete_employee: "Remove this employee from the business workspace?",
     yes: "Yes",
     no: "No",
   },
@@ -492,6 +647,29 @@ function fmtMoney(v) {
   return `$${n.toFixed(2)}`;
 }
 
+function normalizeAppMode(mode) {
+  return String(mode || "").trim().toLowerCase() === "business" ? "business" : "personal";
+}
+
+function businessPermissionDefaults(roleCode) {
+  const key = String(roleCode || "staff").trim().toLowerCase();
+  return { ...(BUSINESS_ROLE_DEFAULTS[key] || BUSINESS_ROLE_DEFAULTS.staff) };
+}
+
+function hasBusinessWorkspaceAccess() {
+  const sub = state.subscription || {};
+  const flags = sub.feature_flags || {};
+  return Boolean(sub.is_lifetime || flags.business_profile || flags.business_tools);
+}
+
+function getSelectedBusiness() {
+  return state.businesses.find((item) => Number(item.business_id) === Number(state.selectedBusinessId)) || null;
+}
+
+function getSelectedEmployee() {
+  return state.businessEmployees.find((item) => Number(item.employee_id) === Number(state.selectedEmployeeId)) || null;
+}
+
 function setStatus(id, msg) {
   const el = $(id);
   if (el) el.textContent = msg;
@@ -533,6 +711,9 @@ function applyLanguage(lang) {
   setText("btnNavLogin", "login");
   setText("btnNavRegister", "register");
   setText("btnOpenSettings", "settings");
+  setText("appModeLabel", "mode_label");
+  setText("btnModePersonal", "mode_personal");
+  setText("btnModeBusiness", "mode_business");
   setText("landingTitle", "landing_title");
   setText("landingSubtitle", "landing_subtitle");
   setText("btnHeroRegister", "get_started");
@@ -634,6 +815,19 @@ function applyLanguage(lang) {
   if ($("currentPassword")) $("currentPassword").placeholder = t("current_password");
   if ($("newPassword")) $("newPassword").placeholder = `${t("new_password")} (10+ letters+numbers)`;
   if ($("confirmNewPassword")) $("confirmNewPassword").placeholder = t("confirm_new_password");
+  if ($("businessName")) $("businessName").placeholder = "Business Name";
+  if ($("businessIndustry")) $("businessIndustry").placeholder = "Industry";
+  if ($("businessPhone")) $("businessPhone").placeholder = "Business Phone";
+  if ($("businessEmail")) $("businessEmail").placeholder = "Business Email";
+  if ($("businessAddress")) $("businessAddress").placeholder = "Business Address";
+  if ($("businessPageSlug")) $("businessPageSlug").placeholder = "Business Page Slug";
+  if ($("businessWebsiteSlug")) $("businessWebsiteSlug").placeholder = "Business Website Slug";
+  if ($("businessLogoUrl")) $("businessLogoUrl").placeholder = "Logo URL";
+  if ($("businessCoverUrl")) $("businessCoverUrl").placeholder = "Cover Image URL";
+  if ($("businessAboutText")) $("businessAboutText").placeholder = "About your business";
+  if ($("businessEmployeeName")) $("businessEmployeeName").placeholder = "Employee Name";
+  if ($("businessEmployeeEmail")) $("businessEmployeeEmail").placeholder = "Employee Email";
+  if ($("businessEmployeePhone")) $("businessEmployeePhone").placeholder = "Employee Phone";
 
   const isAppVisible = !$("appScreen").classList.contains("hidden");
   setAuthMode(state.authMode);
@@ -651,6 +845,8 @@ function applyLanguage(lang) {
   renderTransactions();
   renderSubscription();
   renderBankSync();
+  renderBusinessWorkspace();
+  renderAppMode();
   renderSupportWidget();
   applyTheme(state.theme);
 }
@@ -705,6 +901,7 @@ function setScreen(isLoggedIn) {
   if (isLoggedIn && (!state.support.messages || state.support.messages.length === 0)) {
     resetSupportState();
   }
+  renderAppMode();
   renderSupportWidget();
   if (isLoggedIn) renderProfile();
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -718,6 +915,7 @@ function showLanding() {
   landing.style.display = "flex";
   app.style.display = "none";
   resetSupportState();
+  renderAppMode();
   renderSupportWidget();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -1098,6 +1296,364 @@ function renderProfile() {
   const img = getProfileImageUrl();
   if ($("profileAvatarPreview")) $("profileAvatarPreview").src = img;
   if ($("topLogo")) $("topLogo").src = img;
+}
+
+function setBusinessFormDisabled(disabled) {
+  [
+    "businessName",
+    "businessType",
+    "businessIndustry",
+    "businessPhone",
+    "businessEmail",
+    "businessAddress",
+    "businessPageSlug",
+    "businessWebsiteSlug",
+    "businessLogoUrl",
+    "businessCoverUrl",
+    "businessAboutText",
+    "businessPageEnabled",
+    "businessWebsiteEnabled",
+    "btnSaveBusiness",
+  ].forEach((id) => {
+    const el = $(id);
+    if (el) el.disabled = Boolean(disabled);
+  });
+}
+
+function setEmployeeFormDisabled(disabled) {
+  [
+    "businessEmployeeName",
+    "businessEmployeeEmail",
+    "businessEmployeePhone",
+    "businessEmployeeRole",
+    "businessEmployeeStatus",
+    "permSales",
+    "permPurchase",
+    "permInventory",
+    "permReports",
+    "permCustomers",
+    "permSuppliers",
+    "permSettings",
+    "btnSaveEmployee",
+    "btnDeleteEmployee",
+  ].forEach((id) => {
+    const el = $(id);
+    if (el) el.disabled = Boolean(disabled);
+  });
+}
+
+function fillBusinessForm(business) {
+  const row = business || {};
+  if ($("businessName")) $("businessName").value = String(row.business_name || "");
+  if ($("businessType")) $("businessType").value = String(row.business_type || "service") || "service";
+  if ($("businessIndustry")) $("businessIndustry").value = String(row.industry || "");
+  if ($("businessPhone")) $("businessPhone").value = String(row.phone || "");
+  if ($("businessEmail")) $("businessEmail").value = String(row.email || state.profile.email || "");
+  if ($("businessAddress")) $("businessAddress").value = String(row.address || "");
+  if ($("businessPageSlug")) $("businessPageSlug").value = String(row.page_slug || "");
+  if ($("businessWebsiteSlug")) $("businessWebsiteSlug").value = String(row.website_slug || "");
+  if ($("businessLogoUrl")) $("businessLogoUrl").value = String(row.logo_url || "");
+  if ($("businessCoverUrl")) $("businessCoverUrl").value = String(row.cover_url || "");
+  if ($("businessAboutText")) $("businessAboutText").value = String(row.about_text || "");
+  if ($("businessPageEnabled")) $("businessPageEnabled").checked = row.page_enabled !== false;
+  if ($("businessWebsiteEnabled")) $("businessWebsiteEnabled").checked = row.website_enabled !== false;
+}
+
+function readBusinessPayload() {
+  return {
+    user_id: state.userId,
+    business_name: $("businessName") ? $("businessName").value.trim() : "",
+    business_type: $("businessType") ? $("businessType").value : "service",
+    industry: $("businessIndustry") ? $("businessIndustry").value.trim() : "",
+    phone: $("businessPhone") ? $("businessPhone").value.trim() : "",
+    email: $("businessEmail") ? $("businessEmail").value.trim() : "",
+    address: $("businessAddress") ? $("businessAddress").value.trim() : "",
+    page_slug: $("businessPageSlug") ? $("businessPageSlug").value.trim() : "",
+    website_slug: $("businessWebsiteSlug") ? $("businessWebsiteSlug").value.trim() : "",
+    logo_url: $("businessLogoUrl") ? $("businessLogoUrl").value.trim() : "",
+    cover_url: $("businessCoverUrl") ? $("businessCoverUrl").value.trim() : "",
+    about_text: $("businessAboutText") ? $("businessAboutText").value.trim() : "",
+    page_enabled: Boolean($("businessPageEnabled") && $("businessPageEnabled").checked),
+    website_enabled: Boolean($("businessWebsiteEnabled") && $("businessWebsiteEnabled").checked),
+  };
+}
+
+function fillEmployeePermissions(perms = {}) {
+  const normalized = { ...businessPermissionDefaults("staff"), ...(perms || {}) };
+  if ($("permSales")) $("permSales").checked = Boolean(normalized.can_sales);
+  if ($("permPurchase")) $("permPurchase").checked = Boolean(normalized.can_purchase);
+  if ($("permInventory")) $("permInventory").checked = Boolean(normalized.can_inventory);
+  if ($("permReports")) $("permReports").checked = Boolean(normalized.can_reports);
+  if ($("permCustomers")) $("permCustomers").checked = Boolean(normalized.can_customers);
+  if ($("permSuppliers")) $("permSuppliers").checked = Boolean(normalized.can_suppliers);
+  if ($("permSettings")) $("permSettings").checked = Boolean(normalized.can_settings);
+}
+
+function readEmployeePermissions() {
+  return {
+    can_sales: Boolean($("permSales") && $("permSales").checked),
+    can_purchase: Boolean($("permPurchase") && $("permPurchase").checked),
+    can_inventory: Boolean($("permInventory") && $("permInventory").checked),
+    can_reports: Boolean($("permReports") && $("permReports").checked),
+    can_customers: Boolean($("permCustomers") && $("permCustomers").checked),
+    can_suppliers: Boolean($("permSuppliers") && $("permSuppliers").checked),
+    can_settings: Boolean($("permSettings") && $("permSettings").checked),
+  };
+}
+
+function fillEmployeeForm(employee) {
+  const row = employee || {};
+  if ($("businessEmployeeName")) $("businessEmployeeName").value = String(row.employee_name || "");
+  if ($("businessEmployeeEmail")) $("businessEmployeeEmail").value = String(row.email || "");
+  if ($("businessEmployeePhone")) $("businessEmployeePhone").value = String(row.phone || "");
+  if ($("businessEmployeeRole")) $("businessEmployeeRole").value = String(row.role_code || "staff");
+  if ($("businessEmployeeStatus")) $("businessEmployeeStatus").value = String(row.status || "active");
+  fillEmployeePermissions(row.permissions || businessPermissionDefaults(row.role_code || "staff"));
+}
+
+function resetBusinessForm() {
+  fillBusinessForm(getSelectedBusiness());
+  setStatus("businessStatus", "");
+}
+
+function resetEmployeeForm() {
+  fillEmployeeForm(getSelectedEmployee());
+  setStatus("businessEmployeeStatusMsg", "");
+}
+
+function renderBusinessModules() {
+  const box = $("businessModules");
+  if (!box) return;
+  const flags = (state.subscription || {}).feature_flags || {};
+  const isLifetime = Boolean((state.subscription || {}).is_lifetime);
+  box.innerHTML = "";
+  BUSINESS_MODULES.forEach((item) => {
+    const enabled = Boolean(isLifetime || flags[item.key]);
+    const card = document.createElement("article");
+    card.className = `module-card ${enabled ? "enabled" : ""}`;
+    card.innerHTML = `
+      <h3>${escapeHtml(item.title)}</h3>
+      <span class="module-state ${enabled ? "enabled" : "locked"}">${escapeHtml(enabled ? t("business_included") : t("business_locked_badge"))}</span>
+      <p>${escapeHtml(item.description)}</p>
+    `;
+    box.appendChild(card);
+  });
+}
+
+function renderBusinessEmployeesList() {
+  const box = $("businessEmployeesList");
+  if (!box) return;
+  box.innerHTML = "";
+  if (!state.businessEmployees.length) {
+    box.innerHTML = `<div class="stack-item"><div class="stack-item-meta"><strong>${escapeHtml(t("business_employee_none"))}</strong></div></div>`;
+    return;
+  }
+  [...state.businessEmployees]
+    .sort((a, b) => String(a.employee_name || "").localeCompare(String(b.employee_name || "")))
+    .forEach((employee) => {
+      const item = document.createElement("div");
+      item.className = "stack-item";
+      item.innerHTML = `
+        <div class="stack-item-meta">
+          <strong>${escapeHtml(employee.employee_name || "")}</strong>
+          <span>${escapeHtml(String(employee.role_code || ""))} | ${escapeHtml(String(employee.status || ""))}</span>
+        </div>
+      `;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "secondary";
+      btn.textContent = t("edit");
+      btn.onclick = () => {
+        state.selectedEmployeeId = Number(employee.employee_id || 0);
+        fillEmployeeForm(employee);
+        renderBusinessWorkspace();
+      };
+      item.appendChild(btn);
+      box.appendChild(item);
+    });
+}
+
+function renderBusinessWorkspace() {
+  if ($("appModeLabel")) $("appModeLabel").textContent = t("mode_label");
+  if ($("btnModePersonal")) $("btnModePersonal").textContent = t("mode_personal");
+  if ($("btnModeBusiness")) $("btnModeBusiness").textContent = t("mode_business");
+  if ($("businessWorkspaceTitle")) $("businessWorkspaceTitle").textContent = t("business_workspace_title");
+  if ($("businessWorkspaceHint")) $("businessWorkspaceHint").textContent = t("business_workspace_hint");
+  if ($("businessProfileTitle")) $("businessProfileTitle").textContent = t("business_profile_title");
+  if ($("businessProfileHint")) $("businessProfileHint").textContent = t("business_profile_hint");
+  if ($("businessModulesTitle")) $("businessModulesTitle").textContent = t("business_modules_title");
+  if ($("businessModulesHint")) $("businessModulesHint").textContent = t("business_modules_hint");
+  if ($("businessEmployeesTitle")) $("businessEmployeesTitle").textContent = t("business_employees_title");
+  if ($("businessEmployeesHint")) $("businessEmployeesHint").textContent = t("business_employees_hint");
+  if ($("btnNewBusiness")) $("btnNewBusiness").textContent = t("business_new");
+  if ($("btnSaveBusiness")) $("btnSaveBusiness").textContent = t("business_save");
+  if ($("btnNewEmployee")) $("btnNewEmployee").textContent = t("business_new_employee");
+  if ($("btnSaveEmployee")) $("btnSaveEmployee").textContent = state.selectedEmployeeId > 0 ? "Save Employee" : "Add Employee";
+  if ($("btnDeleteEmployee")) $("btnDeleteEmployee").textContent = t("business_delete_employee");
+  if ($("businessPageEnabledLabel")) $("businessPageEnabledLabel").textContent = "Enable Business Page";
+  if ($("businessWebsiteEnabledLabel")) $("businessWebsiteEnabledLabel").textContent = "Enable Starter Website";
+  if ($("permSalesLabel")) $("permSalesLabel").textContent = "Sales Access";
+  if ($("permPurchaseLabel")) $("permPurchaseLabel").textContent = "Purchase Access";
+  if ($("permInventoryLabel")) $("permInventoryLabel").textContent = "Inventory Access";
+  if ($("permReportsLabel")) $("permReportsLabel").textContent = "Reports Access";
+  if ($("permCustomersLabel")) $("permCustomersLabel").textContent = "Customer Access";
+  if ($("permSuppliersLabel")) $("permSuppliersLabel").textContent = "Supplier Access";
+  if ($("permSettingsLabel")) $("permSettingsLabel").textContent = "Settings Access";
+
+  if ($("businessModePlan")) {
+    const sub = state.subscription || {};
+    const label = sub.is_lifetime
+      ? t("business_lifetime_unlocked")
+      : `${t("business_workspace_plan_prefix")}: ${planLabel(sub.plan_code || "basic", Boolean(sub.plan_with_website))}`;
+    $("businessModePlan").textContent = label;
+  }
+
+  const select = $("businessSelect");
+  if (select) {
+    select.innerHTML = "";
+    const placeholder = document.createElement("option");
+    placeholder.value = "0";
+    placeholder.textContent = t("business_select_placeholder");
+    select.appendChild(placeholder);
+    state.businesses.forEach((business) => {
+      const option = document.createElement("option");
+      option.value = String(business.business_id || 0);
+      option.textContent = String(business.business_name || "");
+      select.appendChild(option);
+    });
+    if (state.selectedBusinessId && [...select.options].some((opt) => Number(opt.value) === Number(state.selectedBusinessId))) {
+      select.value = String(state.selectedBusinessId);
+    } else {
+      select.value = "0";
+    }
+  }
+
+  const employeeSelect = $("businessEmployeeSelect");
+  if (employeeSelect) {
+    employeeSelect.innerHTML = "";
+    const placeholder = document.createElement("option");
+    placeholder.value = "0";
+    placeholder.textContent = t("business_select_employee_placeholder");
+    employeeSelect.appendChild(placeholder);
+    state.businessEmployees.forEach((employee) => {
+      const option = document.createElement("option");
+      option.value = String(employee.employee_id || 0);
+      option.textContent = `${String(employee.employee_name || "")} (${String(employee.role_code || "")})`;
+      employeeSelect.appendChild(option);
+    });
+    if (state.selectedEmployeeId && [...employeeSelect.options].some((opt) => Number(opt.value) === Number(state.selectedEmployeeId))) {
+      employeeSelect.value = String(state.selectedEmployeeId);
+    } else {
+      employeeSelect.value = "0";
+    }
+  }
+
+  const upgradeCard = $("businessUpgradeCard");
+  let selectedBusiness = getSelectedBusiness();
+  if (!selectedBusiness && state.businesses.length > 0) {
+    state.selectedBusinessId = Number(state.businesses[0].business_id || 0);
+    selectedBusiness = getSelectedBusiness();
+    if (select) select.value = String(state.selectedBusinessId);
+  }
+  const canManageEmployees = Boolean(
+    selectedBusiness && (selectedBusiness.is_owner || ((selectedBusiness.permissions || {}).can_settings))
+  );
+  if (upgradeCard) {
+    const messages = [];
+    if (!hasAppAccess()) {
+      messages.push(accessReason());
+    }
+    if (!hasBusinessWorkspaceAccess()) {
+      messages.push(t("business_locked"));
+    }
+    if (messages.length) {
+      upgradeCard.classList.remove("hidden");
+      upgradeCard.textContent = messages.join(" ");
+    } else {
+      upgradeCard.classList.add("hidden");
+      upgradeCard.textContent = "";
+    }
+  }
+
+  if (selectedBusiness) {
+    fillBusinessForm(selectedBusiness);
+  } else {
+    fillBusinessForm(null);
+  }
+
+  if (getSelectedEmployee()) {
+    fillEmployeeForm(getSelectedEmployee());
+  } else {
+    fillEmployeeForm(null);
+  }
+
+  const businessEditable = Boolean(selectedBusiness ? selectedBusiness.is_owner : hasBusinessWorkspaceAccess());
+  setBusinessFormDisabled(!businessEditable || !hasBusinessWorkspaceAccess() || !hasAppAccess());
+  setEmployeeFormDisabled(!canManageEmployees || !hasBusinessWorkspaceAccess() || !hasAppAccess());
+  if ($("businessEmployeeSelect")) $("businessEmployeeSelect").disabled = !canManageEmployees || !hasBusinessWorkspaceAccess() || !hasAppAccess();
+  if ($("btnNewEmployee")) $("btnNewEmployee").disabled = !canManageEmployees || !hasBusinessWorkspaceAccess() || !hasAppAccess();
+  if ($("btnDeleteEmployee")) $("btnDeleteEmployee").disabled = !canManageEmployees || !hasAppAccess() || Number(state.selectedEmployeeId || 0) <= 0;
+  if ($("businessSelect")) $("businessSelect").disabled = !hasBusinessWorkspaceAccess() || !hasAppAccess();
+  if ($("btnNewBusiness")) $("btnNewBusiness").disabled = !hasBusinessWorkspaceAccess() || !hasAppAccess();
+
+  renderBusinessModules();
+  renderBusinessEmployeesList();
+
+  if (!state.businesses.length && $("businessStatus")) {
+    $("businessStatus").textContent = hasBusinessWorkspaceAccess() ? t("business_no_workspace") : "";
+  }
+}
+
+function renderAppMode() {
+  const mode = normalizeAppMode(state.appMode);
+  state.appMode = mode;
+  const isBusiness = mode === "business";
+  const switchEl = $("appModeSwitch");
+  if (switchEl) {
+    switchEl.dataset.state = isBusiness ? "right" : "left";
+  }
+  if ($("btnModePersonal")) $("btnModePersonal").classList.toggle("active", !isBusiness);
+  if ($("btnModeBusiness")) $("btnModeBusiness").classList.toggle("active", isBusiness);
+  if ($("personalWorkspace")) $("personalWorkspace").classList.toggle("hidden", isBusiness);
+  if ($("businessWorkspace")) $("businessWorkspace").classList.toggle("hidden", !isBusiness);
+  if ($("userBadge")) {
+    $("userBadge").textContent = state.userId
+      ? `${t("signed_in")}: ${state.userName}${isBusiness ? " | Business" : " | Personal"}`
+      : "";
+  }
+  if (state.userId && isBusiness) {
+    renderBusinessWorkspace();
+  }
+}
+
+function setAppMode(mode, persist = true) {
+  state.appMode = normalizeAppMode(mode);
+  if (persist) {
+    localStorage.setItem(APP_MODE_KEY, state.appMode);
+  }
+  renderAppMode();
+}
+
+async function refreshBusinessEmployeesForSelection() {
+  if (!state.userId || !state.selectedBusinessId || !hasAppAccess() || !hasBusinessWorkspaceAccess()) {
+    state.businessEmployees = [];
+    state.selectedEmployeeId = 0;
+    renderBusinessWorkspace();
+    return;
+  }
+  try {
+    const payload = await api(`/businesses/${state.selectedBusinessId}/employees?user_id=${state.userId}`);
+    state.businessEmployees = Array.isArray(payload.items) ? payload.items : [];
+    if (!state.businessEmployees.some((item) => Number(item.employee_id) === Number(state.selectedEmployeeId))) {
+      state.selectedEmployeeId = 0;
+    }
+    renderBusinessWorkspace();
+  } catch (e) {
+    state.businessEmployees = [];
+    state.selectedEmployeeId = 0;
+    setStatus("businessEmployeeStatusMsg", errMessage(e));
+    renderBusinessWorkspace();
+  }
 }
 
 function categoryNames() {
@@ -1822,12 +2378,18 @@ async function refreshAll() {
     state.filteredTx = [];
     state.bankConnections = [];
     state.linkedBankAccounts = [];
+    state.businesses = [];
+    state.businessEmployees = [];
+    state.selectedBusinessId = 0;
+    state.selectedEmployeeId = 0;
     renderAccountsTable();
     renderCategories();
     renderTransactions();
     renderKpisAndCharts();
     renderDailySummary();
     renderBankSync();
+    renderBusinessWorkspace();
+    renderAppMode();
     setStatus("health", accessReason());
     return;
   }
@@ -1839,14 +2401,18 @@ async function refreshAll() {
     api(`/daily_balances?user_id=${state.userId}`),
   ];
   const shouldFetchBank = hasBankSyncAccess();
+  const shouldFetchBusiness = hasBusinessWorkspaceAccess();
   if (shouldFetchBank) {
     financeRequests.push(api(`/bank/connections?user_id=${state.userId}`));
     financeRequests.push(api(`/bank/accounts?user_id=${state.userId}`));
   }
+  if (shouldFetchBusiness) {
+    financeRequests.push(api(`/businesses?user_id=${state.userId}`));
+  }
 
   const results = await Promise.allSettled(financeRequests);
 
-  const [accountsRes, categoriesRes, txRes, dailyRes, bankConnectionsRes, bankAccountsRes] = results;
+  const [accountsRes, categoriesRes, txRes, dailyRes, bankConnectionsRes, bankAccountsRes, businessesRes] = results;
   state.accounts = accountsRes.status === "fulfilled" ? (accountsRes.value || []) : [];
   state.categories = categoriesRes.status === "fulfilled" ? (categoriesRes.value || []) : [];
   state.tx = txRes.status === "fulfilled" ? (txRes.value || []) : [];
@@ -1857,6 +2423,29 @@ async function refreshAll() {
   state.linkedBankAccounts = shouldFetchBank && bankAccountsRes && bankAccountsRes.status === "fulfilled"
     ? (bankAccountsRes.value || [])
     : [];
+  state.businesses = shouldFetchBusiness && businessesRes && businessesRes.status === "fulfilled"
+    ? ((businessesRes.value || {}).items || [])
+    : [];
+  if (!state.businesses.some((item) => Number(item.business_id) === Number(state.selectedBusinessId))) {
+    state.selectedBusinessId = state.businesses[0] ? Number(state.businesses[0].business_id || 0) : 0;
+  }
+  if (!shouldFetchBusiness) {
+    state.selectedBusinessId = 0;
+    state.selectedEmployeeId = 0;
+    state.businessEmployees = [];
+  } else if (state.selectedBusinessId > 0) {
+    const employeesResult = await Promise.allSettled([
+      api(`/businesses/${state.selectedBusinessId}/employees?user_id=${state.userId}`),
+    ]);
+    const employeePayload = employeesResult[0];
+    state.businessEmployees = employeePayload.status === "fulfilled" ? ((employeePayload.value || {}).items || []) : [];
+    if (!state.businessEmployees.some((item) => Number(item.employee_id) === Number(state.selectedEmployeeId))) {
+      state.selectedEmployeeId = 0;
+    }
+  } else {
+    state.selectedEmployeeId = 0;
+    state.businessEmployees = [];
+  }
   applyTxRange();
 
   renderAccountsTable();
@@ -1865,6 +2454,8 @@ async function refreshAll() {
   renderKpisAndCharts();
   renderDailySummary();
   renderBankSync();
+  renderBusinessWorkspace();
+  renderAppMode();
   syncFinanceLockState();
 
   const failures = [...baseResults, ...results].filter((r) => r.status === "rejected");
@@ -1878,6 +2469,7 @@ async function refreshAll() {
 window.addEventListener("load", async () => {
   const savedLang = localStorage.getItem("keeperbma_lang") || "en";
   state.theme = String(localStorage.getItem("keeperbma_theme") || "light").trim().toLowerCase() === "dark" ? "dark" : "light";
+  state.appMode = normalizeAppMode(localStorage.getItem(APP_MODE_KEY) || "personal");
   if ($("langSelect")) {
     $("langSelect").onchange = (e) => applyLanguage(e.target.value);
   }
@@ -1889,6 +2481,8 @@ window.addEventListener("load", async () => {
     if (!btn) return;
     btn.onclick = () => applyTheme(state.theme === "dark" ? "light" : "dark");
   });
+  if ($("btnModePersonal")) $("btnModePersonal").onclick = () => setAppMode("personal");
+  if ($("btnModeBusiness")) $("btnModeBusiness").onclick = () => setAppMode("business");
   applyLanguage(savedLang);
 
   if ($("btnNavLogin")) $("btnNavLogin").onclick = () => showAuth("login");
@@ -2054,10 +2648,159 @@ window.addEventListener("load", async () => {
     state.subscription = {};
     state.bankConnections = [];
     state.linkedBankAccounts = [];
+    state.businesses = [];
+    state.businessEmployees = [];
+    state.selectedBusinessId = 0;
+    state.selectedEmployeeId = 0;
     resetSupportState();
     showLanding();
     setStatus("authStatus", "");
   };
+
+  if ($("businessSelect")) {
+    $("businessSelect").onchange = async (e) => {
+      state.selectedBusinessId = Number(e.target.value || 0);
+      state.selectedEmployeeId = 0;
+      fillBusinessForm(getSelectedBusiness());
+      await refreshBusinessEmployeesForSelection();
+    };
+  }
+  if ($("btnNewBusiness")) {
+    $("btnNewBusiness").onclick = () => {
+      state.selectedBusinessId = 0;
+      state.selectedEmployeeId = 0;
+      state.businessEmployees = [];
+      fillBusinessForm(null);
+      fillEmployeeForm(null);
+      setStatus("businessStatus", "");
+      setStatus("businessEmployeeStatusMsg", "");
+      renderBusinessWorkspace();
+    };
+  }
+  if ($("btnSaveBusiness")) {
+    $("btnSaveBusiness").onclick = async () => {
+      if (!hasAppAccess()) {
+        setStatus("businessStatus", accessReason());
+        return;
+      }
+      if (!hasBusinessWorkspaceAccess()) {
+        setStatus("businessStatus", t("business_locked"));
+        return;
+      }
+      const payload = readBusinessPayload();
+      if (!payload.business_name) {
+        setStatus("businessStatus", t("business_name_required"));
+        return;
+      }
+      try {
+        if (state.selectedBusinessId > 0) {
+          await api(`/businesses/${state.selectedBusinessId}`, {
+            method: "PUT",
+            body: JSON.stringify(payload),
+          });
+          setStatus("businessStatus", t("business_saved"));
+        } else {
+          await api("/businesses", {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+          setStatus("businessStatus", t("business_created"));
+        }
+        await refreshAll();
+      } catch (e) {
+        setStatus("businessStatus", errMessage(e));
+      }
+    };
+  }
+
+  if ($("businessEmployeeSelect")) {
+    $("businessEmployeeSelect").onchange = (e) => {
+      state.selectedEmployeeId = Number(e.target.value || 0);
+      fillEmployeeForm(getSelectedEmployee());
+      renderBusinessWorkspace();
+    };
+  }
+  if ($("btnNewEmployee")) {
+    $("btnNewEmployee").onclick = () => {
+      state.selectedEmployeeId = 0;
+      fillEmployeeForm(null);
+      setStatus("businessEmployeeStatusMsg", "");
+      renderBusinessWorkspace();
+    };
+  }
+  if ($("businessEmployeeRole")) {
+    $("businessEmployeeRole").onchange = (e) => {
+      fillEmployeePermissions(businessPermissionDefaults(e.target.value));
+    };
+  }
+  if ($("btnSaveEmployee")) {
+    $("btnSaveEmployee").onclick = async () => {
+      if (!hasAppAccess()) {
+        setStatus("businessEmployeeStatusMsg", accessReason());
+        return;
+      }
+      if (!state.selectedBusinessId) {
+        setStatus("businessEmployeeStatusMsg", t("business_no_workspace"));
+        return;
+      }
+      const selectedBusiness = getSelectedBusiness();
+      const canManageEmployees = Boolean(selectedBusiness && (selectedBusiness.is_owner || ((selectedBusiness.permissions || {}).can_settings)));
+      if (!canManageEmployees) {
+        setStatus("businessEmployeeStatusMsg", t("business_employee_locked"));
+        return;
+      }
+      const employeeName = $("businessEmployeeName") ? $("businessEmployeeName").value.trim() : "";
+      if (!employeeName) {
+        setStatus("businessEmployeeStatusMsg", t("business_employee_name_required"));
+        return;
+      }
+      const payload = {
+        user_id: state.userId,
+        employee_name: employeeName,
+        email: $("businessEmployeeEmail") ? $("businessEmployeeEmail").value.trim() : "",
+        phone: $("businessEmployeePhone") ? $("businessEmployeePhone").value.trim() : "",
+        role_code: $("businessEmployeeRole") ? $("businessEmployeeRole").value : "staff",
+        status: $("businessEmployeeStatus") ? $("businessEmployeeStatus").value : "active",
+        ...readEmployeePermissions(),
+      };
+      try {
+        if (state.selectedEmployeeId > 0) {
+          await api(`/businesses/${state.selectedBusinessId}/employees/${state.selectedEmployeeId}`, {
+            method: "PUT",
+            body: JSON.stringify(payload),
+          });
+        } else {
+          await api(`/businesses/${state.selectedBusinessId}/employees`, {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+        }
+        setStatus("businessEmployeeStatusMsg", t("business_employee_saved"));
+        await refreshBusinessEmployeesForSelection();
+      } catch (e) {
+        setStatus("businessEmployeeStatusMsg", errMessage(e));
+      }
+    };
+  }
+  if ($("btnDeleteEmployee")) {
+    $("btnDeleteEmployee").onclick = async () => {
+      if (!state.selectedBusinessId || !state.selectedEmployeeId) {
+        setStatus("businessEmployeeStatusMsg", t("business_select_employee_placeholder"));
+        return;
+      }
+      if (!window.confirm(t("business_confirm_delete_employee"))) return;
+      try {
+        await api(`/businesses/${state.selectedBusinessId}/employees/${state.selectedEmployeeId}?user_id=${state.userId}`, {
+          method: "DELETE",
+        });
+        state.selectedEmployeeId = 0;
+        setStatus("businessEmployeeStatusMsg", t("business_employee_deleted"));
+        await refreshBusinessEmployeesForSelection();
+      } catch (e) {
+        setStatus("businessEmployeeStatusMsg", errMessage(e));
+      }
+    };
+  }
 
   $("btnAddAccount").onclick = async () => {
     if (!ensureAppAccessOrNotify()) return;
