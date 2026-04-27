@@ -13,6 +13,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
+import { ModeSwitch } from '../components/ModeSwitch';
 import { OptionSelect } from '../components/OptionSelect';
 import { WEB_BASE_URL } from '../constants/config';
 import { useAuth } from '../context/AuthContext';
@@ -567,6 +568,8 @@ export const BusinessScreen: React.FC = () => {
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primaryStart} />}
     >
+      <ModeSwitch />
+
       <Card>
         <Text style={[styles.heading, { color: theme.heading }]}>{t('business.heading')}</Text>
         <Text style={[styles.subheading, { color: theme.muted }]}>{t('business.subheading')}</Text>

@@ -3,6 +3,7 @@ import { useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
+import { AppModeProvider } from './src/context/AppModeContext';
 import { AuthProvider } from './src/context/AuthContext';
 import { LanguageProvider } from './src/context/LanguageContext';
 import { MainNavigator } from './src/navigation/MainNavigator';
@@ -24,9 +25,11 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <LanguageProvider>
-          <AuthProvider>
-            <AppShell />
-          </AuthProvider>
+          <AppModeProvider>
+            <AuthProvider>
+              <AppShell />
+            </AuthProvider>
+          </AppModeProvider>
         </LanguageProvider>
       </ThemeProvider>
     </SafeAreaProvider>

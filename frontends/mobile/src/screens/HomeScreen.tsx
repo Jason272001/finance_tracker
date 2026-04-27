@@ -14,6 +14,7 @@ import { ArrowUpRight, CreditCard, ShieldCheck } from 'lucide-react-native';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
+import { ModeSwitch } from '../components/ModeSwitch';
 import { StatCard } from '../components/StatCard';
 import { WEB_BASE_URL } from '../constants/config';
 import { useAuth } from '../context/AuthContext';
@@ -238,6 +239,8 @@ export const HomeScreen: React.FC = () => {
         />
       }
     >
+      <ModeSwitch />
+
       <Card>
         <Text style={[styles.heading, { color: theme.heading }]}>
           {t('home.welcomeBack', { name: user?.name ?? 'there' })}

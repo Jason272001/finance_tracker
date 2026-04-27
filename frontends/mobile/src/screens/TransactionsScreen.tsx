@@ -4,6 +4,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
+import { ModeSwitch } from '../components/ModeSwitch';
 import { OptionSelect } from '../components/OptionSelect';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -232,6 +233,8 @@ export const TransactionsScreen: React.FC = () => {
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primaryStart} />}
     >
+      <ModeSwitch />
+
       <Card>
         <Text style={[styles.heading, { color: theme.heading }]}>Create Transaction</Text>
         <Text style={[styles.subheading, { color: theme.muted }]}>Add income and expense entries directly from mobile.</Text>

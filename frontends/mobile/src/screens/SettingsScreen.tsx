@@ -3,6 +3,7 @@ import { Alert, Image, Linking, ScrollView, StyleSheet, Switch, Text, View } fro
 import { useNavigation } from '@react-navigation/native';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
+import { ModeSwitch } from '../components/ModeSwitch';
 import { OptionSelect } from '../components/OptionSelect';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -35,6 +36,8 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </View>
       </Card>
+
+      <ModeSwitch />
 
       <Card>
         <Text style={[styles.sectionTitle, { color: theme.heading }]}>{t('settings.account')}</Text>

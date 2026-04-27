@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Home, List, CreditCard, Settings as SettingsIcon, MessageCircle, Briefcase } from 'lucide-react-native';
+import { useAppMode } from '../context/AppModeContext';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../theme/ThemeContext';
@@ -19,9 +20,12 @@ const Tab = createBottomTabNavigator();
 const TabNavigator = () => {
   const { theme } = useTheme();
   const { t } = useLanguage();
+  const { mode, isBusinessMode } = useAppMode();
 
   return (
     <Tab.Navigator
+      key={mode}
+      initialRouteName={isBusinessMode ? 'Business' : 'Home'}
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
@@ -39,38 +43,46 @@ const TabNavigator = () => {
         },
       }}
     >
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          title: t('tab.home'),
-          tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
-        }}
-      />
-      <Tab.Screen
-        name="Transactions"
-        component={TransactionsScreen}
-        options={{
-          title: t('tab.transactions'),
-          tabBarIcon: ({ color, size }) => <List color={color} size={size} />,
-        }}
-      />
-      <Tab.Screen
-        name="Accounts"
-        component={AccountsScreen}
-        options={{
-          title: t('tab.accounts'),
-          tabBarIcon: ({ color, size }) => <CreditCard color={color} size={size} />,
-        }}
-      />
-      <Tab.Screen
-        name="Business"
-        component={BusinessScreen}
-        options={{
-          title: t('tab.business'),
-          tabBarIcon: ({ color, size }) => <Briefcase color={color} size={size} />,
-        }}
-      />
+      {!isBusinessMode ? (
+        <Tab.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{
+            title: t('tab.home'),
+            tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
+          }}
+        />
+      ) : null}
+      {!isBusinessMode ? (
+        <>
+          <Tab.Screen
+            name="Transactions"
+            component={TransactionsScreen}
+            options={{
+              title: t('tab.transactions'),
+              tabBarIcon: ({ color, size }) => <List color={color} size={size} />,
+            }}
+          />
+          <Tab.Screen
+            name="Accounts"
+            component={AccountsScreen}
+            options={{
+              title: t('tab.accounts'),
+              tabBarIcon: ({ color, size }) => <CreditCard color={color} size={size} />,
+            }}
+          />
+        </>
+      ) : null}
+      {isBusinessMode ? (
+        <Tab.Screen
+          name="Business"
+          component={BusinessScreen}
+          options={{
+            title: t('tab.business'),
+            tabBarIcon: ({ color, size }) => <Briefcase color={color} size={size} />,
+          }}
+        />
+      ) : null}
       <Tab.Screen
         name="Support"
         component={SupportScreen}
@@ -95,8 +107,9 @@ export const MainNavigator = () => {
   const { isReady, isAuthenticated } = useAuth();
   const { isReady: themeReady } = useTheme();
   const { isReady: languageReady, t } = useLanguage();
+  const { isReady: modeReady } = useAppMode();
 
-  if (!isReady || !themeReady || !languageReady) {
+  if (!isReady || !themeReady || !languageReady || !modeReady) {
     return <LoadingView message={t('app.loading')} />;
   }
 
