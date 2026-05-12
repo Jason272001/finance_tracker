@@ -148,6 +148,14 @@
       "destination": "/payment.html"
     },
     {
+      "source": "/privacy-policy",
+      "destination": "/privacy-policy.html"
+    },
+    {
+      "source": "/delete-account",
+      "destination": "/delete-account.html"
+    },
+    {
       "source": "/settings",
       "destination": "/settings.html"
     },
@@ -179,6 +187,16 @@
     {
       "source": "/payment.html",
       "destination": "/payment",
+      "permanent": true
+    },
+    {
+      "source": "/privacy-policy.html",
+      "destination": "/privacy-policy",
+      "permanent": true
+    },
+    {
+      "source": "/delete-account.html",
+      "destination": "/delete-account",
       "permanent": true
     },
     {
