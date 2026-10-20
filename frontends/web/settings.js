@@ -456,6 +456,50 @@ async function startHostedCheckout(planCode, withWebsite = false, billingCycle =
   window.location.href = checkoutUrl;
 }
 
+async function loadConnectedBanks() {
+  let section = $("connectedBanksSettings");
+  if (!section) {
+    section = document.createElement("section");
+    section.id = "connectedBanksSettings";
+    section.className = "card";
+    section.innerHTML = '<h2>Connected banks</h2><p class="muted">Disconnect a bank to stop future sync and remove its stored connection credentials. Previously imported transaction history and last-known balances remain in your records.</p><div class="connected-banks-list"></div><p class="connected-banks-status muted" role="status"></p><p><a href="https://keeperbma.com/delete-account">Request account deletion</a> · <a href="https://keeperbma.com/privacy-policy">Privacy policy</a></p>';
+    document.querySelector(".app-shell").appendChild(section);
+  }
+  const list = section.querySelector(".connected-banks-list");
+  const status = section.querySelector(".connected-banks-status");
+  try {
+    const connections = await api(`/bank/connections?user_id=${state.userId}`);
+    list.replaceChildren();
+    if (!connections.length) status.textContent = "No banks connected.";
+    connections.forEach((connection) => {
+      const row = document.createElement("div");
+      row.className = "row";
+      const name = document.createElement("span");
+      name.textContent = connection.institution_name || "Connected bank";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "danger";
+      button.textContent = "Disconnect bank";
+      button.onclick = async () => {
+        if (!window.confirm("Disconnect this bank? Future sync will stop. Previously imported records will remain.")) return;
+        button.disabled = true;
+        try {
+          await api(`/bank/connections/${Number(connection.connection_id)}?user_id=${state.userId}`, { method: "DELETE" });
+          await loadConnectedBanks();
+          status.textContent = "Bank disconnected. Imported history is retained.";
+        } catch (error) {
+          status.textContent = errMessage(error);
+          button.disabled = false;
+        }
+      };
+      row.append(name, button);
+      list.appendChild(row);
+    });
+  } catch (error) {
+    status.textContent = `Could not load connected banks: ${errMessage(error)}`;
+  }
+}
+
 async function loadPageData() {
   const results = await Promise.allSettled([
     api(`/profile?user_id=${state.userId}`),
@@ -473,6 +517,7 @@ async function loadPageData() {
   if (state.profile && state.profile.name) state.userName = String(state.profile.name || state.userName || "");
   renderProfile();
   renderSubscription();
+  await loadConnectedBanks();
 }
 
 window.addEventListener("load", async () => {
@@ -676,6 +721,10 @@ window.addEventListener("load", async () => {
         state.billingCycle = ["monthly", "annual"].includes(billingCycle) ? billingCycle : "monthly";
         localStorage.setItem("keeperbma_billing_cycle", state.billingCycle);
         const useStripe = Boolean(state.billingConfig?.stripe_enabled);
+        if (useStripe && state.subscription.billing_subscription_id && state.subscription.subscription_status !== "canceled") {
+          $("btnOpenBillingPortal").click();
+          return;
+        }
         const useEmbedded = Boolean(state.billingConfig?.embedded_checkout_enabled);
         const configuredPriceKeys = new Set(
           (state.billingConfig?.configured_price_keys || []).map((x) => String(x).toLowerCase())

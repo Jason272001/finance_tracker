@@ -527,7 +527,8 @@ export const BusinessScreen: React.FC = () => {
     () =>
       moduleDefinitions.map((item) => ({
         ...item,
-        enabled: Boolean(user?.is_lifetime || featureFlags[item.key as keyof typeof featureFlags]),
+        enabled: item.key === 'employee_management' && Boolean(user?.is_lifetime || featureFlags[item.key as keyof typeof featureFlags]),
+        planned: item.key !== 'employee_management',
       })),
     [featureFlags, user?.is_lifetime]
   );
@@ -782,7 +783,7 @@ export const BusinessScreen: React.FC = () => {
                   { color: item.enabled ? theme.secondaryStart : theme.muted },
                 ]}
               >
-                {item.enabled ? t('business.included') : t('business.locked')}
+                {item.planned ? 'Planned — not available yet' : (item.enabled ? t('business.included') : t('business.locked'))}
               </Text>
               <Text style={[styles.moduleDescription, { color: theme.muted }]}>{item.description}</Text>
             </View>

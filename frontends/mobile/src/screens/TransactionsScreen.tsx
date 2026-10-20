@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { CREATOR_CATEGORIES } from '../utils/creatorReport';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -94,7 +95,7 @@ export const TransactionsScreen: React.FC = () => {
   }, [loadData]);
 
   const accountOptions = useMemo(
-    () => accounts.map((account) => ({ value: String(account.account_id), label: account.account_name })),
+    () => accounts.filter((account) => !account.bank_linked).map((account) => ({ value: String(account.account_id), label: account.account_name })),
     [accounts]
   );
 
@@ -115,8 +116,8 @@ export const TransactionsScreen: React.FC = () => {
   }, [categories, transactions]);
 
   const filterAccountOptions = useMemo(
-    () => [{ value: 'all', label: 'All Accounts' }, ...accountOptions],
-    [accountOptions]
+    () => [{ value: 'all', label: 'All Accounts' }, ...accounts.map((account) => ({ value: String(account.account_id), label: account.account_name }))],
+    [accounts]
   );
 
   const filterCategoryOptions = useMemo(
@@ -165,9 +166,9 @@ export const TransactionsScreen: React.FC = () => {
     return 'All time';
   }, [fromTime, toTime]);
 
-  const handleCreateCategory = useCallback(async () => {
+  const handleCreateCategory = useCallback(async (suggestedName?: string) => {
     if (!user?.user_id) return;
-    const categoryName = newCategoryName.trim();
+    const categoryName = (suggestedName || newCategoryName).trim();
     if (!categoryName) {
       setCategoryMessage('Category name is required.');
       setCategoryMessageIsError(true);
@@ -307,7 +308,15 @@ export const TransactionsScreen: React.FC = () => {
             {categoryMessage}
           </Text>
         ) : null}
-        <Button title={submittingCategory ? 'Creating Category...' : 'Create Category'} onPress={handleCreateCategory} disabled={submittingCategory} />
+        <Button title={submittingCategory ? 'Creating Category...' : 'Create Category'} onPress={() => handleCreateCategory()} disabled={submittingCategory} />
+        <Text style={[styles.subheading, { color: theme.muted }]}>Creator category shortcuts</Text>
+        <View style={{ gap: 10 }}>
+          {CREATOR_CATEGORIES.map((name) => {
+            const exists = categories.some((category) => categoryDisplayName(category).toLowerCase() === name.toLowerCase());
+            return <Button key={name} title={`${exists ? '✓ ' : '+ '}${name}`} variant="outline"
+              disabled={submittingCategory || exists} onPress={() => handleCreateCategory(name)} />;
+          })}
+        </View>
       </Card>
 
       <Card>

@@ -76,16 +76,17 @@ export const authApi = {
 };
 
 export const profileApi = {
-  async get(): Promise<AuthUser> {
-    const response = await api.get<AuthUser>('/profile');
+  async get(userId: number): Promise<AuthUser> {
+    const response = await api.get<AuthUser>('/profile', { params: { user_id: userId } });
     return response.data;
   },
   async update(payload: Record<string, unknown>): Promise<AuthUser> {
     const response = await api.put<AuthUser>('/profile', payload);
     return response.data;
   },
-  async updatePassword(currentPassword: string, newPassword: string): Promise<{ ok: boolean }> {
+  async updatePassword(userId: number, currentPassword: string, newPassword: string): Promise<{ ok: boolean }> {
     const response = await api.put('/profile/password', {
+      user_id: userId,
       current_password: currentPassword,
       new_password: newPassword,
     });
@@ -138,6 +139,10 @@ export const financeApi = {
   },
   async getBankConnections(userId: number): Promise<BankConnectionRecord[]> {
     const response = await api.get<BankConnectionRecord[]>('/bank/connections', { params: { user_id: userId } });
+    return response.data;
+  },
+  async disconnectBank(userId: number, connectionId: number): Promise<{ ok: boolean }> {
+    const response = await api.delete(`/bank/connections/${connectionId}`, { params: { user_id: userId } });
     return response.data;
   },
   async getBankAccounts(userId: number): Promise<BankAccountRecord[]> {

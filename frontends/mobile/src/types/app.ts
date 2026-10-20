@@ -31,6 +31,7 @@ export interface AccountRecord {
   account_type: string;
   group_name?: string | null;
   balance: number | string;
+  bank_linked?: boolean;
 }
 
 export interface TransactionRecord {

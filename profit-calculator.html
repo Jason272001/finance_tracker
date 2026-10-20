@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Free Creator Profit Calculator — KeeperBMA</title>
+  <meta name="description" content="Estimate monthly side hustle income after platform fees, software, and other costs. Free, no signup, and calculated in your browser.">
+  <link rel="canonical" href="https://keeperbma.com/profit-calculator.html">
+  <link rel="icon" href="./assets/keeperbma-icon.png">
+  <link rel="stylesheet" href="./frontends/web/styles.css?v=45">
+  <script defer src="./frontends/web/profit-calculator.js?v=1"></script>
+</head>
+<body>
+<main class="page demo-page">
+  <header class="card">
+    <p><a href="./">KeeperBMA</a> / Free tools</p>
+    <h1>What does your side hustle actually keep?</h1>
+    <p>Estimate your monthly net income after the costs you enter. No signup. Your inputs stay in this browser tab and are not saved or sent to our API.</p>
+  </header>
+  <section class="card">
+    <h2>Your month, in USD</h2>
+    <form id="profitCalculator" class="calculator-grid">
+      <label>Income before costs <input id="calculatorIncome" type="number" min="0" max="10000000" step="0.01" placeholder="0.00" inputmode="decimal"></label>
+      <label>Platform and processing fees <input id="calculatorFees" type="number" min="0" max="10000000" step="0.01" placeholder="0.00" inputmode="decimal"></label>
+      <label>Software subscriptions <input id="calculatorSoftware" type="number" min="0" max="10000000" step="0.01" placeholder="0.00" inputmode="decimal"></label>
+      <label>Equipment and other costs this month <input id="calculatorOther" type="number" min="0" max="10000000" step="0.01" placeholder="0.00" inputmode="decimal"></label>
+      <label>Monthly net income goal <input id="calculatorGoal" type="number" min="0" max="10000000" step="0.01" value="200" inputmode="decimal"></label>
+    </form>
+    <div class="row"><button id="calculatorSample" type="button" class="secondary">Try sample numbers</button><button id="calculatorReset" type="button" class="secondary">Clear inputs</button></div>
+    <p id="calculatorError" role="alert"></p>
+  </section>
+  <section class="card" aria-label="Calculated results" aria-live="polite">
+    <div class="calculator-grid">
+      <article class="kpi-card expense"><h2>Entered costs</h2><p id="calculatorCosts">$0.00</p></article>
+      <article class="kpi-card income"><h2>Net income</h2><p id="calculatorNet">$0.00</p></article>
+      <article class="kpi-card"><h2>Income needed for your goal</h2><p id="calculatorRequired">$200.00</p></article>
+    </div>
+    <p id="calculatorExplanation">With no entered costs, $200.00 of income would meet your $200.00 net income goal.</p>
+    <p class="muted">A calculation from your inputs, not a revenue forecast. Taxes and costs you have not entered are excluded.</p>
+  </section>
+  <article class="card">
+    <h2>Count each cost once</h2>
+    <p>If the income you entered is already after platform fees, leave that fee input at zero. Otherwise you would subtract the same fee twice.</p>
+    <h2>Include the small expenses</h2>
+    <p>Editing apps, music subscriptions, hosting, transaction fees, equipment, and supplies can change how much you keep. Enter only costs for the month you are reviewing.</p>
+    <h2>Want to keep a monthly history?</h2>
+    <p>KeeperBMA organizes income and expenses by category and shows a monthly report. The calculator and demo are free; saving an account history requires a KeeperBMA plan.</p>
+    <div class="row"><a class="demo-cta" href="./demo.html">Try the income tracker demo</a><a href="./plans.html">See current plans</a></div>
+  </article>
+</main>
+</body>
+</html>

@@ -54,3 +54,19 @@ These are intentionally ignored from git:
 2. Keep root HTML files as thin route entry pages.
 3. Keep local data and generated artifacts out of git.
 4. If a file becomes deployment-only or local-only, document that here before removing it.
+
+## Creator launch update
+
+The website and Android clients now include a monthly creator income/expense report, category shortcuts and onboarding guidance. The website also has a public fictional-data demo and a free profit calculator. SQL persistence, authentication, bank sync and billing have additional safeguards.
+
+- [Review and limitations](CODE_REVIEW.md)
+- [Release checklist](RELEASE_CHECKLIST.md)
+- [Reproducible tests](TESTING.md)
+- [Organic acquisition plan](GROWTH_PLAN.md)
+- [Video and caption drafts](CONTENT_PACK.md)
+
+Use `requirements-api.txt` for the backend host and `requirements-test.txt` for verification. The original `requirements.txt` still includes optional legacy desktop/Streamlit dependencies. Node dependencies at the repository root are test tooling, not a new website build framework.
+
+Root `index.html`, `demo.html` and `profit-calculator.html` are canonical entry pages. Run `python scripts/sync_web_entries.py --write` after editing them. CI checks their alternate copies. `python scripts/build_static.py` generates a public-files-only `_site/` folder.
+
+The checked-in Render free blueprint is for development. Confirm a non-expiring database, backups, provider configuration and Android release checks before taking payments. Existing production settings have not been inspected or changed.

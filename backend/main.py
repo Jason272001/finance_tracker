@@ -11,13 +11,18 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Annotated
 from email.message import EmailMessage
 
 from fastapi import Cookie, FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from starlette.concurrency import run_in_threadpool
+from backend.billing_events import process_event
+from backend.bank_sync import public_connection, connect_bank, apply_bank_sync
+from backend.checkout_sessions import create_checkout, CheckoutConflict
+from backend.billing_cancellations import cancel_subscription
+from pydantic import BaseModel, Field, ConfigDict, field_validator, AfterValidator
 
 from backend.plan_features import feature_flags_for_plan, is_bank_sync_allowed, normalize_plan_code
 from backend.plaid_service import (
@@ -27,6 +32,7 @@ from backend.plaid_service import (
     get_institution,
     get_item,
     plaid_is_configured,
+    remove_item,
     transactions_sync,
 )
 from backend.plaid_store import PlaidStore
@@ -42,11 +48,20 @@ from core import (
     SPECIAL_COUPON_CODE,
     Transaction,
     User,
+    atomic_operation,
+    atomic_mutation,
+    security_state,
+    is_bank_linked_account,
+    money_value,
 )
 
 
 app = FastAPI(title="KeeperBMA Backend", version="1.1.0")
+MoneyAmount = Annotated[float, AfterValidator(money_value)]
 TOKEN_SECRET = str(os.getenv("API_TOKEN_SECRET", "")).strip()
+ADMIN_BOOTSTRAP_SECRET = str(os.getenv("ADMIN_BOOTSTRAP_SECRET", "")).strip()
+ALLOW_DIRECT_PLAN_UPDATES = str(os.getenv("ALLOW_DIRECT_PLAN_UPDATES", "0")).strip().lower() in {"1", "true", "yes"}
+ENABLE_LEGACY_PRECHECKOUT = str(os.getenv("ENABLE_LEGACY_PRECHECKOUT", "0")).strip().lower() in {"1", "true", "yes"}
 TOKEN_TTL_SECONDS = int(os.getenv("API_TOKEN_TTL_SECONDS", "1800"))  # 30 minutes
 PENDING_PAYMENT_TOKEN_TTL_SECONDS = int(os.getenv("PENDING_PAYMENT_TOKEN_TTL_SECONDS", "2592000"))  # 30 days
 STRICT_TOKEN_SECRET = str(os.getenv("STRICT_TOKEN_SECRET", "1")).strip().lower() in {"1", "true", "yes"}
@@ -60,6 +75,8 @@ SMTP_USER = str(os.getenv("SMTP_USER", "")).strip()
 SMTP_PASSWORD = str(os.getenv("SMTP_PASSWORD", "")).strip()
 SMTP_FROM = str(os.getenv("SMTP_FROM", SMTP_USER)).strip()
 SMTP_USE_TLS = str(os.getenv("SMTP_USE_TLS", "1")).strip().lower() in {"1", "true", "yes"}
+RESEND_API_KEY = str(os.getenv("RESEND_API_KEY", "")).strip()
+RECOVERY_EMAIL_FROM = str(os.getenv("RECOVERY_EMAIL_FROM", SMTP_FROM)).strip()
 RECOVERY_CODE_TTL_SECONDS = int(os.getenv("RECOVERY_CODE_TTL_SECONDS", "600"))  # 10 min
 RECOVERY_MIN_RESEND_SECONDS = int(os.getenv("RECOVERY_MIN_RESEND_SECONDS", "60"))
 RECOVERY_STATE = {}
@@ -114,7 +131,7 @@ app.add_middleware(
     allow_origins=CORS_ALLOW_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-Admin-Bootstrap-Secret"],
 )
 
 
@@ -154,7 +171,7 @@ class AdminRegisterBody(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     email: str = Field(min_length=3, max_length=200)
     phone: str = Field(min_length=7, max_length=40)
-    password: str = Field(min_length=7, max_length=200)
+    password: str = Field(min_length=10, max_length=200)
     position: str = Field(min_length=1, max_length=80)
 
 
@@ -184,7 +201,7 @@ class AdminUpdateBody(BaseModel):
 
 class AdminResetPasswordBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
-    new_password: str = Field(min_length=7, max_length=200)
+    new_password: str = Field(min_length=10, max_length=200)
 
 class AdminCouponCreateBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
@@ -435,7 +452,7 @@ class AccountCreateBody(BaseModel):
     account_name: str = Field(min_length=1, max_length=120)
     account_type: str = Field(min_length=1, max_length=40)
     group_name: str = Field(min_length=1, max_length=40)
-    balance: float = 0.0
+    balance: MoneyAmount = 0.0
 
     @field_validator("account_type")
     @classmethod
@@ -451,7 +468,7 @@ class TxCreateBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     user_id: int
     tx_type: str = Field(min_length=1, max_length=20)
-    amount: float = Field(ge=0.0, le=10_000_000.0)
+    amount: MoneyAmount = Field(ge=0.0, le=10_000_000.0)
     account_id: int
     category: str = Field(min_length=1, max_length=120)
     note: Optional[str] = Field(default="", max_length=500)
@@ -478,7 +495,7 @@ class AccountUpdateBody(BaseModel):
     account_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
     account_type: Optional[str] = Field(default=None, min_length=1, max_length=40)
     group_name: Optional[str] = Field(default=None, min_length=1, max_length=40)
-    balance: Optional[float] = None
+    balance: Optional[MoneyAmount] = None
 
     @field_validator("account_type")
     @classmethod
@@ -497,7 +514,7 @@ class AccountTransferBody(BaseModel):
     user_id: int
     from_account_id: int
     to_account_id: int
-    amount: float = Field(gt=0.0, le=10_000_000.0)
+    amount: MoneyAmount = Field(gt=0.0, le=10_000_000.0)
     note: Optional[str] = Field(default="", max_length=500)
     date: Optional[str] = Field(default=None, max_length=64)
 
@@ -522,7 +539,7 @@ class TxUpdateBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     user_id: int
     tx_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
-    amount: Optional[float] = Field(default=None, ge=0.0, le=10_000_000.0)
+    amount: Optional[MoneyAmount] = Field(default=None, ge=0.0, le=10_000_000.0)
     account_id: Optional[int] = None
     category: Optional[str] = Field(default=None, min_length=1, max_length=120)
     note: Optional[str] = Field(default=None, max_length=500)
@@ -717,16 +734,28 @@ def _cleanup_recovery_state(now_ts: Optional[float] = None) -> None:
 
 
 def _send_recovery_email(to_email: str, code: str) -> None:
+    content = f"Your KeeperBMA password recovery code is: {code}\n\nThis code expires in {RECOVERY_CODE_TTL_SECONDS // 60} minutes."
+    if RESEND_API_KEY:
+        if not RECOVERY_EMAIL_FROM:
+            raise ValueError("Recovery email sender is not configured on server.")
+        request = urllib.request.Request("https://api.resend.com/emails", method="POST",
+            data=json.dumps({"from": RECOVERY_EMAIL_FROM, "to": [to_email], "subject": "KeeperBMA Password Recovery Code", "text": content}).encode("utf-8"),
+            headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(request, timeout=20) as response:
+                if not json.loads(response.read().decode("utf-8")).get("id"):
+                    raise ValueError("Email provider did not accept the recovery email.")
+        except Exception:
+            logger.exception("Recovery email HTTP delivery failed")
+            raise ValueError("Recovery email could not be delivered. Please try again later.")
+        return
     if not (SMTP_HOST and SMTP_FROM):
         raise ValueError("Email recovery is not configured on server.")
     msg = EmailMessage()
     msg["Subject"] = "KeeperBMA Password Recovery Code"
     msg["From"] = SMTP_FROM
     msg["To"] = to_email
-    msg.set_content(
-        "Your KeeperBMA password recovery code is: "
-        f"{code}\n\nThis code expires in {RECOVERY_CODE_TTL_SECONDS // 60} minutes."
-    )
+    msg.set_content(content)
     with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
         if SMTP_USE_TLS:
             server.starttls()
@@ -981,6 +1010,8 @@ SUBSCRIPTION_PLANS = [
             "Manual financial tracking",
             "Manual transaction entry",
             "Manual account management",
+            "Monthly income and expense report with creator categories",
+            "Monthly CSV export on web",
         ],
     },
     {
@@ -1002,9 +1033,9 @@ SUBSCRIPTION_PLANS = [
         "features": [
             "All Regular features",
             "1 business workspace with business profile",
-            "1 public business page and 1 starter business website",
+            "Planned: 1 public business page and 1 starter business website",
             "Employee management with role-based access",
-            "Sales, purchase, customer, supplier, and product foundations",
+            "Planned: Sales, purchase, customer, supplier, and product foundations",
         ],
     },
     {
@@ -1016,10 +1047,10 @@ SUBSCRIPTION_PLANS = [
         "price_with_website_annual": 700,
         "features": [
             "All Business features",
-            "AI business tools and image optimization",
-            "Advanced reports and analytics",
-            "Stronger branding and website customization",
-            "Optional expanded website package",
+            "Planned: AI business tools and image optimization",
+            "Planned: Advanced reports and analytics",
+            "Planned: Stronger branding and website customization",
+            "Planned: Optional expanded website package",
         ],
     },
     {
@@ -1029,9 +1060,9 @@ SUBSCRIPTION_PLANS = [
         "price_annual": 700,
         "features": [
             "All Premium Plus features",
-            "Full website bundle included",
-            "Advanced employee roles and management depth",
-            "Bank sync and highest-tier analytics",
+            "Planned: Full website bundle included",
+            "Planned: Advanced employee roles and management depth",
+            "Planned: Bank sync and highest-tier analytics",
         ],
     },
     {
@@ -1087,7 +1118,7 @@ def _stripe_status_to_subscription_status(status: str) -> str:
         return s
     if s in {"canceled", "incomplete_expired"}:
         return "canceled"
-    return "active"
+    return "incomplete"
 
 
 def _iso_from_unix_ts(value) -> str:
@@ -1105,6 +1136,7 @@ def _stripe_api_request_raw(
     path: str,
     form: Optional[dict] = None,
     query: Optional[object] = None,
+    idempotency_key: Optional[str] = None,
 ) -> dict:
     if not STRIPE_SECRET_KEY:
         raise HTTPException(status_code=503, detail="Stripe is not configured.")
@@ -1113,6 +1145,8 @@ def _stripe_api_request_raw(
         endpoint = f"{endpoint}?{urllib.parse.urlencode(query, doseq=True)}"
     data = None
     headers = {"Authorization": f"Bearer {STRIPE_SECRET_KEY}"}
+    if idempotency_key:
+        headers["Idempotency-Key"] = idempotency_key
     if form is not None:
         data = urllib.parse.urlencode(form).encode("utf-8")
         headers["Content-Type"] = "application/x-www-form-urlencoded"
@@ -1142,8 +1176,22 @@ def _stripe_api_request_raw(
         raise HTTPException(status_code=503, detail="Stripe request failed.")
 
 
-def _stripe_api_request(path: str, form: dict) -> dict:
-    return _stripe_api_request_raw("POST", path, form=form)
+def _stripe_api_request(path: str, form: dict, idempotency_key: Optional[str] = None) -> dict:
+    return _stripe_api_request_raw("POST", path, form=form, idempotency_key=idempotency_key)
+
+
+def _create_user_checkout(user_id: int, form: dict, allow_after_complete: bool = False) -> dict:
+    try:
+        return create_checkout(user_id, form,
+            lambda saved_form, key: _stripe_api_request("/v1/checkout/sessions", saved_form, idempotency_key=key),
+            _stripe_fetch_checkout_session, allow_after_complete=allow_after_complete)
+    except CheckoutConflict as error:
+        raise HTTPException(status_code=409, detail=str(error))
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Checkout could not be prepared for user_id=%s", user_id)
+        raise HTTPException(status_code=503, detail="Checkout could not be completed. Retry the same plan; a new subscription will not be created for a repeated attempt.")
 
 
 def _stripe_api_get(path: str, query: Optional[object] = None) -> dict:
@@ -1155,48 +1203,36 @@ def _stripe_api_delete(path: str, form: Optional[dict] = None) -> dict:
 
 
 def _stripe_extract_latest_payment(subscription: dict) -> tuple[str, int, int, str]:
-    latest_invoice = subscription.get("latest_invoice") or {}
-    if isinstance(latest_invoice, str):
-        latest_invoice = _stripe_api_get(
-            f"/v1/invoices/{latest_invoice}",
-            query=[("expand[]", "payment_intent"), ("expand[]", "charge")],
-        )
-    payment_intent = latest_invoice.get("payment_intent") or {}
+    invoice = subscription.get("latest_invoice") or {}
+    if isinstance(invoice, str):
+        invoice = _stripe_api_get(f"/v1/invoices/{urllib.parse.quote(invoice, safe='')}")
+    payment_intent = invoice.get("payment_intent") or {}
+    if not payment_intent and not invoice.get("charge") and invoice.get("id") and int(invoice.get("amount_paid") or 0) > 0:
+        # Basil and later expose invoice payments instead of invoice.payment_intent.
+        payment_page = invoice.get("payments") or {}
+        payments = payment_page.get("data") or []
+        if not payments or payment_page.get("has_more"):
+            payment_page = _stripe_api_get("/v1/invoice_payments", query={"invoice": invoice["id"], "limit": 100, "status": "paid"})
+            payments = payment_page.get("data") or []
+        if payment_page.get("has_more"):
+            raise ValueError("This invoice needs a manual refund review.")
+        paid = [row for row in payments if row.get("status") == "paid"]
+        if len(paid) > 1:
+            raise ValueError("This invoice has multiple payments. Contact support to review the refund.")
+        if paid:
+            payment_intent = (paid[0].get("payment") or {}).get("payment_intent") or {}
     if isinstance(payment_intent, str):
-        payment_intent = _stripe_api_get(
-            f"/v1/payment_intents/{payment_intent}",
-            query=[("expand[]", "charges.data.balance_transaction")],
-        )
-
-    charge_obj = {}
-    charges = ((payment_intent.get("charges") or {}).get("data") or [])
-    if charges:
-        charge_obj = charges[0] or {}
-    elif isinstance(latest_invoice.get("charge"), dict):
-        charge_obj = latest_invoice.get("charge") or {}
-    elif isinstance(latest_invoice.get("charge"), str):
-        charge_obj = _stripe_api_get(f"/v1/charges/{latest_invoice.get('charge')}")
-
-    charge_id = str(charge_obj.get("id", "")).strip()
-    currency = str(
-        payment_intent.get("currency")
-        or latest_invoice.get("currency")
-        or charge_obj.get("currency")
-        or "usd"
-    ).strip().lower() or "usd"
-    amount_paid = int(
-        payment_intent.get("amount_received")
-        or latest_invoice.get("amount_paid")
-        or charge_obj.get("amount")
-        or 0
-    )
-    max_refundable = int(
-        max(
-            0,
-            int(charge_obj.get("amount", amount_paid) or amount_paid)
-            - int(charge_obj.get("amount_refunded", 0) or 0),
-        )
-    )
+        payment_intent = _stripe_api_get(f"/v1/payment_intents/{urllib.parse.quote(payment_intent, safe='')}")
+    charge = payment_intent.get("latest_charge") or invoice.get("charge") or {}
+    if not charge:
+        charges = (payment_intent.get("charges") or {}).get("data") or []
+        charge = charges[0] if charges else {}
+    if isinstance(charge, str):
+        charge = _stripe_api_get(f"/v1/charges/{urllib.parse.quote(charge, safe='')}")
+    charge_id = str(charge.get("id") or "").strip()
+    currency = str(payment_intent.get("currency") or invoice.get("currency") or charge.get("currency") or "usd").lower()
+    amount_paid = int(payment_intent.get("amount_received") or invoice.get("amount_paid") or charge.get("amount") or 0)
+    max_refundable = max(0, int(charge.get("amount") or 0) - int(charge.get("amount_refunded") or 0))
     return charge_id, amount_paid, max_refundable, currency
 
 
@@ -1212,8 +1248,9 @@ def _stripe_compute_refund_for_cancel(subscription: dict, amount_paid: int, max_
     if interval != "year":
         return 0, "no_refund"
 
-    current_start = int(subscription.get("current_period_start") or start_ts or 0)
-    current_end = int(subscription.get("current_period_end") or 0)
+    first_item = items[0] if items else {}
+    current_start = int(subscription.get("current_period_start") or first_item.get("current_period_start") or start_ts or 0)
+    current_end = int(subscription.get("current_period_end") or first_item.get("current_period_end") or 0)
     if current_end <= now_ts or current_end <= current_start:
         return 0, "no_refund"
 
@@ -1451,39 +1488,30 @@ def _stripe_verified_precheckout_session(session_id: str, expected_plan_code: Op
     }
 
 
-def _parse_stripe_signature(sig_header: str) -> tuple[Optional[int], Optional[str]]:
-    if not sig_header:
-        return None, None
-    ts = None
-    v1 = None
-    for chunk in str(sig_header).split(","):
-        k, _, v = chunk.partition("=")
-        if k == "t":
+def _parse_stripe_signature(sig_header: str) -> tuple[Optional[int], list[str]]:
+    timestamp = None
+    signatures = []
+    for chunk in str(sig_header or "").split(","):
+        key, _, value = chunk.strip().partition("=")
+        if key == "t":
             try:
-                ts = int(v)
-            except Exception:
-                ts = None
-        elif k == "v1":
-            v1 = v
-    return ts, v1
+                timestamp = int(value)
+            except ValueError:
+                return None, []
+        elif key == "v1":
+            signatures.append(value)
+    return timestamp, signatures
 
 
 def _verify_stripe_webhook_signature(payload: bytes, sig_header: str) -> bool:
     if not STRIPE_WEBHOOK_SECRET:
         return False
-    ts, provided_v1 = _parse_stripe_signature(sig_header)
-    if ts is None or not provided_v1:
+    timestamp, signatures = _parse_stripe_signature(sig_header)
+    if timestamp is None or not signatures or abs(int(time.time()) - timestamp) > 300:
         return False
-    # Stripe recommends short tolerance to limit replay risk.
-    if abs(int(time.time()) - int(ts)) > 300:
-        return False
-    signed_payload = f"{ts}.{payload.decode('utf-8')}".encode("utf-8")
-    expected = hmac.new(
-        STRIPE_WEBHOOK_SECRET.encode("utf-8"),
-        signed_payload,
-        hashlib.sha256,
-    ).hexdigest()
-    return hmac.compare_digest(expected, provided_v1)
+    signed_payload = str(timestamp).encode("ascii") + b"." + payload
+    expected = hmac.new(STRIPE_WEBHOOK_SECRET.encode("utf-8"), signed_payload, hashlib.sha256).hexdigest()
+    return any(hmac.compare_digest(expected, signature) for signature in signatures)
 
 
 def _extract_token(request: Request, authorization: Optional[str]) -> str:
@@ -1858,11 +1886,13 @@ def _load_admin_dashboard_section(section_name: str, loader):
 
 @app.on_event("startup")
 def _startup_checks() -> None:
-    if not TOKEN_SECRET or len(TOKEN_SECRET) < 32:
+    if not TOKEN_SECRET or len(TOKEN_SECRET) < 32 or TOKEN_SECRET.lower().startswith(("replace-with", "change-me", "changeme")):
         msg = "API_TOKEN_SECRET must be set to a strong secret (32+ chars)."
         if STRICT_TOKEN_SECRET:
             raise RuntimeError(msg)
         logger.warning(msg)
+    if ADMIN_BOOTSTRAP_SECRET and len(ADMIN_BOOTSTRAP_SECRET) < 32:
+        raise RuntimeError("ADMIN_BOOTSTRAP_SECRET must be random and at least 32 characters, or left unset.")
 
 
 @app.middleware("http")
@@ -1888,7 +1918,23 @@ def health():
     return {"ok": True, "ts": datetime.utcnow().isoformat() + "Z"}
 
 
+@app.get("/ready")
+def ready():
+    from core import DB_IS_SQL, _get_engine
+    if not DB_IS_SQL:
+        return {"ok": True, "storage": "csv", "production_ready": False}
+    try:
+        from sqlalchemy import text
+        with _get_engine().connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception:
+        logger.exception("Database readiness check failed")
+        raise HTTPException(status_code=503, detail="Database is temporarily unavailable.")
+    return {"ok": True, "storage": "sql"}
+
+
 @app.post("/auth/register")
+@atomic_mutation
 def register(body: RegisterBody):
     try:
         coupon_ctx = _resolve_coupon_context(body.coupon_code, body.plan_code, body.billing_cycle)
@@ -1987,6 +2033,7 @@ def login(body: LoginBody, response: Response):
 
 
 @app.post("/auth/recover/request")
+@atomic_mutation
 def recover_request(body: RecoveryRequestBody):
     email = str(body.email).strip().lower()
     if not email:
@@ -1999,7 +2046,8 @@ def recover_request(body: RecoveryRequestBody):
 
     now_ts = time.time()
     _cleanup_recovery_state(now_ts)
-    state = RECOVERY_STATE.get(email)
+    recovery = security_state("recovery", RECOVERY_STATE)
+    state = recovery.get(email)
     if state:
         last_sent = float(state.get("last_sent_at", 0))
         if (now_ts - last_sent) < RECOVERY_MIN_RESEND_SECONDS:
@@ -2014,7 +2062,7 @@ def recover_request(body: RecoveryRequestBody):
         logger.exception("Failed to send recovery email")
         raise HTTPException(status_code=503, detail="Failed to send recovery email")
 
-    RECOVERY_STATE[email] = {
+    recovery[email] = {
         "user_id": int(user["user_id"]),
         "code_hash": _hash_recovery_code(email, code),
         "expires_at": now_ts + RECOVERY_CODE_TTL_SECONDS,
@@ -2024,38 +2072,45 @@ def recover_request(body: RecoveryRequestBody):
     return {"ok": True, "sent": True, "expires_minutes": RECOVERY_CODE_TTL_SECONDS // 60}
 
 
+@atomic_mutation
+def _confirm_recovery(email: str, code: str, new_password: str):
+    now_ts = time.time()
+    _cleanup_recovery_state(now_ts)
+    recovery = security_state("recovery", RECOVERY_STATE)
+    state = recovery.get(email)
+    if not state:
+        return False, "Recovery code expired or invalid."
+    if float(state.get("expires_at", 0)) < now_ts:
+        recovery.pop(email, None)
+        return False, "Recovery code expired or invalid."
+    if int(state.get("attempts", 0)) >= 5:
+        return False, "Too many attempts. Request a new code."
+
+    expected = str(state.get("code_hash", ""))
+    got = _hash_recovery_code(email, code)
+    if not hmac.compare_digest(expected, got):
+        state["attempts"] = int(state.get("attempts", 0)) + 1
+        recovery[email] = state
+        return False, "Recovery code expired or invalid."
+
+    try:
+        User().set_password_by_user_id(state["user_id"], new_password)
+    except ValueError as e:
+        return False, str(e)
+    recovery.pop(email, None)
+    return True, ""
+
+
 @app.post("/auth/recover/confirm")
 def recover_confirm(body: RecoveryConfirmBody):
     email = str(body.email).strip().lower()
     code = str(body.code).strip()
     if not email or not code:
         raise HTTPException(status_code=400, detail="Email and code are required")
-
-    now_ts = time.time()
-    _cleanup_recovery_state(now_ts)
-    state = RECOVERY_STATE.get(email)
-    if not state:
-        raise HTTPException(status_code=400, detail="Recovery code expired or invalid.")
-    if float(state.get("expires_at", 0)) < now_ts:
-        RECOVERY_STATE.pop(email, None)
-        raise HTTPException(status_code=400, detail="Recovery code expired or invalid.")
-    if int(state.get("attempts", 0)) >= 5:
-        RECOVERY_STATE.pop(email, None)
-        raise HTTPException(status_code=400, detail="Too many attempts. Request a new code.")
-
-    expected = str(state.get("code_hash", ""))
-    got = _hash_recovery_code(email, code)
-    if not hmac.compare_digest(expected, got):
-        state["attempts"] = int(state.get("attempts", 0)) + 1
-        RECOVERY_STATE[email] = state
-        raise HTTPException(status_code=400, detail="Recovery code expired or invalid.")
-
-    try:
-        User().set_password_by_user_id(state["user_id"], body.new_password)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    finally:
-        RECOVERY_STATE.pop(email, None)
+    # Raise after the transaction commits so failed-attempt counters persist.
+    ok, detail = _confirm_recovery(email, code, body.new_password)
+    if not ok:
+        raise HTTPException(status_code=400, detail=detail)
     return {"ok": True}
 
 
@@ -2122,17 +2177,22 @@ def admin1957_register(
     request: Request,
     authorization: Optional[str] = Header(default=None),
 ):
-    admins = Admin1957()
-    if admins.count() > 0:
-        _require_admin_roles(request, authorization, ("owner",))
     try:
-        admin = admins.register(
-            name=body.name,
-            email=body.email,
-            phone=body.phone,
-            password=body.password,
-            position=body.position,
-        )
+        with atomic_operation():
+            admins = Admin1957()
+            if admins.count() > 0:
+                _require_admin_roles(request, authorization, ("owner",))
+            else:
+                provided = str(request.headers.get("X-Admin-Bootstrap-Secret", ""))
+                if not ADMIN_BOOTSTRAP_SECRET or not hmac.compare_digest(provided, ADMIN_BOOTSTRAP_SECRET):
+                    raise HTTPException(status_code=403, detail="Initial administrator setup requires operator authorization.")
+            admin = admins.register(
+                name=body.name,
+                email=body.email,
+                phone=body.phone,
+                password=body.password,
+                position=body.position,
+            )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"ok": True, "admin": _build_admin_payload(admin)}
@@ -2538,7 +2598,7 @@ def billing_pending_checkout(body: PendingPaymentCheckoutBody):
         form["subscription_data[trial_period_days]"] = str(int(BILLING_TRIAL_DAYS))
         form["subscription_data[trial_settings][end_behavior][missing_payment_method]"] = "cancel"
 
-    out = _stripe_api_request("/v1/checkout/sessions", form)
+    out = _create_user_checkout(user_id, form, allow_after_complete=bool(existing_subscription_id and subscription_status == "canceled"))
     checkout_url = str(out.get("url", "")).strip()
     session_id = str(out.get("id", "")).strip()
     if not checkout_url or not session_id:
@@ -2553,6 +2613,7 @@ def billing_pending_checkout(body: PendingPaymentCheckoutBody):
 
 
 @app.post("/billing/pending/activate")
+@atomic_mutation
 def billing_pending_activate(body: PendingPaymentActivateBody):
     user_id = _verify_pending_payment_token(body.token)
     profile = User().get_user_by_id(user_id) or {}
@@ -2590,12 +2651,18 @@ def billing_pending_activate(body: PendingPaymentActivateBody):
     if not subscription_id:
         raise HTTPException(status_code=400, detail="Stripe subscription was not created.")
 
+    current_subscription = str(profile.get("billing_subscription_id") or "").strip()
+    if current_subscription and current_subscription != subscription_id:
+        raise HTTPException(status_code=409, detail="This account already has a different subscription. Manage it from Settings.")
+
     items = ((subscription_obj.get("items", {}) or {}).get("data", []) or [])
     first_item = items[0] if items else {}
     price_obj = first_item.get("price", {}) or {}
     price_id = str(price_obj.get("id", "")).strip()
     price_meta = _stripe_price_metadata(price_id)
-    plan_code = str(metadata.get("plan_code", "")).strip().lower() or str(price_meta.get("plan_code", "")).strip().lower()
+    if not price_meta:
+        raise HTTPException(status_code=503, detail="The subscription price is not configured on the server.")
+    plan_code = str(price_meta.get("plan_code", "")).strip().lower()
     billing_cycle = str(metadata.get("billing_cycle", "")).strip().lower()
     if billing_cycle not in {"monthly", "annual"}:
         billing_cycle = str(price_meta.get("billing_cycle", "")).strip().lower()
@@ -2612,7 +2679,7 @@ def billing_pending_activate(body: PendingPaymentActivateBody):
     subscription_ends_at = _iso_from_unix_ts(subscription_obj.get("ended_at") or subscription_obj.get("cancel_at"))
     next_charge_at = trial_ends_at or _iso_from_unix_ts(subscription_obj.get("current_period_end"))
     if subscription_status not in {"trial", "active"}:
-        subscription_status = "trial" if trial_ends_at else "active"
+        raise HTTPException(status_code=400, detail="This subscription is not active. Complete payment or update billing first.")
 
     User().update_billing_subscription(
         user_id=user_id,
@@ -2643,6 +2710,8 @@ def billing_pending_activate(body: PendingPaymentActivateBody):
 
 @app.post("/billing/precheckout")
 def billing_precheckout(body: BillingPrecheckoutBody):
+    if not ENABLE_LEGACY_PRECHECKOUT:
+        raise HTTPException(status_code=410, detail="Sign up before checkout. Anonymous precheckout is no longer supported.")
     plan_code = str(body.plan_code).strip().lower()
     billing_cycle = str(body.billing_cycle).strip().lower()
     coupon_ctx = _resolve_coupon_context(body.coupon_code, plan_code, billing_cycle)
@@ -2723,6 +2792,8 @@ def billing_precheckout(body: BillingPrecheckoutBody):
 
 @app.post("/billing/precheckout/embedded")
 def billing_precheckout_embedded(body: BillingPrecheckoutEmbeddedBody):
+    if not ENABLE_LEGACY_PRECHECKOUT:
+        raise HTTPException(status_code=410, detail="Sign up before checkout. Anonymous precheckout is no longer supported.")
     plan_code = str(body.plan_code).strip().lower()
     billing_cycle = str(body.billing_cycle).strip().lower()
     coupon_ctx = _resolve_coupon_context(body.coupon_code, plan_code, billing_cycle)
@@ -2810,6 +2881,8 @@ def billing_precheckout_session(
     plan_code: Optional[str] = None,
     token: Optional[str] = None,
 ):
+    if not ENABLE_LEGACY_PRECHECKOUT:
+        raise HTTPException(status_code=410, detail="Sign up before checkout. Anonymous precheckout is no longer supported.")
     _verify_pending_payment_token(str(token or "").strip())
     info = _stripe_verified_precheckout_session(session_id, expected_plan_code=plan_code)
     return {
@@ -2849,6 +2922,8 @@ def billing_checkout(
         raise HTTPException(status_code=400, detail="User email is required for billing.")
     existing_subscription_id = str(profile.get("billing_subscription_id", "")).strip()
     subscription_status = str(profile.get("subscription_status", "")).strip().lower()
+    if existing_subscription_id and subscription_status != "canceled":
+        raise HTTPException(status_code=409, detail="Manage your existing subscription with Manage Billing to change plans or payment details.")
     apply_trial = bool(
         BILLING_TRIAL_DAYS > 0
         and not existing_subscription_id
@@ -2863,6 +2938,7 @@ def billing_checkout(
         "allow_promotion_codes": "true",
         "client_reference_id": str(body.user_id),
         "metadata[user_id]": str(body.user_id),
+        "metadata[replaces_subscription_id]": existing_subscription_id,
         "metadata[plan_code]": plan_code,
         "metadata[billing_cycle]": billing_cycle,
         "line_items[0][price]": price_id,
@@ -2877,7 +2953,7 @@ def billing_checkout(
     else:
         form["customer_email"] = email
 
-    out = _stripe_api_request("/v1/checkout/sessions", form)
+    out = _create_user_checkout(body.user_id, form, allow_after_complete=bool(existing_subscription_id and subscription_status == "canceled"))
     session_id = str(out.get("id", "")).strip()
     checkout_url = str(out.get("url", "")).strip()
     if not checkout_url:
@@ -2913,6 +2989,8 @@ def billing_checkout_embedded(
         raise HTTPException(status_code=400, detail="User email is required for billing.")
     existing_subscription_id = str(profile.get("billing_subscription_id", "")).strip()
     subscription_status = str(profile.get("subscription_status", "")).strip().lower()
+    if existing_subscription_id and subscription_status != "canceled":
+        raise HTTPException(status_code=409, detail="Manage your existing subscription with Manage Billing to change plans or payment details.")
     apply_trial = bool(
         BILLING_TRIAL_DAYS > 0
         and not existing_subscription_id
@@ -2927,6 +3005,7 @@ def billing_checkout_embedded(
         "allow_promotion_codes": "true",
         "client_reference_id": str(body.user_id),
         "metadata[user_id]": str(body.user_id),
+        "metadata[replaces_subscription_id]": existing_subscription_id,
         "metadata[plan_code]": plan_code,
         "metadata[billing_cycle]": billing_cycle,
         "line_items[0][price]": price_id,
@@ -2941,7 +3020,7 @@ def billing_checkout_embedded(
     else:
         form["customer_email"] = email
 
-    out = _stripe_api_request("/v1/checkout/sessions", form)
+    out = _create_user_checkout(body.user_id, form, allow_after_complete=bool(existing_subscription_id and subscription_status == "canceled"))
     session_id = str(out.get("id", "")).strip()
     client_secret = str(out.get("client_secret", "")).strip()
     if not client_secret:
@@ -2988,66 +3067,36 @@ def billing_cancel(
     if not subscription_id:
         raise HTTPException(status_code=400, detail="No Stripe subscription found for this user.")
 
-    sub = _stripe_api_get(
-        f"/v1/subscriptions/{subscription_id}",
-        query=[("expand[]", "latest_invoice.payment_intent"), ("expand[]", "items.data.price")],
-    )
-    sub_status = str(sub.get("status", "")).strip().lower()
-    if sub_status in {"canceled", "incomplete_expired"}:
-        raise HTTPException(status_code=400, detail="Subscription is already canceled.")
+    def load_subscription(sid):
+        return _stripe_api_get(f"/v1/subscriptions/{urllib.parse.quote(sid, safe='')}",
+            query=[("expand[]", "latest_invoice"), ("expand[]", "items.data.price")])
 
-    charge_id, amount_paid, max_refundable, currency = _stripe_extract_latest_payment(sub)
-    refund_cents, refund_policy = _stripe_compute_refund_for_cancel(sub, amount_paid, max_refundable)
+    def find_refund(charge_id, intent_key):
+        result = _stripe_api_get("/v1/refunds", query={"charge": charge_id, "limit": 100})
+        for refund in result.get("data") or []:
+            if (refund.get("metadata") or {}).get("keeperbma_cancellation") == intent_key:
+                return refund
+        if result.get("has_more"):
+            raise RuntimeError("Refund history requires operator review before retrying")
+        return None
 
-    canceled_sub = _stripe_api_delete(f"/v1/subscriptions/{subscription_id}")
-    canceled_at_iso = _iso_from_unix_ts(canceled_sub.get("canceled_at") or int(time.time()))
-    ended_at_iso = _iso_from_unix_ts(canceled_sub.get("current_period_end") or canceled_sub.get("canceled_at"))
-    if not ended_at_iso:
-        ended_at_iso = canceled_at_iso
+    def create_refund(intent):
+        return _stripe_api_request("/v1/refunds", {
+            "charge": intent["charge_id"], "amount": str(intent["refund_cents"]),
+            "reason": "requested_by_customer", "metadata[user_id]": str(body.user_id),
+            "metadata[policy]": intent["refund_policy"], "metadata[keeperbma_cancellation]": intent["intent_key"],
+        }, idempotency_key=intent["intent_key"])
 
-    refund_obj = {}
-    if refund_cents > 0 and charge_id:
-        refund_obj = _stripe_api_request(
-            "/v1/refunds",
-            {
-                "charge": charge_id,
-                "amount": str(int(refund_cents)),
-                "reason": "requested_by_customer",
-                "metadata[user_id]": str(body.user_id),
-                "metadata[policy]": refund_policy,
-            },
-        )
-
-    User().update_billing_subscription(
-        user_id=body.user_id,
-        subscription_status="canceled",
-        trial_ends_at="",
-        subscription_ends_at=ended_at_iso,
-        subscription_started_at=str(profile.get("subscription_started_at", "")).strip() or canceled_at_iso,
-        billing_provider="stripe",
-        billing_subscription_id=subscription_id,
-    )
-
-    refund_amount = round(float(refund_cents) / 100.0, 2)
-    message = "Subscription canceled."
-    if refund_policy == "full_7_day_refund" and refund_amount > 0:
-        message = f"Subscription canceled. Full refund issued (${refund_amount:.2f})."
-    elif refund_policy == "annual_prorated_refund" and refund_amount > 0:
-        message = f"Subscription canceled. Prorated annual refund issued (${refund_amount:.2f})."
-    elif refund_policy == "no_refund":
-        message = "Subscription canceled. No refund is available based on policy."
-
-    return {
-        "ok": True,
-        "subscription_id": subscription_id,
-        "subscription_status": "canceled",
-        "refund_policy": refund_policy,
-        "refund_issued": bool(refund_obj),
-        "refund_amount": refund_amount,
-        "refund_currency": currency.upper(),
-        "refund_id": str(refund_obj.get("id", "")).strip(),
-        "message": message,
-    }
+    try:
+        return cancel_subscription(body.user_id, subscription_id, load_subscription,
+            _stripe_extract_latest_payment, _stripe_compute_refund_for_cancel,
+            lambda sid: _stripe_api_delete(f"/v1/subscriptions/{urllib.parse.quote(sid, safe='')}"),
+            find_refund, create_refund, _iso_from_unix_ts)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+    except Exception:
+        logger.exception("Cancellation/refund requires retry for user_id=%s subscription_id=%s", body.user_id, subscription_id)
+        raise HTTPException(status_code=503, detail="Cancellation or refund is not fully confirmed. Retry safely or contact support; the saved cancellation request will be reused.")
 
 
 @app.get("/profile")
@@ -3129,7 +3178,7 @@ def update_billing_subscription(
     authorization: Optional[str] = Header(default=None),
 ):
     _require_user(request, authorization, body.user_id)
-    if STRIPE_SECRET_KEY:
+    if STRIPE_SECRET_KEY or not ALLOW_DIRECT_PLAN_UPDATES:
         raise HTTPException(
             status_code=400,
             detail="Direct plan updates are disabled. Use the Stripe billing checkout flow.",
@@ -3157,159 +3206,25 @@ async def stripe_webhook(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid webhook payload.")
 
-    event_type = str(event.get("type", "")).strip()
-    data_obj = (event.get("data", {}) or {}).get("object", {}) or {}
-    users = User()
-
-    if event_type == "checkout.session.completed":
-        metadata = data_obj.get("metadata", {}) or {}
-        uid_raw = metadata.get("user_id") or data_obj.get("client_reference_id")
-        customer_id = str(data_obj.get("customer", "")).strip()
-        subscription_id = str(data_obj.get("subscription", "")).strip()
-        plan_code = str(metadata.get("plan_code", "")).strip().lower()
-        billing_cycle = str(metadata.get("billing_cycle", "")).strip().lower()
-        plan_with_website = str(metadata.get("with_website", "")).strip().lower() in {"1", "true", "yes", "on"}
-        subscription_status = "active"
-        trial_ends_at = ""
-        subscription_started_at = datetime.utcnow().isoformat() + "Z"
-        subscription_ends_at = ""
-        billing_price_id = ""
-        next_charge_at = ""
-        if subscription_id:
-            try:
-                sub = _stripe_api_get(
-                    f"/v1/subscriptions/{subscription_id}",
-                    query=[("expand[]", "items.data.price")],
-                )
-                items = ((sub.get("items", {}) or {}).get("data", []) or [])
-                first_item = items[0] if items else {}
-                price_obj = first_item.get("price", {}) or {}
-                billing_price_id = str(price_obj.get("id", "")).strip()
-                derived_meta = _stripe_price_metadata(billing_price_id)
-                if not plan_code:
-                    plan_code = str(derived_meta.get("plan_code", "")).strip().lower()
-                if billing_cycle not in {"monthly", "annual"}:
-                    billing_cycle = str(derived_meta.get("billing_cycle", "")).strip().lower()
-                if not plan_with_website:
-                    plan_with_website = bool(derived_meta.get("with_website", False))
-                subscription_status = _stripe_status_to_subscription_status(str(sub.get("status", "")).strip().lower())
-                trial_ends_at = _iso_from_unix_ts(sub.get("trial_end"))
-                subscription_started_at = (
-                    _iso_from_unix_ts(sub.get("start_date"))
-                    or _iso_from_unix_ts(sub.get("current_period_start"))
-                    or subscription_started_at
-                )
-                subscription_ends_at = _iso_from_unix_ts(sub.get("ended_at") or sub.get("cancel_at"))
-                next_charge_at = (
-                    _iso_from_unix_ts(sub.get("trial_end"))
-                    or _iso_from_unix_ts(sub.get("current_period_end"))
-                )
-            except Exception:
-                logger.exception("Failed to enrich checkout.session.completed subscription %s", subscription_id)
-        try:
-            uid = int(uid_raw)
-        except Exception:
-            uid = 0
-        if uid > 0:
-            users.update_billing_subscription(
-                user_id=uid,
-                plan_code=plan_code or None,
-                subscription_status=subscription_status,
-                trial_ends_at=trial_ends_at,
-                subscription_started_at=subscription_started_at,
-                subscription_ends_at=subscription_ends_at,
-                billing_provider="stripe",
-                billing_customer_id=customer_id or None,
-                billing_subscription_id=subscription_id or None,
-                billing_price_id=billing_price_id or None,
-                billing_cycle=billing_cycle or None,
-                plan_with_website=plan_with_website,
-                next_charge_at=next_charge_at or None,
-                payment_status="active",
-                trial_status="active",
-            )
-        elif customer_id:
-            u = users.get_user_by_billing_customer_id(customer_id)
-            if u:
-                users.update_billing_subscription(
-                    user_id=int(u["user_id"]),
-                    plan_code=plan_code or None,
-                    subscription_status=subscription_status,
-                    trial_ends_at=trial_ends_at,
-                    subscription_started_at=subscription_started_at,
-                    subscription_ends_at=subscription_ends_at,
-                    billing_provider="stripe",
-                    billing_customer_id=customer_id,
-                    billing_subscription_id=subscription_id or None,
-                    billing_price_id=billing_price_id or None,
-                    billing_cycle=billing_cycle or None,
-                    plan_with_website=plan_with_website,
-                    next_charge_at=next_charge_at or None,
-                    payment_status="active",
-                    trial_status="active",
-                )
-
-    elif event_type in {"customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"}:
-        customer_id = str(data_obj.get("customer", "")).strip()
-        subscription_id = str(data_obj.get("id", "")).strip()
-        status = _stripe_status_to_subscription_status(str(data_obj.get("status", "")).strip().lower())
-        items = ((data_obj.get("items", {}) or {}).get("data", []) or [])
-        first_item = items[0] if items else {}
-        price_obj = first_item.get("price", {}) or {}
-        price_id = str((price_obj.get("id", ""))).strip()
-        price_meta = _stripe_price_metadata(price_id)
-        plan_code = str(price_meta.get("plan_code", "")).strip().lower() or _stripe_plan_from_price(price_id)
-        recurring = price_obj.get("recurring", {}) or {}
-        interval = str(recurring.get("interval", "")).strip().lower()
-        billing_cycle = str(price_meta.get("billing_cycle", "")).strip().lower()
-        if billing_cycle not in {"monthly", "annual"}:
-            if interval == "year":
-                billing_cycle = "annual"
-            elif interval == "month":
-                billing_cycle = "monthly"
-            else:
-                billing_cycle = ""
-        plan_with_website = bool(price_meta.get("with_website", False))
-        started_at = _iso_from_unix_ts(data_obj.get("start_date"))
-        ended_at = _iso_from_unix_ts(data_obj.get("ended_at") or data_obj.get("cancel_at"))
-        trial_ends_at = _iso_from_unix_ts(data_obj.get("trial_end"))
-        next_charge_at = trial_ends_at or _iso_from_unix_ts(data_obj.get("current_period_end"))
-        if status == "canceled" and not ended_at:
-            ended_at = _iso_from_unix_ts(data_obj.get("current_period_end"))
-
-        if customer_id:
-            u = users.get_user_by_billing_customer_id(customer_id)
-            if u:
-                users.update_billing_subscription(
-                    user_id=int(u["user_id"]),
-                    plan_code=plan_code,
-                    subscription_status=status,
-                    trial_ends_at=trial_ends_at if status == "trial" else "",
-                    subscription_started_at=started_at or None,
-                    subscription_ends_at=ended_at if status == "canceled" else "",
-                    billing_provider="stripe",
-                    billing_customer_id=customer_id,
-                    billing_subscription_id=subscription_id or None,
-                    billing_price_id=price_id or None,
-                    billing_cycle=billing_cycle or None,
-                    plan_with_website=plan_with_website,
-                    next_charge_at=next_charge_at or "",
-                    payment_status="active" if status in {"trial", "active"} else None,
-                    trial_status="active" if status in {"trial", "active"} else ("inactive" if status == "canceled" else None),
-                )
-
-    elif event_type == "invoice.payment_failed":
-        customer_id = str(data_obj.get("customer", "")).strip()
-        if customer_id:
-            u = users.get_user_by_billing_customer_id(customer_id)
-            if u:
-                users.update_billing_subscription(
-                    user_id=int(u["user_id"]),
-                    subscription_status="past_due",
-                    payment_status="active",
-                )
-
-    return {"ok": True}
+    if (
+        not isinstance(event, dict)
+        or not isinstance(event.get("id"), str) or not 1 <= len(event["id"]) <= 255
+        or not isinstance(event.get("type"), str)
+        or not isinstance(event.get("created"), int) or isinstance(event.get("created"), bool)
+        or not isinstance(event.get("data"), dict)
+        or not isinstance(event["data"].get("object"), dict)
+    ):
+        raise HTTPException(status_code=400, detail="Invalid Stripe event structure.")
+    try:
+        return await run_in_threadpool(
+            process_event, event,
+            lambda sid: _stripe_api_get(f"/v1/subscriptions/{urllib.parse.quote(sid, safe='')}", query=[("expand[]", "items.data.price")]),
+            _stripe_fetch_checkout_session, _stripe_price_metadata,
+            _stripe_status_to_subscription_status, _iso_from_unix_ts,
+        )
+    except Exception:
+        logger.exception("Stripe event reconciliation failed for %s", event["id"])
+        raise HTTPException(status_code=503, detail="Subscription update could not be completed. Retry delivery.")
 
 
 @app.get("/businesses")
@@ -3567,7 +3482,10 @@ def list_accounts(request: Request, user_id: int, authorization: Optional[str] =
     df = Account().by_user(user_id)
     if df is None or df.empty:
         return []
-    return df.fillna("").to_dict(orient="records")
+    records = df.fillna("").to_dict(orient="records")
+    for record in records:
+        record["bank_linked"] = is_bank_linked_account(user_id, record["account_id"])
+    return records
 
 
 @app.post("/accounts")
@@ -3605,7 +3523,10 @@ def update_account(
         changes["balance"] = body.balance
     if not changes:
         raise HTTPException(status_code=400, detail="No fields to update")
-    ok = Account().update(account_id=account_id, user_id=body.user_id, **changes)
+    try:
+        ok = Account().update(account_id=account_id, user_id=body.user_id, **changes)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not ok:
         raise HTTPException(status_code=404, detail="Account not found")
     return {"ok": True}
@@ -3619,7 +3540,10 @@ def delete_account(
     authorization: Optional[str] = Header(default=None),
 ):
     _require_app_access(request, authorization, user_id)
-    ok = Account().delete(account_id=account_id, user_id=user_id)
+    try:
+        ok = Account().delete(account_id=account_id, user_id=user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     if not ok:
         raise HTTPException(status_code=404, detail="Account not found")
     return {"ok": True}
@@ -3649,14 +3573,17 @@ def transfer_between_accounts(
     _require_app_access(request, authorization, body.user_id)
     if int(body.from_account_id) == int(body.to_account_id):
         raise HTTPException(status_code=400, detail="Source and destination accounts must be different.")
-    ok = Account().transfer(
-        from_account_id=body.from_account_id,
-        to_account_id=body.to_account_id,
-        amount=body.amount,
-        user_id=body.user_id,
-        note=body.note,
-        date_value=body.date,
-    )
+    try:
+        ok = Account().transfer(
+            from_account_id=body.from_account_id,
+            to_account_id=body.to_account_id,
+            amount=body.amount,
+            user_id=body.user_id,
+            note=body.note,
+            date_value=body.date,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
     if not ok:
         raise HTTPException(status_code=400, detail="Transfer failed.")
     return {"ok": True}
@@ -3693,8 +3620,31 @@ def list_bank_connections(
     user_id: int,
     authorization: Optional[str] = Header(default=None),
 ):
-    _require_bank_sync_access(request, authorization, user_id)
-    return plaid_store.list_connections(user_id=user_id)
+    _require_user(request, authorization, user_id)
+    return [public_connection(connection) for connection in plaid_store.list_connections(user_id=user_id)]
+
+
+@app.delete("/bank/connections/{connection_id}")
+def disconnect_bank_connection(
+    connection_id: int, request: Request, user_id: int,
+    authorization: Optional[str] = Header(default=None),
+):
+    # Disconnect remains available even when a subscription has expired.
+    _require_user(request, authorization, user_id)
+    connection = plaid_store.get_connection(connection_id, user_id=user_id)
+    if not connection:
+        raise HTTPException(status_code=404, detail="Bank connection not found.")
+    try:
+        remove_item(str(connection.get("access_token") or ""))
+    except Exception:
+        logger.exception("Bank disconnect failed for user_id=%s connection_id=%s", user_id, connection_id)
+        raise HTTPException(status_code=503, detail="The bank connection could not be removed. Please retry.")
+    with atomic_operation():
+        current = plaid_store.get_connection(connection_id, user_id=user_id)
+        if current and str(current.get("access_token")) != str(connection.get("access_token")):
+            raise HTTPException(status_code=409, detail="The bank connection changed. Refresh and try again.")
+        plaid_store.delete_connection(user_id, connection_id)
+    return {"ok": True, "disconnected_connection_id": connection_id}
 
 
 @app.get("/bank/accounts")
@@ -3747,85 +3697,20 @@ def exchange_plaid_public_token(
     _require_bank_sync_access(request, authorization, body.user_id)
     try:
         exchange = exchange_public_token(body.public_token)
-        access_token = str(exchange.get("access_token", "")).strip()
-        item_id = str(exchange.get("item_id", "")).strip()
-        item = get_item(access_token)
-        institution_id = str(item.get("institution_id", "")).strip()
-        institution_name = ""
-        institution = {}
-        if institution_id:
-            institution = get_institution(institution_id) or {}
-            institution_name = str(institution.get("name", "")).strip()
-        connection = plaid_store.upsert_connection(
-            user_id=body.user_id,
-            item_id=item_id,
-            access_token=access_token,
-            institution_id=institution_id,
-            institution_name=institution_name,
-            status="active",
-        )
-
-        accounts_payload = get_accounts(access_token)
-        accounts = accounts_payload.get("accounts", []) or []
-        local_df = Account().by_user(body.user_id)
-        existing_by_name = {}
-        if local_df is not None and not local_df.empty:
-            for _, row in local_df.iterrows():
-                existing_by_name[str(row.get("account_name", "")).strip().lower()] = int(row.get("account_id"))
-
-        linked_rows = []
-        for account in accounts:
-            provider_account_id = str(account.get("account_id", "")).strip()
-            name = str(account.get("name", "")).strip()
-            official_name = str(account.get("official_name", "")).strip()
-            display_name = official_name or name or provider_account_id
-            subtype = str(account.get("subtype", "")).strip().lower()
-            account_type = _plaid_account_type_to_keeper(account.get("type", ""), subtype)
-            balances = account.get("balances", {}) or {}
-            current_balance = balances.get("current")
-            available_balance = balances.get("available")
-            group_name = "bank"
-            if str(account.get("type", "")).strip().lower() in {"credit", "loan"}:
-                group_name = "debt"
-            keeper_account_id = existing_by_name.get(display_name.lower())
-            if not keeper_account_id:
-                keeper_account_id = Account().add(
-                    account_name=display_name,
-                    account_type=account_type,
-                    group_name=group_name,
-                    balance=float(current_balance or 0.0),
-                    user_id=body.user_id,
-                )
-                existing_by_name[display_name.lower()] = int(keeper_account_id)
-            linked_rows.append(
-                {
-                    "provider_account_id": provider_account_id,
-                    "account_name": display_name,
-                    "account_type": account_type,
-                    "account_subtype": subtype,
-                    "mask": str(account.get("mask", "")).strip(),
-                    "institution_name": institution_name,
-                    "current_balance": current_balance,
-                    "available_balance": available_balance,
-                    "keeper_account_id": int(keeper_account_id),
-                }
-            )
-        plaid_store.upsert_linked_accounts(
-            user_id=body.user_id,
-            item_id=item_id,
-            institution_name=institution_name,
-            accounts=linked_rows,
-        )
-        return {
-            "ok": True,
-            "connection": connection,
-            "accounts": plaid_store.list_linked_accounts(body.user_id),
-        }
+        access_token = str(exchange.get("access_token") or "").strip()
+        item_id = str(exchange.get("item_id") or "").strip()
+        if not access_token or not item_id:
+            raise ValueError("Bank token exchange did not return a valid connection")
+        item = (get_item(access_token).get("item") or {})
+        institution_id = str(item.get("institution_id") or "").strip()
+        institution = (get_institution(institution_id).get("institution") or {}) if institution_id else {}
+        accounts = get_accounts(access_token).get("accounts") or []
+        return connect_bank(body.user_id, access_token, item_id, institution_id, str(institution.get("name") or ""), accounts)
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         logger.exception("Plaid exchange failed for user_id=%s", body.user_id)
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Bank connection could not be completed. Confirm that the selected accounts use USD and try again.")
 
 
 @app.post("/bank/plaid/sync")
@@ -3836,82 +3721,27 @@ def sync_plaid_transactions(
 ):
     _require_bank_sync_access(request, authorization, body.user_id)
     connections = plaid_store.list_connections(body.user_id)
-    if not connections:
-        return {"ok": True, "connections": 0, "imported": 0, "transactions_created": 0}
-
     imported_count = 0
     created_count = 0
-    for connection in connections:
-        access_token = str(connection.get("access_token", "")).strip()
-        item_id = str(connection.get("item_id", "")).strip()
-        cursor = str(connection.get("cursor", "")).strip() or None
-        if not access_token or not item_id:
-            continue
-        sync_out = transactions_sync(access_token, cursor=cursor)
-        plaid_store.update_connection_cursor(body.user_id, item_id, sync_out.get("next_cursor", ""))
-        linked_accounts = plaid_store.list_linked_accounts(body.user_id)
-        linked_by_provider_id = {
-            str(row.get("provider_account_id", "")).strip(): row for row in linked_accounts
-        }
-        for txn in sync_out.get("added", []) or []:
-            transaction_id = str(txn.get("transaction_id", "")).strip()
-            if not transaction_id:
+    superseded = False
+    try:
+        for connection in connections:
+            access_token = str(connection.get("access_token") or "").strip()
+            if not access_token:
                 continue
-            imported_count += 1
-            provider_account_id = str(txn.get("account_id", "")).strip()
-            linked = linked_by_provider_id.get(provider_account_id) or {}
-            plaid_store.upsert_imported_transaction(
-                user_id=body.user_id,
-                transaction_id=transaction_id,
-                item_id=item_id,
-                provider_account_id=provider_account_id,
-                amount=txn.get("amount"),
-                iso_date=txn.get("date"),
-                pending=txn.get("pending"),
-                merchant_name=txn.get("merchant_name"),
-                description=txn.get("name"),
-                category_primary=((txn.get("personal_finance_category") or {}).get("primary") or ""),
-                raw_payload=txn,
-            )
-            if bool(txn.get("pending")):
-                continue
-            imported = plaid_store.find_imported_transaction(body.user_id, transaction_id)
-            if imported and imported.get("keeper_txn_id"):
-                continue
-            keeper_account_id = linked.get("keeper_account_id")
-            if not keeper_account_id:
-                continue
-            try:
-                amount_value = abs(float(txn.get("amount") or 0.0))
-            except Exception:
-                amount_value = 0.0
-            if amount_value <= 0:
-                continue
-            tx_type = "expense" if float(txn.get("amount") or 0.0) >= 0 else "income"
-            category_primary = str(((txn.get("personal_finance_category") or {}).get("primary") or "")).strip()
-            category_name = category_primary.replace("_", " ").title() if category_primary else "Other"
-            if category_name:
-                try:
-                    Category().add(category_name=category_name, user_id=body.user_id)
-                except Exception:
-                    pass
-            note = str(txn.get("merchant_name") or txn.get("name") or "").strip()
-            keeper_txn_id = Transaction().add(
-                t_type=tx_type,
-                amount=amount_value,
-                account_id=int(keeper_account_id),
-                category=category_name or "Other",
-                note=note,
-                user_id=body.user_id,
-            )
-            plaid_store.mark_keeper_txn(body.user_id, transaction_id, keeper_txn_id)
-            created_count += 1
-
+            cursor = str(connection.get("cursor") or "")
+            changes = transactions_sync(access_token, cursor=cursor or None)
+            accounts = get_accounts(access_token).get("accounts") or []
+            result = apply_bank_sync(body.user_id, int(connection["connection_id"]), cursor, changes, accounts)
+            imported_count += result["imported"]
+            created_count += result["transactions_created"]
+            superseded = superseded or result["superseded"]
+    except Exception:
+        logger.exception("Plaid sync failed for user_id=%s", body.user_id)
+        raise HTTPException(status_code=503, detail="Bank sync could not be completed. Previously saved data is retained; please retry.")
     return {
-        "ok": True,
-        "connections": len(connections),
-        "imported": imported_count,
-        "transactions_created": created_count,
+        "ok": True, "connections": len(connections), "imported": imported_count,
+        "transactions_created": created_count, "superseded": superseded,
         "linked_accounts": plaid_store.list_linked_accounts(body.user_id),
     }
 
@@ -3966,7 +3796,10 @@ def update_transaction(
         changes["date"] = body.date
     if not changes:
         raise HTTPException(status_code=400, detail="No fields to update")
-    ok = Transaction().update(txn_id=txn_id, user_id=body.user_id, **changes)
+    try:
+        ok = Transaction().update(txn_id=txn_id, user_id=body.user_id, **changes)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not ok:
         raise HTTPException(status_code=404, detail="Transaction not found")
     return {"ok": True}
@@ -3980,7 +3813,10 @@ def delete_transaction(
     authorization: Optional[str] = Header(default=None),
 ):
     _require_app_access(request, authorization, user_id)
-    ok = Transaction().delete(txn_id=txn_id, user_id=user_id)
+    try:
+        ok = Transaction().delete(txn_id=txn_id, user_id=user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     if not ok:
         raise HTTPException(status_code=404, detail="Transaction not found")
     return {"ok": True}

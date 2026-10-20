@@ -9,6 +9,8 @@ import tempfile
 import time
 from datetime import datetime, timedelta
 from contextlib import contextmanager
+from functools import wraps
+from decimal import Decimal, InvalidOperation
 try:
     from sqlalchemy import create_engine, inspect, text
 except Exception:
@@ -221,44 +223,72 @@ def _get_engine():
     return _ENGINE
 
 
+@contextmanager
+def atomic_operation():
+    """Commit a complete domain mutation, including nested balance updates, once."""
+    if not DB_IS_SQL:
+        yield
+        return
+    from sql_storage import transaction
+    with transaction(_get_engine()):
+        yield
+
+
+def atomic_mutation(function):
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        with atomic_operation():
+            return function(*args, **kwargs)
+    return wrapped
+
+
+def security_state(namespace, fallback):
+    if DB_IS_SQL:
+        from sql_storage import SqlStateStore
+        return SqlStateStore(namespace)
+    return fallback
+
+
+def is_bank_linked_account(user_id, account_id):
+    if not DB_IS_SQL:
+        return False
+    linked = _read_table("linked_bank_accounts", ["user_id", "keeper_account_id"])
+    if linked.empty:
+        return False
+    return bool(((pd.to_numeric(linked["user_id"], errors="coerce") == int(user_id)) &
+                 (pd.to_numeric(linked["keeper_account_id"], errors="coerce") == int(account_id))).any())
+
+
+def money_value(value):
+    """Validate USD/manual currency amounts before touching any persisted row."""
+    try:
+        decimal = Decimal(str(value))
+        if not decimal.is_finite() or decimal != decimal.quantize(Decimal("0.01")):
+            raise ValueError("Money amounts must be finite and have at most two decimal places.")
+        number = float(decimal)
+        if not math.isfinite(number):
+            raise ValueError("Money amount is too large.")
+        return number
+    except (InvalidOperation, TypeError):
+        raise ValueError("Enter a valid money amount with at most two decimal places.")
+
+
 def _read_table(table_name, cols):
+    from sql_storage import read_table
     engine = _get_engine()
     if engine is None:
         return pd.DataFrame(columns=cols)
-    if inspect is None:
-        raise RuntimeError("SQLAlchemy inspect is unavailable. Install SQLAlchemy.")
-    insp = inspect(engine)
-    if not insp.has_table(table_name):
-        return pd.DataFrame(columns=cols)
-    df = pd.read_sql_table(table_name, con=engine)
-    for c in cols:
-        if c not in df.columns:
-            df[c] = ""
-    return df[cols]
+    return read_table(engine, table_name, cols)
 
 
 def _write_table(table_name, df):
-    engine = _get_engine()
-    if engine is None:
-        raise RuntimeError("MySQL engine is not configured.")
-    df.to_sql(table_name, con=engine, if_exists="replace", index=False)
+    from sql_storage import write_table
+    return write_table(table_name, df)
 
 
 def _update_sql_row(table_name, key_column, key_value, updates):
-    engine = _get_engine()
-    if engine is None:
-        raise RuntimeError("Database engine is not configured.")
-    if text is None:
-        raise RuntimeError("SQLAlchemy text is unavailable. Install SQLAlchemy.")
-    clean_updates = {str(k): v for k, v in (updates or {}).items() if str(k).strip()}
-    if not clean_updates:
-        return 0
-    set_clause = ", ".join(f"{col} = :{col}" for col in clean_updates.keys())
-    params = {**clean_updates, "__key_value": key_value}
-    statement = text(f"UPDATE {table_name} SET {set_clause} WHERE {key_column} = :__key_value")
-    with engine.begin() as conn:
-        result = conn.execute(statement, params)
-    return int(getattr(result, "rowcount", 0) or 0)
+    from sql_storage import update_row
+    return update_row(table_name, key_column, key_value, updates)
 
 
 def _atomic_write_csv(path, df):
@@ -289,6 +319,10 @@ def _atomic_write_csv(path, df):
 
 @contextmanager
 def _file_lock(path, timeout=5.0):
+    if DB_IS_SQL:
+        # SQL mutation boundaries already hold a cross-process database lock.
+        yield
+        return
     lock_path = f"{path}.lock"
     lock_dir = os.path.dirname(lock_path)
     if lock_dir:
@@ -395,12 +429,14 @@ class User:
             raise ValueError("Phone format is invalid.")
         return p
 
+    @atomic_mutation
     def login(self, identifier, pw):
+        attempts = security_state("user_login", self._login_attempts)
         ident_s = str(identifier or "")
         normalized_ident = ident_s.strip()
         key = f"ident:{normalized_ident.lower()}"
         now_ts = time.time()
-        rec = self._login_attempts.get(key, {"count": 0, "until": 0.0})
+        rec = attempts.get(key, {"count": 0, "until": 0.0})
         lock_until = float(rec.get("until", 0.0) or 0.0)
         if now_ts < lock_until:
             return False
@@ -425,17 +461,17 @@ class User:
             )
             candidate_keys = [f"user:{uid}" for uid in sorted(set(candidate_ids))]
             for candidate_key in candidate_keys:
-                candidate_rec = self._login_attempts.get(candidate_key, {"count": 0, "until": 0.0})
+                candidate_rec = attempts.get(candidate_key, {"count": 0, "until": 0.0})
                 candidate_lock_until = float(candidate_rec.get("until", 0.0) or 0.0)
                 if now_ts < candidate_lock_until:
                     return False
 
         def _record_failed_attempt(lock_key: str) -> None:
-            fail_rec = self._login_attempts.get(lock_key, {"count": 0, "until": 0.0})
+            fail_rec = attempts.get(lock_key, {"count": 0, "until": 0.0})
             fail_rec["count"] = int(fail_rec.get("count", 0)) + 1
             if fail_rec["count"] >= 5:
-                fail_rec["until"] = now_ts + min(300, 2 ** (fail_rec["count"] - 5))
-            self._login_attempts[lock_key] = fail_rec
+                fail_rec["until"] = now_ts + min(300, 2 ** min(9, fail_rec["count"] - 5))
+            attempts[lock_key] = fail_rec
 
         if candidates.empty:
             _record_failed_attempt(key)
@@ -451,8 +487,8 @@ class User:
             if not display_name:
                 display_name = str(row.get("email", "")).strip() or f"user-{self.uid}"
             self.name = display_name
-            self._login_attempts.pop(key, None)
-            self._login_attempts.pop(f"user:{self.uid}", None)
+            attempts.pop(key, None)
+            attempts.pop(f"user:{self.uid}", None)
 
             if needs_upgrade:
                 # Opportunistically migrate plaintext passwords on successful login.
@@ -481,6 +517,7 @@ class User:
             _record_failed_attempt(candidate_key)
         return False
 
+    @atomic_mutation
     def register(
         self,
         name=None,
@@ -610,6 +647,7 @@ class User:
             _save_users(u)
             return int(next_uid)
 
+    @atomic_mutation
     def recover_password(self, name, email, phone, new_password):
         name_s = str(name or "").strip()
         if not name_s:
@@ -691,6 +729,7 @@ class User:
             "next_charge_at": str(row.get("next_charge_at", "")).strip(),
         }
 
+    @atomic_mutation
     def set_subscription_plan(self, user_id, plan_code):
         allowed = {"basic", "regular", "business", "premium_plus"}
         plan_s = str(plan_code or "").strip().lower()
@@ -737,6 +776,7 @@ class User:
             return None
         return self.get_user_by_id(int(hit.iloc[0]["user_id"]))
 
+    @atomic_mutation
     def update_billing_subscription(
         self,
         user_id,
@@ -863,6 +903,7 @@ class User:
             _save_users(out)
             return ok
 
+    @atomic_mutation
     def update_profile(
         self,
         user_id,
@@ -936,6 +977,7 @@ class User:
             _save_users(out)
             return ok
 
+    @atomic_mutation
     def change_password(self, user_id, current_password, new_password):
         uid = int(user_id)
         new_pw = str(new_password or "")
@@ -965,6 +1007,7 @@ class User:
             _save_users(out)
             return ok
 
+    @atomic_mutation
     def set_password_by_user_id(self, user_id, new_password):
         pw_s = str(new_password or "")
         if len(pw_s) < 10 or not any(ch.isalpha() for ch in pw_s) or not any(ch.isdigit() for ch in pw_s):
@@ -1279,6 +1322,7 @@ class Business:
             return None
         return row
 
+    @atomic_mutation
     def add(
         self,
         owner_user_id,
@@ -1338,6 +1382,7 @@ class Business:
             self._save(out)
         return int(next_id)
 
+    @atomic_mutation
     def update(self, business_id, owner_user_id=None, **changes):
         if owner_user_id is None:
             return False
@@ -1656,6 +1701,7 @@ class BusinessEmployee:
             return None
         return self.get(int(hit.iloc[0]["employee_id"]), business_id=business_id)
 
+    @atomic_mutation
     def add(
         self,
         business_id,
@@ -1705,6 +1751,7 @@ class BusinessEmployee:
             self._save(out)
         return int(next_id)
 
+    @atomic_mutation
     def update(self, employee_id, business_id=None, **changes):
         with _file_lock(self.path):
             df = self._load()
@@ -1757,6 +1804,7 @@ class BusinessEmployee:
             self._save(df)
         return True
 
+    @atomic_mutation
     def delete(self, employee_id, business_id=None):
         with _file_lock(self.path):
             df = self._load()
@@ -1773,6 +1821,7 @@ class BusinessEmployee:
 
 
 class Admin1957:
+    _login_attempts = {}
     cols = ["id", "name", "email", "phone", "password", "position", "created_at"]
     allowed_positions = {"owner", "manager", "support"}
 
@@ -1864,6 +1913,7 @@ class Admin1957:
             )
         return out
 
+    @atomic_mutation
     def register(self, name=None, email=None, phone=None, password=None, position=None):
         name_s = str(name or "").strip()
         email_s = self._normalize_email(email)
@@ -1916,6 +1966,7 @@ class Admin1957:
                 self._save(out)
         return self.get_admin_by_id(admin_id)
 
+    @atomic_mutation
     def update_admin(self, admin_id, name=None, email=None, phone=None, position=None):
         try:
             aid = int(admin_id)
@@ -1974,6 +2025,7 @@ class Admin1957:
                 self._save(out)
         return self.get_admin_by_id(aid)
 
+    @atomic_mutation
     def delete_admin(self, admin_id):
         try:
             aid = int(admin_id)
@@ -2004,6 +2056,7 @@ class Admin1957:
                 self._save(out)
         return True
 
+    @atomic_mutation
     def set_password(self, admin_id, new_password):
         try:
             aid = int(admin_id)
@@ -2033,36 +2086,45 @@ class Admin1957:
                 self._save(out)
         return self.get_admin_by_id(aid)
 
+    @atomic_mutation
     def login(self, identifier, password):
-        ident_s = str(identifier or "").strip()
-        key = ident_s.lower()
-        pw_s = str(password or "")
-        if not ident_s or not pw_s:
+        ident = str(identifier or "").strip()
+        password = str(password or "")
+        if not ident or not password:
             return False
-
-        df = self._load()
-        name_col = df["name"].astype(str).str.strip()
-        email_col = df["email"].astype(str).str.strip().str.lower()
-        phone_digits = re.sub(r"\D", "", ident_s)
-        phone_col = df["phone"].astype(str).str.replace(r"\D", "", regex=True)
-        candidates = df[
-            (name_col == ident_s)
-            | (email_col == key)
-            | ((phone_digits != "") & (phone_col == phone_digits))
+        attempts = security_state("admin_login", self._login_attempts)
+        now = time.time()
+        ident_key = "ident:" + ident.lower()
+        if now < float(attempts.get(ident_key, {}).get("until", 0)):
+            return False
+        frame = self._load()
+        phone_digits = re.sub(r"\D", "", ident)
+        candidates = frame[
+            (frame["name"].astype(str).str.strip().str.lower() == ident.lower())
+            | (frame["email"].astype(str).str.strip().str.lower() == ident.lower())
+            | ((phone_digits != "") & (frame["phone"].astype(str).str.replace(r"\D", "", regex=True) == phone_digits))
         ]
-        if candidates.empty:
+        keys = [ident_key] + [f"admin:{int(row['id'])}" for _, row in candidates.iterrows()]
+        if any(now < float(attempts.get(key, {}).get("until", 0)) for key in keys):
             return False
-
-        for idx, row in candidates.iterrows():
-            ok, needs_upgrade = _verify_password(str(row.get("password", "")), pw_s)
-            if not ok:
+        for index, row in candidates.iterrows():
+            valid, upgrade = _verify_password(str(row.get("password", "")), password)
+            if not valid:
                 continue
             self.admin_id = int(row["id"])
             self.name = str(row.get("name", "")).strip()
-            if needs_upgrade:
-                df.at[idx, "password"] = _hash_password(pw_s)
-                self._save(df)
+            if upgrade:
+                frame.at[index, "password"] = _hash_password(password)
+                self._save(frame)
+            for key in keys:
+                attempts.pop(key, None)
             return True
+        for key in keys:
+            record = attempts.get(key, {"count": 0, "until": 0.0})
+            record["count"] += 1
+            if record["count"] >= 5:
+                record["until"] = now + min(300, 2 ** min(9, record["count"] - 5))
+            attempts[key] = record
         return False
 
     def get_admin_by_id(self, admin_id):
@@ -2236,6 +2298,7 @@ class Coupon:
             return None
         return self._serialize_record(matches.iloc[0].to_dict())
 
+    @atomic_mutation
     def create(
         self,
         code=None,
@@ -2279,6 +2342,7 @@ class Coupon:
         self._save(out)
         return self.get_by_code(code_s)
 
+    @atomic_mutation
     def deactivate(self, coupon_id):
         try:
             cid = int(coupon_id)
@@ -2293,6 +2357,7 @@ class Coupon:
         self._save(df)
         return self._serialize_record(df.loc[mask].iloc[0].to_dict())
 
+    @atomic_mutation
     def mark_used(self, coupon_id):
         try:
             cid = int(coupon_id)
@@ -2306,6 +2371,8 @@ class Coupon:
         idx = df.index[mask][0]
         used_count = int(float(df.at[idx, "used_count"] or 0))
         max_uses = int(float(df.at[idx, "max_uses"] or 1))
+        if not self._bool_value(df.at[idx, "is_active"]) or used_count >= max_uses:
+            raise ValueError("Coupon is no longer available.")
         next_used = used_count + 1
         df.at[idx, "used_count"] = next_used
         if next_used >= max_uses:
@@ -2315,7 +2382,7 @@ class Coupon:
 
 
 class Transaction:
-    cols = ["txn_id", "date", "type", "amount", "account_id", "category", "note", "user_id"]
+    cols = ["txn_id", "date", "type", "amount", "account_id", "category", "note", "user_id", "origin"]
 
     def __init__(self, path=T_PATH):
         self.path = path
@@ -2418,16 +2485,17 @@ class Transaction:
         cat = str(category).strip()
         try:
             src_account_id = int(float(account_id))
-        except Exception:
-            return []
-        try:
-            amt = float(amount)
-        except Exception:
-            return []
-        if not math.isfinite(amt):
-            return []
-        if amt == 0:
-            return []
+            amt = money_value(amount)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("A valid account and amount are required.")
+        if not math.isfinite(amt) or amt <= 0:
+            raise ValueError("Amount must be a finite positive number.")
+        if t not in {"income", "expense", "transfer"}:
+            raise ValueError("Invalid transaction type.")
+        if not Account().get(src_account_id, user_id=user_id):
+            raise ValueError("Account was not found for this user.")
+        if is_bank_linked_account(user_id, src_account_id):
+            raise ValueError("Bank-linked accounts use bank snapshots. Record manual transactions in a separate manual account.")
 
         if t == "income":
             # Income always increases selected account balance.
@@ -2456,7 +2524,7 @@ class Transaction:
         row = acc.get(int(account_id), user_id=user_id)
         if not row:
             return False
-        new_balance = float(row["balance"]) + float(delta)
+        new_balance = round(float(row["balance"]) + float(delta), 2)
         return acc.update(int(account_id), user_id=user_id, balance=new_balance)
 
     def _apply_postings(self, user_id, postings, reverse=False):
@@ -2468,7 +2536,8 @@ class Transaction:
         for account_id, delta in net.items():
             if delta == 0:
                 continue
-            self._apply_account_balance_delta(user_id=user_id, account_id=account_id, delta=delta)
+            if not self._apply_account_balance_delta(user_id=user_id, account_id=account_id, delta=delta):
+                raise ValueError("Account balance could not be updated.")
 
     def by_user(self, user_id):
         if user_id is None:
@@ -2515,6 +2584,7 @@ class Transaction:
         except ValueError:
             raise ValueError("Invalid date. Use YYYY-MM-DD HH:MM or YYYY-MM-DD HH:MM:SS.")
 
+    @atomic_mutation
     def add(self, t_type, amount, account_id, category="", note="", user_id=None, date_value=None):
         if user_id is None:
             raise ValueError(" Need To login")
@@ -2540,12 +2610,14 @@ class Transaction:
                 "category": category,
                 "note": note,
                 "user_id": int(user_id),
+                "origin": "manual",
             }
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
             self._save(df)
         self._apply_postings(user_id=user_id, postings=postings, reverse=False)
         return next_id
 
+    @atomic_mutation
     def update(self, txn_id, user_id=None, **changes):
         if user_id is None:
             return False
@@ -2559,6 +2631,10 @@ class Transaction:
 
             i = idx[0]
             old_type = str(df.at[i, "type"])
+            if str(df.at[i, "origin"]).strip().lower() == "bank":
+                raise ValueError("Bank-imported records are managed by bank sync and cannot be edited manually.")
+            if old_type.strip().lower() == "transfer":
+                raise ValueError("Transfer history cannot be edited. Record a reversing transfer instead.")
             old_amount = float(df.at[i, "amount"])
             old_account_id = int(df.at[i, "account_id"])
             old_category = str(df.at[i, "category"])
@@ -2605,6 +2681,7 @@ class Transaction:
         self._apply_postings(user_id=user_id, postings=net_postings, reverse=False)
         return True
 
+    @atomic_mutation
     def delete(self, txn_id, user_id=None):
         if user_id is None:
             return False
@@ -2616,6 +2693,10 @@ class Transaction:
             if hit.empty:
                 return False
             r = hit.iloc[0]
+            if str(r.get("origin", "")).strip().lower() == "bank":
+                raise ValueError("Bank-imported records are managed by bank sync and cannot be deleted manually.")
+            if str(r["type"]).strip().lower() == "transfer":
+                raise ValueError("Transfer history cannot be deleted. Record a reversing transfer instead.")
             old_postings = self._build_postings(
                 user_id=user_id,
                 t_type=r["type"],
@@ -2704,10 +2785,12 @@ class Account:
         out["balance"] = out["balance"].fillna(0.0).astype(float)
         return out
 
+    @atomic_mutation
     def add(self, account_name, account_type, group_name, balance=0.0, user_id=None):
         if user_id is None:
             raise ValueError("Need to login")
         account_type = self._normalize_account_type_value(account_type)
+        balance = money_value(balance)
         with _file_lock(self.path):
             df = self._load()
             next_id = self._next_id(df)
@@ -2744,9 +2827,12 @@ class Account:
         r["balance"] = float(r["balance"]) if pd.notna(r["balance"]) else 0.0
         return r
 
-    def update(self, account_id, user_id=None, **changes):
+    @atomic_mutation
+    def update(self, account_id, user_id=None, bank_snapshot=False, **changes):
         if user_id is None:
             return False
+        if not bank_snapshot and {"balance", "account_type"}.intersection(changes) and is_bank_linked_account(user_id, account_id):
+            raise ValueError("Bank-linked account balances and types are managed by bank sync.")
         with _file_lock(self.path):
             before = self.get(account_id, user_id=user_id)
             if not before:
@@ -2766,7 +2852,7 @@ class Account:
                 if k == "account_type":
                     v = self._normalize_account_type_value(v)
                 if k == "balance":
-                    v = float(v)
+                    v = money_value(v)
                 df.at[i, k] = v
 
             self._save(df)
@@ -2787,9 +2873,12 @@ class Account:
             )
         return True
 
+    @atomic_mutation
     def delete(self, account_id, user_id=None):
         if user_id is None:
             return False
+        if is_bank_linked_account(user_id, account_id):
+            raise ValueError("Disconnect this bank in Settings before removing its local account.")
         with _file_lock(self.path):
             df = self._load()
             aid = pd.to_numeric(df["account_id"], errors="coerce")
@@ -2797,6 +2886,9 @@ class Account:
             out = df[~((aid == int(account_id)) & (uid == int(user_id)))].copy()
             if len(out) == len(df):
                 return False
+            history = Transaction().by_user(user_id)
+            if not history.empty and (pd.to_numeric(history["account_id"], errors="coerce") == int(account_id)).any():
+                raise ValueError("This account has transaction history. Keep it to preserve your records.")
             self._save(out)
         Category().delete_auto_credit_category(
             user_id=int(user_id),
@@ -2804,14 +2896,17 @@ class Account:
         )
         return True
 
+    @atomic_mutation
     def transfer(self, from_account_id, to_account_id, amount, user_id=None, note="", date_value=None):
         if user_id is None:
             return False
         if int(from_account_id) == int(to_account_id):
             return False
-        amt = float(amount)
-        if amt <= 0:
+        amt = money_value(amount)
+        if not math.isfinite(amt) or amt <= 0:
             return False
+        if is_bank_linked_account(user_id, from_account_id) or is_bank_linked_account(user_id, to_account_id):
+            raise ValueError("Record transfers between manual accounts only. Bank-linked accounts follow their bank snapshots.")
 
         with _file_lock(self.path):
             df = self._load()
@@ -2833,8 +2928,8 @@ class Account:
             from_balance = float(ndf.at[i_from, "balance"]) if pd.notna(ndf.at[i_from, "balance"]) else 0.0
             to_balance = float(ndf.at[i_to, "balance"]) if pd.notna(ndf.at[i_to, "balance"]) else 0.0
 
-            df.at[i_from, "balance"] = from_balance + self._movement_delta(from_type, amt, "out")
-            df.at[i_to, "balance"] = to_balance + self._movement_delta(to_type, amt, "in")
+            df.at[i_from, "balance"] = round(from_balance + self._movement_delta(from_type, amt, "out"), 2)
+            df.at[i_to, "balance"] = round(to_balance + self._movement_delta(to_type, amt, "in"), 2)
             self._save(df)
 
         # Record transfer history as a neutral transaction row.
@@ -2941,6 +3036,7 @@ class Category:
             names = df["category_name"].astype(str).str.strip().str.lower()
         return (names == key).any()
 
+    @atomic_mutation
     def add(self, category_name, user_id=None, is_auto=False, linked_account_id=None):
         if user_id is None:
             raise ValueError("Need to login")
@@ -2977,6 +3073,7 @@ class Category:
         r["linked_account_id"] = int(r["linked_account_id"]) if pd.notna(r["linked_account_id"]) else 0
         return r
 
+    @atomic_mutation
     def update(self, category_id, user_id=None, **changes):
         if user_id is None:
             return False
@@ -3001,6 +3098,7 @@ class Category:
             self._save(df)
             return True
 
+    @atomic_mutation
     def delete(self, category_id, user_id=None):
         if user_id is None:
             return False
@@ -3019,6 +3117,7 @@ class Category:
             self._save(out)
             return True
 
+    @atomic_mutation
     def upsert_auto_credit_category(self, user_id, linked_account_id, category_name):
         with _file_lock(self.path):
             df = self._load()
@@ -3048,6 +3147,7 @@ class Category:
             self._save(df)
             return int(next_id)
 
+    @atomic_mutation
     def delete_auto_credit_category(self, user_id, linked_account_id):
         with _file_lock(self.path):
             df = self._load()
@@ -3061,6 +3161,7 @@ class Category:
             self._save(out)
             return True
 
+    @atomic_mutation
     def sync_auto_from_accounts(self, user_id):
         if user_id is None:
             return
@@ -3082,6 +3183,7 @@ class Category:
                     linked_account_id=account_id,
                 )
 
+    @atomic_mutation
     def ensure_default_categories(self, user_id):
         if user_id is None:
             return
@@ -3110,6 +3212,7 @@ class Category:
                 self._save(df)
 
     # Backward-compatibility alias for older callers.
+    @atomic_mutation
     def seed_defaults_for_user(self, user_id):
         self.ensure_default_categories(user_id)
 
@@ -3166,6 +3269,7 @@ class DailyBalance:
         out["balance"] = out["balance"].fillna(0.0).astype(float)
         return out
 
+    @atomic_mutation
     def auto_snapshot_from_accounts(self, user_id, accounts_df=None, date_value=None, type_name="auto_eod"):
         if user_id is None:
             return 0
@@ -3204,6 +3308,7 @@ class DailyBalance:
                 self._save(db_df)
             return len(rows)
 
+    @atomic_mutation
     def add(self, account_id, balance, type_name, user_id=None, date_value=None):
         if user_id is None:
             raise ValueError("Need to login")
@@ -3239,6 +3344,7 @@ class DailyBalance:
         r["balance"] = float(r["balance"]) if pd.notna(r["balance"]) else 0.0
         return r
 
+    @atomic_mutation
     def update(self, dailyb_id, user_id=None, **changes):
         if user_id is None:
             return False
@@ -3264,6 +3370,7 @@ class DailyBalance:
             self._save(df)
             return True
 
+    @atomic_mutation
     def delete(self, dailyb_id, user_id=None):
         if user_id is None:
             return False

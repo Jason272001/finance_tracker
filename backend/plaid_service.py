@@ -18,6 +18,12 @@ PLAID_BASE_URLS = {
 }
 
 
+class PlaidRequestError(RuntimeError):
+    def __init__(self, message: str, code: str = ""):
+        super().__init__(message)
+        self.code = code
+
+
 def plaid_is_configured() -> bool:
     return bool(PLAID_CLIENT_ID and PLAID_SECRET and PLAID_ENV in PLAID_BASE_URLS)
 
@@ -48,13 +54,15 @@ def _plaid_post(path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
+        error_code = ""
         detail = exc.read().decode("utf-8", errors="ignore")
         try:
             payload = json.loads(detail)
             message = payload.get("error_message") or payload.get("display_message") or detail
+            error_code = str(payload.get("error_code") or "")
         except Exception:
             message = detail or str(exc)
-        raise RuntimeError(message or "Plaid request failed.") from exc
+        raise PlaidRequestError(message or "Plaid request failed.", error_code) from exc
 
 
 def create_link_token(user_id: int, username: str, webhook_url: Optional[str] = None) -> Dict[str, Any]:
@@ -77,6 +85,10 @@ def exchange_public_token(public_token: str) -> Dict[str, Any]:
     return _plaid_post("/item/public_token/exchange", {"public_token": public_token})
 
 
+def remove_item(access_token: str) -> Dict[str, Any]:
+    return _plaid_post("/item/remove", {"access_token": access_token})
+
+
 def get_item(access_token: str) -> Dict[str, Any]:
     return _plaid_post("/item/get", {"access_token": access_token})
 
@@ -92,11 +104,34 @@ def get_institution(institution_id: str) -> Dict[str, Any]:
 
 
 def get_accounts(access_token: str) -> Dict[str, Any]:
-    return _plaid_post("/accounts/balance/get", {"access_token": access_token})
+    # Use the cached balances supplied with Accounts rather than a paid real-time
+    # Balance request on every click. UI labels these as last-known balances.
+    return _plaid_post("/accounts/get", {"access_token": access_token})
 
 
 def transactions_sync(access_token: str, cursor: Optional[str] = None) -> Dict[str, Any]:
-    payload: Dict[str, Any] = {"access_token": access_token, "count": 100}
-    if cursor:
-        payload["cursor"] = cursor
-    return _plaid_post("/transactions/sync", payload)
+    for attempt in range(3):
+        result: Dict[str, Any] = {"added": [], "modified": [], "removed": []}
+        next_cursor = cursor
+        try:
+            for _ in range(100):
+                payload: Dict[str, Any] = {"access_token": access_token, "count": 500}
+                if next_cursor:
+                    payload["cursor"] = next_cursor
+                page = _plaid_post("/transactions/sync", payload)
+                for kind in ("added", "modified", "removed"):
+                    result[kind].extend(page.get(kind) or [])
+                following = page.get("next_cursor")
+                if not isinstance(following, str) or not following:
+                    raise RuntimeError("Plaid returned an invalid sync cursor")
+                if page.get("has_more") and following == next_cursor:
+                    raise RuntimeError("Plaid sync pagination did not advance")
+                next_cursor = following
+                if not page.get("has_more"):
+                    result["next_cursor"] = next_cursor
+                    return result
+            raise RuntimeError("Bank sync exceeded its page limit; no local cursor was advanced")
+        except PlaidRequestError as error:
+            if error.code != "TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION" or attempt == 2:
+                raise
+    raise RuntimeError("Bank sync could not be completed")

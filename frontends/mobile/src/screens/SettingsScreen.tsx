@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Image, Linking, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Button } from '../components/Button';
@@ -11,12 +11,40 @@ import { WEB_BASE_URL } from '../constants/config';
 import { useTheme } from '../theme/ThemeContext';
 import { formatPlanName, formatShortDate } from '../utils/format';
 import { spacing, typography } from '../theme/theme';
+import { financeApi, getApiErrorInfo } from '../services/api';
+import { BankConnectionRecord } from '../types/app';
 
 export const SettingsScreen: React.FC = () => {
   const { theme, isDark, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
   const { language, locale, options, setLanguage, t } = useLanguage();
   const navigation = useNavigation<any>();
+  const [banks, setBanks] = useState<BankConnectionRecord[]>([]);
+  const [bankStatus, setBankStatus] = useState('');
+  const [disconnecting, setDisconnecting] = useState(false);
+  const loadBanks = useCallback(async () => {
+    if (!user?.user_id) return;
+    try {
+      setBanks(await financeApi.getBankConnections(user.user_id));
+      setBankStatus('');
+    } catch (error) {
+      setBankStatus(getApiErrorInfo(error).message);
+    }
+  }, [user?.user_id]);
+  useEffect(() => { loadBanks(); }, [loadBanks]);
+  const disconnectBank = async (connectionId: number) => {
+    if (!user?.user_id) return;
+    setDisconnecting(true);
+    try {
+      await financeApi.disconnectBank(user.user_id, connectionId);
+      await loadBanks();
+      setBankStatus('Bank disconnected. Imported history is retained.');
+    } catch (error) {
+      setBankStatus(getApiErrorInfo(error).message);
+    } finally {
+      setDisconnecting(false);
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -70,12 +98,30 @@ export const SettingsScreen: React.FC = () => {
       </Card>
 
       <Card>
+        <Text style={[styles.sectionTitle, { color: theme.heading }]}>Connected banks</Text>
+        <Text style={[styles.preferenceText, { color: theme.muted }]}>Disconnect to stop future sync and remove stored connection credentials. Previously imported records and last-known balances remain.</Text>
+        {!banks.length ? <Text style={[styles.preferenceText, { color: theme.muted }]}>No banks connected.</Text> : null}
+        {banks.map((bank) => (
+          <View key={bank.connection_id} style={styles.buttonStack}>
+            <Text style={{ color: theme.text }}>{bank.institution_name || 'Connected bank'}</Text>
+            <Button title="Disconnect bank" variant="danger" disabled={disconnecting || !bank.connection_id}
+              onPress={() => Alert.alert('Disconnect bank?', 'Future sync will stop. Imported history is retained.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Disconnect', style: 'destructive', onPress: () => disconnectBank(Number(bank.connection_id)) },
+              ])} />
+          </View>
+        ))}
+        {bankStatus ? <Text accessibilityLiveRegion="polite" style={[styles.preferenceText, { color: theme.muted }]}>{bankStatus}</Text> : null}
+      </Card>
+
+      <Card>
         <Text style={[styles.sectionTitle, { color: theme.heading }]}>{t('settings.websiteActions')}</Text>
         <View style={styles.buttonStack}>
           <Button title={t('settings.openWebDashboard')} onPress={openWebDashboard} />
           <Button title={t('settings.manageProfile')} variant="outline" onPress={openWebDashboard} />
           <Button title={t('settings.openSupportChat')} variant="secondary" onPress={() => navigation.navigate('Support')} />
           <Button title={t('settings.contactSupport')} variant="outline" onPress={contactSupport} />
+          <Button title="Request account deletion" variant="outline" onPress={() => Linking.openURL(`${WEB_BASE_URL}/delete-account`)} />
           <Button
             title={t('settings.signOut')}
             variant="danger"

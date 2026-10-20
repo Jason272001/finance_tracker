@@ -4,7 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>KeeperBMA - Choose Plan</title>
-  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; block-all-mixed-content" />
+  <script>
+    // Keep the production HTTPS policy while permitting local HTTP development.
+    if (!["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname)) {
+      const policy = document.createElement("meta");
+      policy.httpEquiv = "Content-Security-Policy";
+      policy.content = "upgrade-insecure-requests; block-all-mixed-content";
+      document.head.appendChild(policy);
+    }
+  </script>
   <link rel="icon" type="image/png" href="./assets/keeperbma-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -76,6 +84,7 @@
         </div>
       </div>
 
+      <p class="callout">Creator reports and CSV export are included in Basic and above. Business profiles and employee records are available; POS, inventory, website publishing, AI business tools, and image optimization are still planned. Choose a plan based on features available today.</p>
       <div class="plan-grid">
         <article class="plan-option" data-plan="basic" data-plan-segment="personal">
           <h3>Basic</h3>
@@ -98,9 +107,9 @@
           <p class="plan-price" data-plan-price="business">$25 / month or $250 / year</p>
           <ul class="plan-mini-features">
             <li>1 business workspace</li>
-            <li>1 business page + 1 starter website</li>
+            <li>Planned: 1 business page + 1 starter website</li>
             <li>Employee management</li>
-            <li>Sales and purchase foundation</li>
+            <li>Planned: Sales and purchase foundation</li>
           </ul>
           <label for="planCouponBusiness">Coupon Code (Optional)</label>
           <input id="planCouponBusiness" class="plan-coupon-input" data-coupon-plan="business" placeholder="Coupon for Business" maxlength="64" />
@@ -112,9 +121,9 @@
           <p class="plan-price" data-plan-price="premium_plus">$50 / month or $500 / year</p>
           <ul class="plan-mini-features">
             <li>Everything in Business</li>
-            <li>AI business tools</li>
-            <li>Image optimization</li>
-            <li>Advanced reports</li>
+            <li>Planned: AI business tools</li>
+            <li>Planned: Image optimization</li>
+            <li>Planned: Advanced reports</li>
           </ul>
           <label for="planCouponPremium">Coupon Code (Optional)</label>
           <input id="planCouponPremium" class="plan-coupon-input" data-coupon-plan="premium_plus" placeholder="Coupon for Premium Plus" maxlength="64" />
@@ -126,8 +135,8 @@
           <p class="plan-price" data-plan-price="diamond">$70 / month or $700 / year</p>
           <ul class="plan-mini-features">
             <li>Everything in Premium Plus</li>
-            <li>Full website bundle included</li>
-            <li>Advanced employee roles</li>
+            <li>Planned: Full website bundle included</li>
+            <li>Planned: Advanced employee roles</li>
             <li>Highest-tier analytics</li>
           </ul>
           <label for="planCouponDiamond">Coupon Code (Optional)</label>

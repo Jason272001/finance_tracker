@@ -107,7 +107,7 @@ export const AccountsScreen: React.FC = () => {
   }, [filteredAccounts]);
 
   const accountOptions = useMemo(
-    () => accounts.map((account) => ({ value: String(account.account_id), label: account.account_name })),
+    () => accounts.filter((account) => !account.bank_linked).map((account) => ({ value: String(account.account_id), label: account.account_name })),
     [accounts]
   );
 

@@ -1,11 +1,13 @@
 import json
+import argparse
+import hashlib
 import os
 import shutil
 from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -17,7 +19,11 @@ PGHOST = os.getenv("PGHOST", "127.0.0.1")
 PGPORT = int(os.getenv("PGPORT", "5432"))
 PGDATABASE = os.getenv("PGDATABASE", "keeperbma")
 PGUSER = os.getenv("PGUSER", "postgres")
-PGPASSWORD = os.getenv("PGPASSWORD", "postgres")
+PGPASSWORD = os.getenv("PGPASSWORD", "")
+
+APP_TABLES = ["users", "transactions", "accounts", "daily_balances", "categories", "admin_1957", "coupons",
+              "businesses", "business_employees", "bank_connections", "linked_bank_accounts", "imported_bank_transactions",
+              "stripe_processed_events", "billing_checkout_attempts", "billing_cancellations"]
 
 
 def get_engine():
@@ -35,6 +41,10 @@ def backup_csv_files(target):
         "accounts.csv",
         "daily_balances.csv",
         "category.csv",
+        "admin_1957.csv",
+        "coupons.csv",
+        "businesses.csv",
+        "business_employees.csv",
     ]
     out = []
     target_csv = target / "csv"
@@ -48,23 +58,39 @@ def backup_csv_files(target):
     return out
 
 
-def backup_postgres_tables(target):
-    engine = get_engine()
-    insp = inspect(engine)
-    tables = [t for t in ["users", "transactions", "accounts", "daily_balances", "categories"] if insp.has_table(t)]
+def backup_postgres_tables(target, engine=None):
+    owns_engine = engine is None
+    if owns_engine:
+        engine = get_engine()
     out = []
     target_db = target / "postgres"
     target_db.mkdir(parents=True, exist_ok=True)
-    for t in tables:
-        df = pd.read_sql_table(t, con=engine)
-        dst = target_db / f"{t}.csv"
-        df.to_csv(dst, index=False)
-        out.append(str(dst))
+    try:
+        with engine.connect() as connection:
+            if engine.dialect.name == "postgresql":
+                connection = connection.execution_options(isolation_level="REPEATABLE READ")
+            with connection.begin():
+                if engine.dialect.name == "postgresql":
+                    connection.execute(text("SET TRANSACTION READ ONLY"))
+                inspector = inspect(connection)
+                for table in APP_TABLES:
+                    if not inspector.has_table(table):
+                        continue
+                    frame = pd.read_sql_table(table, con=connection)
+                    destination = target_db / f"{table}.csv"
+                    frame.to_csv(destination, index=False)
+                    out.append(str(destination))
+    finally:
+        if owns_engine:
+            engine.dispose()
     return out
 
 
 def main():
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    parser = argparse.ArgumentParser(description="Create a confidential local backup; database failures return a nonzero exit status.")
+    parser.add_argument("--csv-only", action="store_true", help="Explicitly skip the SQL database for a CSV-only development backup")
+    args = parser.parse_args()
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     target = BACKUP_DIR / ts
     target.mkdir(parents=True, exist_ok=True)
 
@@ -72,7 +98,8 @@ def main():
     db_files = []
     db_error = None
     try:
-        db_files = backup_postgres_tables(target)
+        if not args.csv_only:
+            db_files = backup_postgres_tables(target)
     except Exception as e:
         db_error = str(e)
 
@@ -81,12 +108,17 @@ def main():
         "csv_backups": csv_files,
         "postgres_backups": db_files,
         "postgres_error": db_error,
+        "complete": db_error is None,
+        "sha256": {Path(path).relative_to(target).as_posix(): hashlib.sha256(Path(path).read_bytes()).hexdigest()
+                   for path in csv_files + db_files},
     }
     (target / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    print(f"[done] backup created: {target}")
     if db_error:
-        print(f"[warn] postgres backup skipped: {db_error}")
+        print(f"[failed] Incomplete backup at {target}; SQL database could not be exported. See manifest.json.")
+        return 1
+    print(f"[done] backup created: {target}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

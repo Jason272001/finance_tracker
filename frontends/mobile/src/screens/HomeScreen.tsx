@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { PieChart } from 'react-native-chart-kit';
 import { ArrowUpRight, CreditCard, ShieldCheck } from 'lucide-react-native';
 import { Card } from '../components/Card';
+import { CreatorReport } from '../components/CreatorReport';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { ModeSwitch } from '../components/ModeSwitch';
@@ -283,6 +284,8 @@ export const HomeScreen: React.FC = () => {
           <Text style={[styles.errorText, { color: theme.dangerStart }]}>{statusMessage}</Text>
         </Card>
       ) : null}
+
+      {!statusMessage ? <CreatorReport transactions={transactions} hasAccounts={accounts.length > 0} /> : null}
 
       <Card>
         <View style={styles.sectionHeader}>

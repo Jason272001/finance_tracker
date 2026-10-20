@@ -8,7 +8,7 @@ The Android app is a companion sign-in app for existing KeeperBMA users.
 
 - Sign in and use your account from Android
 - Billing and new subscriptions stay on the website
-- This helps us stay aligned with Google Play policy for digital subscriptions
+- This architecture alone does not establish compliance with Google Play payment policy.
 
 ## Current setup
 
@@ -60,12 +60,23 @@ The `.aab` file is what you upload to Google Play Console.
 
 ## Google Play guidance
 
-- Keep signup, billing, and subscription purchase on `keeperbma.com`
-- Use the Android app for sign-in and product usage
-- If billing is needed, direct users to the website rather than selling subscriptions inside the app
+- Verify the applicable Google Play Payments policy for each distribution region and any enrolled billing/link programs before changing purchase flows.
+- A consumption-only app may allow existing subscribers to sign in. Do not assume links to external subscription checkout are permitted everywhere.
+- Review the actual hosted Settings and billing routes as part of release testing: the companion loads the website, including its navigation.
+- Official reference: https://support.google.com/googleplay/android-developer/answer/10281818
+
+## Creator report update
+
+The remote website now includes a monthly income/expense report, income by category/source, monthly CSV export, creator category shortcuts, and workspace navigation. A separate public demo uses fictional data without API calls. Deploy the web changes to make them available to this remote-web companion; validate on an Android device before announcing availability. The separate Expo app under `frontends/mobile` also has a matching report, category shortcuts, report-text sharing and bank disconnection controls. Verify which implementation is currently published before building a release.
 
 ## Notes for developers
 
 - Do not commit `node_modules`
 - Do not commit Android local build outputs
 - Launcher icons and splash screens are already generated from KeeperBMA brand assets
+
+## Runtime security and CSV export
+
+Capacitor Android/core/CLI are pinned to 7.6.9 to fix GHSA-rvm3-566m-v7fv. Rebuild and redistribute the app to apply the native runtime patch. The website alone cannot patch installed Android runtime code.
+
+The local ReportExport plugin uses Android's document picker to save a CSV to a location the user chooses, without broad storage permissions. A new signed Android bundle is needed to add that plugin to existing installs. Older companions receive an explicit browser/update fallback. See TESTING.md and RELEASE_CHECKLIST.md at the repository root.

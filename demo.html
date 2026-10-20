@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Try KeeperBMA — creator income demo</title><link rel="canonical" href="https://keeperbma.com/demo.html"><link rel="icon" href="./assets/keeperbma-icon.png"><meta name="description" content="Try a sample creator income and expense report. No signup or bank connection required.">
+<link rel="stylesheet" href="./frontends/web/styles.css?v=45"></head>
+<body><main class="page demo-page"><header class="card"><h1>See what your side hustle keeps</h1>
+<p>Explore a monthly report with fictional USD income and expenses. No signup, payment, or bank connection required.</p>
+<p>This demo is temporary: changes reset when you reload. Your real account is separate.</p>
+<div class="row"><a href="./">Back to KeeperBMA</a><a href="./plans.html">See plans</a><button id="shareDemo" class="secondary" type="button">Share this demo</button></div>
+<p id="shareDemoStatus" role="status"></p></header>
+<section class="card"><h2>Try recording a sample transaction</h2>
+<p>Enter fictional data only. This example stays in this tab and never reaches your account.</p>
+<form id="demoEntry" class="row">
+<label>Type <select id="demoType"><option value="income">Income</option><option value="expense">Expense</option></select></label>
+<label>Amount (USD) <input id="demoAmount" type="number" step="0.01" min="0.01" max="10000000" required placeholder="50.00"></label>
+<label>Source or category <input id="demoSource" maxlength="120" required placeholder="Sponsorships"></label>
+<button type="submit">Add sample transaction</button><button type="button" id="resetDemo" class="secondary">Reset sample data</button>
+</form><p id="demoEntryStatus" role="status"></p></section>
+<div id="demoWorkspace"></div></main>
+<script src="./frontends/web/creator-tools.js?v=1"></script><script src="./frontends/web/demo.js?v=1"></script></body></html>

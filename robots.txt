@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /auth
+Disallow: /settings
+Disallow: /payment
+Disallow: /admin-
+Disallow: /kmak/
+Sitemap: https://keeperbma.com/sitemap.xml

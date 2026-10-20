@@ -1,11 +1,19 @@
+# Free development blueprint. Before storing customer data, select a non-expiring
+# production database and verified backups. Render free Postgres expires in 30 days:
+# https://render.com/docs/free
+# Free Render web services also block standard outbound SMTP ports; use the
+# optional HTTPS recovery-email provider or a host that permits your SMTP service.
 services:
   - type: web
     name: keeperbma-backend
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements-api.txt
     startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /ready
     envVars:
+      - key: API_TOKEN_SECRET
+        generateValue: true
       - key: DB_BACKEND
         value: postgres
       - key: DATABASE_URL

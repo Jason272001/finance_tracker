@@ -1,0 +1,12 @@
+{
+  "name": "keeperbma-web-checks",
+  "private": true,
+  "scripts": {
+    "test": "node --experimental-strip-types --test tests/creator-tools.test.cjs tests/creator-native.test.cjs",
+    "test:e2e": "playwright test",
+    "check:web": "node --check frontends/web/web.js && node --check frontends/web/creator-tools.js && node --check frontends/web/demo.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1"
+  }
+}

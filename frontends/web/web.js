@@ -1,5 +1,23 @@
 const $ = (id) => document.getElementById(id);
 
+// Initialize navigation immediately; an API or third-party script must not gate it.
+const landingMenuButton = $("landingMenuToggle");
+const landingMenuLinks = $("landingLinks");
+if (landingMenuButton && landingMenuLinks) {
+  landingMenuButton.parentElement.classList.add("has-menu-script");
+  const setMenuOpen = (open) => {
+    landingMenuButton.setAttribute("aria-expanded", String(open));
+    landingMenuLinks.classList.toggle("is-open", open);
+  };
+  landingMenuButton.onclick = () => setMenuOpen(landingMenuButton.getAttribute("aria-expanded") !== "true");
+  landingMenuLinks.addEventListener("click", (event) => {
+    if (event.target.closest("a")) setMenuOpen(false);
+  });
+  landingMenuLinks.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") { setMenuOpen(false); landingMenuButton.focus(); }
+  });
+}
+
 let state = {
   apiBase: "https://api.keeperbma.com",
   authToken: "",
@@ -10,6 +28,7 @@ let state = {
   accounts: [],
   categories: [],
   tx: [],
+  transactionsLoaded: false,
   daily: [],
   filteredTx: [],
   authMode: "login",
@@ -163,19 +182,19 @@ const I18N = {
     nav_features: "Features",
     nav_pricing: "Pricing",
     nav_about: "About",
-    landing_title: "All-in-One Finance Platform for Personal and Business Growth",
-    landing_subtitle: "KeeperBMA helps you track money, manage subscriptions, run business operations, and scale across web, mobile, and desktop with one secure backend.",
+    landing_title: "See what your side hustle actually earns",
+    landing_subtitle: "Track creator income, expenses, and monthly net income. Organize your earnings by source and see what you keep.",
     get_started: "Get Started",
     already_account: "I Already Have an Account",
     features_overview: "Features Overview",
     feat_manual_title: "Manual Tracking",
     feat_manual_desc: "Add income, expenses, accounts, and notes manually with full control.",
     feat_auto_title: "Auto Sync",
-    feat_auto_desc: "Connect bank accounts for automatic transaction sync and smart categorization.",
-    feat_pos_title: "POS & Inventory",
-    feat_pos_desc: "Business users get POS, inventory, sales records, and product analytics.",
-    feat_ai_title: "AI Insights",
-    feat_ai_desc: "Get forecasting, spending patterns, and category-level performance insights.",
+    feat_auto_desc: "Eligible plans can connect supported banks through Plaid. Availability depends on your bank and connection.",
+    feat_pos_title: "Monthly Net Income",
+    feat_pos_desc: "Compare recorded income and expenses for any month. Transfers stay out of your totals.",
+    feat_ai_title: "Reports You Can Export",
+    feat_ai_desc: "Review income by source and download a monthly CSV for your records.",
     pricing_plans: "Pricing Plans",
     pricing_hint: "Choose a plan to continue to Sign Up.",
     choose_basic: "Choose Basic",
@@ -185,7 +204,7 @@ const I18N = {
     choose_diamond: "Choose Diamond",
     select_plan_before_register: "Please choose a plan first from Pricing.",
     about_title: "About KeeperBMA",
-    about_desc: "KeeperBMA is designed for individuals, families, and business owners who need one scalable platform to manage finances securely across all devices.",
+    about_desc: "Built for creators, freelancers, and side hustlers who want a simpler way to organize income and expenses.",
     language: "Language",
     theme: "Theme",
     light_mode: "Light",
@@ -1428,12 +1447,13 @@ function renderBusinessModules() {
   const isLifetime = Boolean((state.subscription || {}).is_lifetime);
   box.innerHTML = "";
   BUSINESS_MODULES.forEach((item) => {
-    const enabled = Boolean(isLifetime || flags[item.key]);
+    const enabled = item.key === "employee_management" && Boolean(isLifetime || flags[item.key]);
+    const planned = item.key !== "employee_management";
     const card = document.createElement("article");
     card.className = `module-card ${enabled ? "enabled" : ""}`;
     card.innerHTML = `
       <h3>${escapeHtml(item.title)}</h3>
-      <span class="module-state ${enabled ? "enabled" : "locked"}">${escapeHtml(enabled ? t("business_included") : t("business_locked_badge"))}</span>
+      <span class="module-state ${enabled ? "enabled" : "locked"}">${escapeHtml(planned ? "Planned — not available yet" : (enabled ? t("business_included") : t("business_locked_badge")))}</span>
       <p>${escapeHtml(item.description)}</p>
     `;
     box.appendChild(card);
@@ -1717,7 +1737,7 @@ function populateTransferAccountSelects(selectedFrom = null, selectedTo = null) 
   toPlaceholder.textContent = t("transfer_to");
   toSel.appendChild(toPlaceholder);
 
-  const rows = [...state.accounts].sort((a, b) => String(a.account_name).localeCompare(String(b.account_name)));
+  const rows = state.accounts.filter((account) => !account.bank_linked).sort((a, b) => String(a.account_name).localeCompare(String(b.account_name)));
   rows.forEach((a) => {
     const fromOpt = document.createElement("option");
     fromOpt.value = a.account_id;
@@ -1762,23 +1782,24 @@ function renderAccountsTable() {
     const editBtn = document.createElement("button");
     editBtn.className = "secondary";
     editBtn.textContent = t("edit");
-    editBtn.disabled = !hasAppAccess();
+    editBtn.disabled = !hasAppAccess() || Boolean(a.bank_linked);
     editBtn.onclick = () => beginEditAccount(a);
     const delBtn = document.createElement("button");
     delBtn.className = "danger";
     delBtn.textContent = t("delete");
-    delBtn.disabled = !hasAppAccess();
+    delBtn.disabled = !hasAppAccess() || Boolean(a.bank_linked);
     delBtn.onclick = () => deleteAccount(a);
     actionTd.appendChild(editBtn);
     actionTd.appendChild(document.createTextNode(" "));
     actionTd.appendChild(delBtn);
+    if (a.bank_linked) actionTd.appendChild(document.createTextNode(" Bank snapshot; manage connection in Settings."));
     tr.appendChild(actionTd);
     tbody.appendChild(tr);
 
     const opt = document.createElement("option");
     opt.value = a.account_id;
     opt.textContent = a.account_name;
-    sel.appendChild(opt);
+    if (!a.bank_linked) sel.appendChild(opt);
   });
   if (currentTxAccount && [...sel.options].some((opt) => opt.value === currentTxAccount)) {
     sel.value = currentTxAccount;
@@ -1851,7 +1872,7 @@ function renderBankSync() {
       <div class="stack-item">
         <div class="stack-item-title">${escapeHtml(row.account_name || "Imported account")}</div>
         <div class="stack-item-meta">${escapeHtml(row.institution_name || "")}${row.mask ? ` • ****${escapeHtml(row.mask)}` : ""}</div>
-        <div class="stack-item-meta">Mapped to: ${escapeHtml(row.keeper_account_name || "Not mapped")} • Balance: ${fmtMoney(row.current_balance || 0)}</div>
+        <div class="stack-item-meta">Mapped to: ${escapeHtml(row.keeper_account_name || "Not mapped")} • Last-known bank balance: ${fmtMoney(row.current_balance || 0)}</div>
       </div>
     `).join("");
   }
@@ -1992,6 +2013,12 @@ function renderTransactions() {
     const actionTd = document.createElement("td");
     actionTd.className = "table-actions";
     actionTd.setAttribute("data-label", labels[7]);
+    if (String(r.type || "").toLowerCase() === "transfer" || r.origin === "bank") {
+      actionTd.textContent = r.origin === "bank" ? "Imported from bank. Updated by bank sync." : "Transfer history. To undo, record a reversing transfer.";
+      tr.appendChild(actionTd);
+      tbody.appendChild(tr);
+      return;
+    }
     const editBtn = document.createElement("button");
     editBtn.className = "secondary";
     editBtn.textContent = t("edit");
@@ -2191,7 +2218,43 @@ function upsertPieChart(id, chartKey, labelMap) {
   });
 }
 
+let creatorToolsView;
+function renderCreatorTools() {
+  if (!window.CreatorTools) return;
+  if (!creatorToolsView) {
+    const host = $("personalWorkspace") || $("appScreen");
+    creatorToolsView = window.CreatorTools.mount({
+      host,
+      transactions: () => state.tx,
+      isLoaded: () => state.transactionsLoaded,
+      categoryNames,
+      hasAccounts: () => state.accounts.length > 0,
+      money: fmtMoney,
+      addCategory: async (name) => {
+        if (!ensureAppAccessOrNotify()) throw new Error("An active subscription is required.");
+        await api("/categories", { method: "POST", body: JSON.stringify({ user_id: state.userId, category_name: name }) });
+        await refreshAll();
+      },
+    });
+    if (host && !$("workspaceNavigation")) {
+      const nav = document.createElement("nav");
+      nav.id = "workspaceNavigation";
+      nav.className = "card workspace-navigation";
+      nav.setAttribute("aria-label", "Personal workspace");
+      [["creatorReport", "Monthly report"], ["accountsTitle", "Accounts"], ["transactionsTitle", "Transactions"], ["summaryExportTitle", "Exports"]].forEach(([id, label]) => {
+        if (!$(id)) return;
+        const link = document.createElement("a");
+        link.href = `#${id}`;
+        link.textContent = label;
+        nav.append(link);
+      });
+      host.prepend(nav);
+    }
+  } else creatorToolsView.update();
+}
+
 function renderKpisAndCharts() {
+  renderCreatorTools();
   const txForSummary = state.filteredTx.length > 0 || $("sumStart").value || $("sumEnd").value
     ? state.filteredTx
     : state.tx;
@@ -2371,6 +2434,7 @@ async function refreshAll() {
   renderSubscription();
 
   if (!hasAppAccess()) {
+    state.transactionsLoaded = false;
     state.accounts = [];
     state.categories = [];
     state.tx = [];
@@ -2416,6 +2480,7 @@ async function refreshAll() {
   state.accounts = accountsRes.status === "fulfilled" ? (accountsRes.value || []) : [];
   state.categories = categoriesRes.status === "fulfilled" ? (categoriesRes.value || []) : [];
   state.tx = txRes.status === "fulfilled" ? (txRes.value || []) : [];
+  state.transactionsLoaded = txRes.status === "fulfilled";
   state.daily = dailyRes.status === "fulfilled" ? (dailyRes.value || []) : [];
   state.bankConnections = shouldFetchBank && bankConnectionsRes && bankConnectionsRes.status === "fulfilled"
     ? (bankConnectionsRes.value || [])
@@ -3011,9 +3076,8 @@ window.addEventListener("load", async () => {
   };
   $("btnDownloadPdf").onclick = downloadSummaryPdf;
 
-  $("landingScreen").classList.add("hidden");
+  // Keep the public landing page visible while session restoration waits for the API.
   $("appScreen").classList.add("hidden");
-  $("landingScreen").style.display = "none";
   $("appScreen").style.display = "none";
   state.authToken = String(localStorage.getItem("keeperbma_token") || "");
 

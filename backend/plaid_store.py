@@ -6,7 +6,7 @@ from typing import Any, Dict, Iterable, List, Optional
 
 import pandas as pd
 
-from core import _read_table, _write_table
+from core import _read_table, _write_table, atomic_mutation
 
 
 def _utc_now() -> str:
@@ -93,6 +93,7 @@ class PlaidStore:
     def _save_imported_transactions(self, df: pd.DataFrame) -> None:
         _write_table("imported_bank_transactions", df)
 
+    @atomic_mutation
     def upsert_connection(
         self,
         user_id: int,
@@ -155,6 +156,7 @@ class PlaidStore:
         out = df[df["user_id"].astype(int) == int(user_id)].sort_values("connection_id")
         return out.to_dict(orient="records")
 
+    @atomic_mutation
     def update_connection_cursor(self, connection_id: int, cursor: str, last_sync_at: Optional[str] = None) -> None:
         df = self._load_connections()
         mask = df["connection_id"].astype(int) == int(connection_id)
@@ -166,6 +168,7 @@ class PlaidStore:
         df.at[idx, "last_sync_at"] = last_sync_at or _utc_now()
         self._save_connections(df)
 
+    @atomic_mutation
     def upsert_linked_accounts(self, connection_id: int, user_id: int, accounts: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
         df = self._load_linked_accounts()
         now = _utc_now()
@@ -205,6 +208,7 @@ class PlaidStore:
         out = df[df["user_id"].astype(int) == int(user_id)].sort_values("linked_account_id")
         return out.to_dict(orient="records")
 
+    @atomic_mutation
     def set_keeper_account_id(self, user_id: int, provider_account_id: str, keeper_account_id: int) -> None:
         df = self._load_linked_accounts()
         mask = (
@@ -228,6 +232,7 @@ class PlaidStore:
             return None
         return df.loc[mask].iloc[0].to_dict()
 
+    @atomic_mutation
     def upsert_imported_transaction(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         df = self._load_imported_transactions()
         now = _utc_now()
@@ -278,6 +283,7 @@ class PlaidStore:
         out = df[df["user_id"].astype(int) == int(user_id)].sort_values("import_txn_id")
         return out.to_dict(orient="records")
 
+    @atomic_mutation
     def mark_keeper_txn(self, user_id: int, provider_txn_id: str, keeper_txn_id: int) -> None:
         df = self._load_imported_transactions()
         mask = (
@@ -291,6 +297,7 @@ class PlaidStore:
         df.at[idx, "updated_at"] = _utc_now()
         self._save_imported_transactions(df)
 
+    @atomic_mutation
     def delete_connection(self, user_id: int, connection_id: int) -> None:
         cdf = self._load_connections()
         cdf = cdf[
@@ -318,3 +325,9 @@ class PlaidStore:
             )
         ]
         self._save_imported_transactions(tdf)
+
+    @atomic_mutation
+    def delete_imported_transaction(self, user_id: int, provider_txn_id: str) -> None:
+        frame = self._load_imported_transactions()
+        mask = (pd.to_numeric(frame["user_id"], errors="coerce") == int(user_id)) & (frame["provider_txn_id"].astype(str) == str(provider_txn_id))
+        self._save_imported_transactions(frame.loc[~mask].copy())
