@@ -2198,6 +2198,15 @@ function upsertPieChart(id, chartKey, labelMap) {
     return;
   }
 
+  if (typeof window.Chart !== "function") {
+    if (empty) {
+      empty.textContent = "Chart unavailable. Your totals and monthly report are still available.";
+      empty.style.display = "block";
+    }
+    ctx.style.display = "none";
+    return;
+  }
+
   if (empty) empty.style.display = "none";
   ctx.style.display = "block";
   state.charts[chartKey] = new Chart(ctx, {

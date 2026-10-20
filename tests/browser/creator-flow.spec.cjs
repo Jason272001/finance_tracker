@@ -1,5 +1,11 @@
 const { test, expect } = require('@playwright/test');
 
+// Keep browser checks independent of live providers/CDNs. Individual account
+// mocks registered below take precedence over this default external block.
+test.beforeEach(async ({ page }) => {
+  await page.route(url => !['127.0.0.1', 'localhost'].includes(url.hostname), route => route.abort());
+});
+
 test('public demo computes, exports, resets, and never calls the account API', async ({ page }) => {
   const apiCalls = [];
   page.on('request', request => { if (request.url().includes('api.keeperbma.com')) apiCalls.push(request.url()); });
@@ -73,6 +79,7 @@ for (const entry of ['/index.html', '/frontends/web/index.html']) {
     await page.goto(entry);
     await expect(page.locator('#creatorReport')).toBeVisible();
     await expect(page.locator('.creator-net')).toHaveText('$100.00');
+    await expect(page.locator('#incomeChart').locator('..')).toContainText('Chart unavailable');
     await expect(page.getByRole('navigation', { name: 'Personal workspace' })).toContainText('Transactions');
     await page.getByRole('button', { name: '+ YouTube', exact: true }).click();
     await expect(page.getByRole('button', { name: '✓ YouTube', exact: true })).toBeDisabled();

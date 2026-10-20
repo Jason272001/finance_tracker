@@ -23,7 +23,7 @@ The source changes are prepared for review. Production deployment and store publ
 
 - Identify whether the published app is the Expo native client or the Capacitor companion. Both projects use the same package name. No connected Play Console session was available to inspect the published artifact.
 - Capacitor is patched to 7.6.9 for GHSA-rvm3-566m-v7fv. Rebuild and redistribute the companion if it is used; a website deployment cannot update the installed native runtime. Advisory: https://github.com/ionic-team/capacitor/security/advisories/GHSA-rvm3-566m-v7fv
-- Check CI's Android compilation result, then test the intended release on a real Android device. The local host has no Android SDK or signing setup.
+- The GitHub Android compile job passed. Test the intended release on a real Android device; signing and physical-device verification remain pending. A portable local SDK was prepared, but Windows Java loopback errors blocked the local Gradle attempt.
 - Set the Android version code from the actual Play Console release history before building a signed bundle. No version code or signing key was guessed.
 - Review Google Play payment/link rules for the actual regions and enrolled programs. The existing web/Android purchase architecture is not automatically compliant: https://support.google.com/googleplay/android-developer/answer/10281818
 - Review remaining Expo tooling advisories before a native release. Compatible fixes were applied and Expo/TypeScript checks pass; a major SDK migration was not forced.
