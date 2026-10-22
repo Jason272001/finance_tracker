@@ -13,3 +13,7 @@ Previous production Git revision: 5f25fcd4ed8a26d9db7b7e29e7b37d610a399bc8. Full
 ## Business POS demo, 2026-10-22
 
 Adds in-memory catalog, brands, categories, suppliers, purchase receiving, checkout, receipts, voids and CSV/photo import. Refresh resets all sample data. No real payments, orders or accounting entries. Verified 12 unit tests, 36 full browser checks and 2 direct-link regression checks.
+
+## Business operations demo, 2026-10-22
+
+Adds in-memory staffing, meetings, tasks, budget/expense tracking, tax preparation checklist and review CSV, campaign planning/results and rule-based analysis. Linked to sample POS totals; no real AI, payroll, filing or social publishing. Browser workflows verified in Chromium and WebKit, including mobile layout and refresh reset.
