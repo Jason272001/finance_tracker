@@ -9,3 +9,7 @@ The production commit uses [skip render] to publish Vercel/static website change
 Run npm ci, npm test, npm run test:e2e and python scripts/sync_web_entries.py to verify the website. The mobile report utility included here is used by the web/native parity test; no native application release is included.
 
 Previous production Git revision: 5f25fcd4ed8a26d9db7b7e29e7b37d610a399bc8. Full implementation source: 38d5f2eca7e1dd552b828cebd7ec3465e01f3ffc.
+
+## Business POS demo, 2026-10-22
+
+Adds in-memory catalog, brands, categories, suppliers, purchase receiving, checkout, receipts, voids and CSV/photo import. Refresh resets all sample data. No real payments, orders or accounting entries. Verified 12 unit tests, 36 full browser checks and 2 direct-link regression checks.
