@@ -1,3 +1,5 @@
+// Demo pages use only ephemeral storage and a local API adapter.
+const appStorage = document.documentElement.dataset.demo ? window.KeeperDemo.storage : window.localStorage;
 const $ = (id) => document.getElementById(id);
 
 // Initialize navigation immediately; an API or third-party script must not gate it.
@@ -587,12 +589,12 @@ function normalizeSignupPlan(planCode) {
 
 function setPendingSignupPlan(planCode) {
   const key = normalizeSignupPlan(planCode);
-  if (key) localStorage.setItem(SIGNUP_PLAN_KEY, key);
+  if (key) appStorage.setItem(SIGNUP_PLAN_KEY, key);
   return key;
 }
 
 function getPendingSignupPlan() {
-  return normalizeSignupPlan(localStorage.getItem(SIGNUP_PLAN_KEY));
+  return normalizeSignupPlan(appStorage.getItem(SIGNUP_PLAN_KEY));
 }
 
 function normalizeAccountTypeValue(value) {
@@ -638,7 +640,7 @@ function toDateTimeLocalInput(value) {
 
 function applyTheme(theme) {
   state.theme = String(theme || "").trim().toLowerCase() === "dark" ? "dark" : "light";
-  localStorage.setItem("keeperbma_theme", state.theme);
+  appStorage.setItem("keeperbma_theme", state.theme);
   document.documentElement.dataset.theme = state.theme;
   document.documentElement.style.colorScheme = state.theme;
   const isDark = state.theme === "dark";
@@ -714,7 +716,7 @@ function setText(id, key) {
 
 function applyLanguage(lang) {
   state.currentLang = I18N[lang] ? lang : "en";
-  localStorage.setItem("keeperbma_lang", state.currentLang);
+  appStorage.setItem("keeperbma_lang", state.currentLang);
   document.documentElement.lang = state.currentLang;
 
   if ($("langSelect")) $("langSelect").value = state.currentLang;
@@ -955,6 +957,7 @@ function showAuth(mode = "login", opts = {}) {
 }
 
 async function api(path, opts = {}) {
+  if (document.documentElement.dataset.demo) return window.KeeperDemo.request(path, opts);
   let lastErr = null;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
@@ -978,7 +981,7 @@ async function api(path, opts = {}) {
         const body = await res.json().catch(() => ({}));
         if (res.status === 401 || res.status === 403) {
           state.authToken = "";
-          localStorage.removeItem("keeperbma_token");
+          appStorage.removeItem("keeperbma_token");
           state.userId = 0;
           state.userName = "";
           showLanding();
@@ -1649,7 +1652,7 @@ function renderAppMode() {
 function setAppMode(mode, persist = true) {
   state.appMode = normalizeAppMode(mode);
   if (persist) {
-    localStorage.setItem(APP_MODE_KEY, state.appMode);
+    appStorage.setItem(APP_MODE_KEY, state.appMode);
   }
   renderAppMode();
 }
@@ -2541,9 +2544,9 @@ async function refreshAll() {
 }
 
 window.addEventListener("load", async () => {
-  const savedLang = localStorage.getItem("keeperbma_lang") || "en";
-  state.theme = String(localStorage.getItem("keeperbma_theme") || "light").trim().toLowerCase() === "dark" ? "dark" : "light";
-  state.appMode = normalizeAppMode(localStorage.getItem(APP_MODE_KEY) || "personal");
+  const savedLang = appStorage.getItem("keeperbma_lang") || "en";
+  state.theme = String(appStorage.getItem("keeperbma_theme") || "light").trim().toLowerCase() === "dark" ? "dark" : "light";
+  state.appMode = normalizeAppMode(appStorage.getItem(APP_MODE_KEY) || "personal");
   if ($("langSelect")) {
     $("langSelect").onchange = (e) => applyLanguage(e.target.value);
   }
@@ -2710,7 +2713,7 @@ window.addEventListener("load", async () => {
       await api("/auth/logout", { method: "POST" });
     } catch (_) {}
     state.authToken = "";
-    localStorage.removeItem("keeperbma_token");
+    appStorage.removeItem("keeperbma_token");
     state.userId = 0;
     state.userName = "";
     state.accounts = [];
@@ -3088,7 +3091,7 @@ window.addEventListener("load", async () => {
   // Keep the public landing page visible while session restoration waits for the API.
   $("appScreen").classList.add("hidden");
   $("appScreen").style.display = "none";
-  state.authToken = String(localStorage.getItem("keeperbma_token") || "");
+  state.authToken = String(appStorage.getItem("keeperbma_token") || "");
 
   // Always restore active session on refresh/reopen.
   try {

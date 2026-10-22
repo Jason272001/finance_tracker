@@ -65,8 +65,14 @@ The website and Android clients now include a monthly creator income/expense rep
 - [Organic acquisition plan](GROWTH_PLAN.md)
 - [Video and caption drafts](CONTENT_PACK.md)
 
-Use `requirements-api.txt` for the backend host and `requirements-test.txt` for verification. The original `requirements.txt` still includes optional legacy desktop/Streamlit dependencies. Node dependencies at the repository root are test tooling, not a new website build framework.
+Use `requirements-api.txt` for the backend host and `requirements-test.txt` for verification. The original `requirements.txt` still includes optional legacy desktop/Streamlit dependencies. Node dependencies at the repository root provide browser tests and pinned sources for the demo chart/PDF assets. The website remains static.
 
-Root `index.html`, `demo.html` and `profit-calculator.html` are canonical entry pages. Run `python scripts/sync_web_entries.py --write` after editing them. CI checks their alternate copies. `python scripts/build_static.py` generates a public-files-only `_site/` folder.
+Root `index.html` and `profit-calculator.html` are canonical entry pages. Demo workspace/Settings pages are generated from the actual app screens by `scripts/demo_pages.py`. Run `python scripts/sync_web_entries.py --write` after editing them. CI checks their alternate copies. `python scripts/build_static.py` generates a public-files-only `_site/` folder.
 
 The checked-in Render free blueprint is for development. Confirm a non-expiring database, backups, provider configuration and Android release checks before taking payments. Existing production settings have not been inspected or changed.
+
+## Full temporary demo
+
+Open `/demo.html` to try accounts, transactions, transfers, categories, reports, CSV/PDF exports, charts, daily summaries, business profiles, employee permissions, and Settings. Profile edits, bank connections/sync/disconnection, billing and support are local simulations. All paid tools are unlocked; unfinished modules stay marked as planned. Nothing is saved to a database, cookie, localStorage or sessionStorage. Refresh/restart restores fictional data and independent tabs have separate sample workspaces.
+
+The demo reuses `web.js` and `settings.js` with an explicit in-memory adapter and a connect-src none policy; unrecognized actions fail rather than contacting the real API. Settings shares the same sample state inside a srcdoc frame, preserving hosting frame protections. Run `python scripts/sync_web_entries.py --write` after changing a source screen. Charts and PDF use locally vendored, licensed libraries under `assets/vendor`.

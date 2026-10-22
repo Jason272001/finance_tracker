@@ -61,3 +61,9 @@ The API audit command used was `pip-audit -r requirements-api.txt`. The Android 
 Local checks passed: 77 backend tests including PostgreSQL, 6 report/calculator tests, 18 Chromium/WebKit checks, native TypeScript, Expo dependency compatibility, synchronized static build, undefined-name checks and public-file link validation. The GitHub Android compile job passed for the implementation commit; actual device/signing tests remain pending.
 
 Portable Java 21 and Android SDK tools were downloaded to the system temporary directory for a local compile attempt. Gradle was blocked by a Windows Java loopback/socket error before project compilation. The separate GitHub Linux build successfully compiled the Android companion and CSV plugin. No APK was installed or published.
+
+## Full demo expansion (2026-10-21)
+
+The browser suite now includes full sample account/transaction CRUD, transfers, filters, business/employee permissions, simulated bank connect/sync/disconnect, Settings/profile/password/plan/cancellation interactions, local charts/PDF/support, independent tabs, refresh reset and real storage preservation. Demo pages are generated from the actual customer screens; unknown API routes fail closed. Both root and alternate demo entries are covered. Run `npm run test:e2e` for the full Chromium/WebKit suite.
+
+Verified locally for the expansion: 30 Chromium/WebKit browser checks, 6 report/calculator unit tests, JavaScript syntax checks, generated-page synchronization, static build, and dependency audit (0 known vulnerabilities in root demo/test dependencies). The existing real-account browser workflows still pass with mocked API responses.

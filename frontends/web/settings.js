@@ -1,3 +1,5 @@
+// Demo pages use only ephemeral storage and a local API adapter.
+const appStorage = document.documentElement.dataset.demo ? window.KeeperDemo.storage : window.localStorage;
 const $ = (id) => document.getElementById(id);
 
 const state = {
@@ -97,7 +99,7 @@ function t(key) {
 
 function applyTheme(theme) {
   state.theme = String(theme || "").trim().toLowerCase() === "dark" ? "dark" : "light";
-  localStorage.setItem("keeperbma_theme", state.theme);
+  appStorage.setItem("keeperbma_theme", state.theme);
   document.documentElement.dataset.theme = state.theme;
   document.documentElement.style.colorScheme = state.theme;
   const btn = $("settingsThemeToggle");
@@ -223,7 +225,7 @@ function renderBillingPresentation() {
 
 function applyLanguage(lang) {
   state.currentLang = I18N[lang] ? lang : "en";
-  localStorage.setItem("keeperbma_lang", state.currentLang);
+  appStorage.setItem("keeperbma_lang", state.currentLang);
   if ($("appLangSelect")) $("appLangSelect").value = state.currentLang;
   document.documentElement.lang = state.currentLang;
 
@@ -276,6 +278,7 @@ function applyLanguage(lang) {
 }
 
 async function api(path, opts = {}) {
+  if (document.documentElement.dataset.demo) return window.KeeperDemo.request(path, opts);
   const headers = { ...(opts.headers || {}) };
   const hasBody = opts.body !== undefined && opts.body !== null;
   if (hasBody && !Object.keys(headers).some((k) => String(k).toLowerCase() === "content-type")) {
@@ -521,9 +524,9 @@ async function loadPageData() {
 }
 
 window.addEventListener("load", async () => {
-  state.authToken = String(localStorage.getItem("keeperbma_token") || "");
-  const savedLang = String(localStorage.getItem("keeperbma_lang") || "en");
-  state.theme = String(localStorage.getItem("keeperbma_theme") || "light").trim().toLowerCase() === "dark" ? "dark" : "light";
+  state.authToken = String(appStorage.getItem("keeperbma_token") || "");
+  const savedLang = String(appStorage.getItem("keeperbma_lang") || "en");
+  state.theme = String(appStorage.getItem("keeperbma_theme") || "light").trim().toLowerCase() === "dark" ? "dark" : "light";
   if ($("appLangSelect")) $("appLangSelect").onchange = (e) => applyLanguage(String(e.target.value || "en"));
   applyLanguage(savedLang);
   applyTheme(state.theme);
@@ -532,14 +535,14 @@ window.addEventListener("load", async () => {
       applyTheme(state.theme === "dark" ? "light" : "dark");
     };
   }
-  state.billingCycle = String(localStorage.getItem("keeperbma_billing_cycle") || "monthly").toLowerCase();
+  state.billingCycle = String(appStorage.getItem("keeperbma_billing_cycle") || "monthly").toLowerCase();
   if (!["monthly", "annual"].includes(state.billingCycle)) state.billingCycle = "monthly";
   if ($("billingCycleSelect")) {
     $("billingCycleSelect").value = state.billingCycle;
     $("billingCycleSelect").onchange = (e) => {
       const next = String(e.target.value || "monthly").toLowerCase();
       state.billingCycle = ["monthly", "annual"].includes(next) ? next : "monthly";
-      localStorage.setItem("keeperbma_billing_cycle", state.billingCycle);
+      appStorage.setItem("keeperbma_billing_cycle", state.billingCycle);
       setStatus("planStatusMsg", "");
       renderBillingPresentation();
     };
@@ -556,7 +559,7 @@ window.addEventListener("load", async () => {
         await api("/auth/logout", { method: "POST" });
       } catch (_) {}
       await closeEmbeddedCheckout();
-      localStorage.removeItem("keeperbma_token");
+      appStorage.removeItem("keeperbma_token");
       window.location.href = "./auth.html?mode=signin";
     };
   }
@@ -719,7 +722,7 @@ window.addEventListener("load", async () => {
           ($("billingCycleSelect") && $("billingCycleSelect").value) || state.billingCycle || "monthly"
         ).toLowerCase();
         state.billingCycle = ["monthly", "annual"].includes(billingCycle) ? billingCycle : "monthly";
-        localStorage.setItem("keeperbma_billing_cycle", state.billingCycle);
+        appStorage.setItem("keeperbma_billing_cycle", state.billingCycle);
         const useStripe = Boolean(state.billingConfig?.stripe_enabled);
         if (useStripe && state.subscription.billing_subscription_id && state.subscription.subscription_status !== "canceled") {
           $("btnOpenBillingPortal").click();

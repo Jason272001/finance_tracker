@@ -1,15 +1,17 @@
 """Keep alternate static entry pages aligned with canonical root pages."""
 import argparse
 from pathlib import Path
+from demo_pages import generate
 
 ROOT = Path(__file__).resolve().parents[1]
-PAGES = ("index.html", "demo.html", "profit-calculator.html")
+PAGES = ("index.html", "demo.html", "demo-settings.html", "profit-calculator.html")
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--write", action="store_true", help="Update alternate pages instead of checking them")
     args = parser.parse_args()
+    generate(write=args.write)
     mismatches = []
     for name in PAGES:
         expected = (ROOT / name).read_text(encoding="utf-8").replace("./frontends/web/", "./").replace("./assets/", "../../assets/")
