@@ -58,6 +58,7 @@ async function mockAccount(page, failTransactions = false) {
     const path = new URL(request.url()).pathname;
     const profile = { user_id: 1, name: 'Sample creator', plan_code: 'basic', subscription_status: 'active', access_active: true, feature_flags: {} };
     let body = {};
+    if (path === '/ready') body = { ok: true, storage: 'sql' };
     if (['/auth/session', '/profile', '/billing/subscription'].includes(path)) body = profile;
     if (path === '/accounts') body = [{ account_id: 1, account_name: 'Cash', account_type: 'asset', balance: 100 }];
     if (path === '/transactions') {
@@ -130,6 +131,15 @@ test('settings can disconnect a bank without displaying credentials', async ({ p
   await page.getByRole('button', { name: 'Disconnect bank', exact: true }).click();
   await expect(page.locator('#connectedBanksSettings')).toContainText('Bank disconnected');
   await expect(page.getByRole('button', { name: 'Disconnect bank', exact: true })).toHaveCount(0);
+});
+
+test('settings offers support when the live server cannot disconnect banks yet', async ({ page }) => {
+  await mockAccount(page);
+  await page.route('https://api.keeperbma.com/ready', route => route.fulfill({ status: 404, json: { detail: 'Not Found' } }));
+  await page.route('https://api.keeperbma.com/bank/connections**', route => route.fulfill({ json: [{ connection_id: 7, institution_name: 'Sample Bank' }] }));
+  await page.goto('/settings.html');
+  await expect(page.getByRole('button', { name: 'Disconnect bank', exact: true })).toBeDisabled();
+  await expect(page.locator('#connectedBanksSettings')).toContainText('contact support@keeperbma.com');
 });
 
 test('free calculator explains costs and updates without API calls', async ({ page }) => {

@@ -54,6 +54,7 @@
     const body = options.body ? JSON.parse(options.body) : {};
     let match;
     function run() {
+      if (p === "/ready") return { ok: true, storage: "sql", demo: true };
       if (p === "/auth/session") return { ...profile, ...subscription };
       if (p === "/auth/logout") return { ok: true };
       if (p === "/profile/password") return { ok: true, message: "Demo password change simulated." };

@@ -471,9 +471,15 @@ async function loadConnectedBanks() {
   const list = section.querySelector(".connected-banks-list");
   const status = section.querySelector(".connected-banks-status");
   try {
-    const connections = await api(`/bank/connections?user_id=${state.userId}`);
+    const [connectionResult, readiness] = await Promise.allSettled([
+      api(`/bank/connections?user_id=${state.userId}`), api('/ready'),
+    ]);
+    if (connectionResult.status !== 'fulfilled') throw connectionResult.reason;
+    const connections = connectionResult.value;
+    const canDisconnect = readiness.status === 'fulfilled' && readiness.value?.storage === 'sql';
     list.replaceChildren();
     if (!connections.length) status.textContent = "No banks connected.";
+    else if (!canDisconnect) status.textContent = "To disconnect a bank, contact support@keeperbma.com.";
     connections.forEach((connection) => {
       const row = document.createElement("div");
       row.className = "row";
@@ -483,6 +489,7 @@ async function loadConnectedBanks() {
       button.type = "button";
       button.className = "danger";
       button.textContent = "Disconnect bank";
+      button.disabled = !canDisconnect;
       button.onclick = async () => {
         if (!window.confirm("Disconnect this bank? Future sync will stop. Previously imported records will remain.")) return;
         button.disabled = true;
