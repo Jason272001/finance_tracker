@@ -28,11 +28,11 @@ test('supplier purchase, checkout, receipts and void keep inventory consistent',
   await tab(page, 'Purchases'); await page.locator('#posPurchaseSupplier').selectOption({ label: 'Demo supplier' }); await page.locator('#posPurchaseProduct').selectOption('1'); await page.locator('#posPurchaseQty').fill('5'); await page.locator('#posPurchaseCost').fill('7'); await page.getByRole('button', { name: 'Add to purchase', exact: true }).click(); await page.locator('#posReceivePurchase').click(); await expect(page.locator('#posPurchaseTable')).toContainText('Demo supplier');
   await tab(page, 'Products'); await expect(page.locator('#posProductTable tr').filter({ hasText: 'COF001' })).toContainText('25');
   await tab(page, 'Checkout'); await page.locator('#posSaleProduct').selectOption('1'); await page.locator('#posSaleQty').fill('2'); await page.getByRole('button', { name: 'Add to sale', exact: true }).click(); await page.locator('#posDiscount').fill('5'); await page.locator('#posTax').fill('10'); await page.locator('#posPaid').fill('30'); await page.locator('#posCompleteSale').click();
-  await expect(page.getByRole('dialog')).toContainText('$22.00'); await expect(page.getByRole('dialog')).toContainText('Change $8.00');
+  await expect(page.locator('#hubMetrics')).toContainText('$50.00'); await expect(page.locator('#hubTax')).toContainText('$2.00'); await expect(page.getByRole('dialog')).toContainText('$22.00'); await expect(page.getByRole('dialog')).toContainText('Change $8.00');
   const download = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download sample record', exact: true }).click(); expect((await download).suggestedFilename()).toContain('-DEMO.csv'); await page.getByRole('button', { name: 'Close receipt', exact: true }).click();
   await tab(page, 'Products'); await expect(page.locator('#posProductTable tr').filter({ hasText: 'COF001' })).toContainText('23');
   await tab(page, 'Sales'); page.once('dialog', d => d.accept()); await page.locator('#posSalesTable tr').nth(1).getByRole('button', { name: 'Void sale', exact: true }).click(); await expect(page.locator('#posSalesTable tr').nth(1)).toContainText('void');
-  await tab(page, 'Products'); await expect(page.locator('#posProductTable tr').filter({ hasText: 'COF001' })).toContainText('25');
+  await expect(page.locator('#hubMetrics')).toContainText('$30.00'); await tab(page, 'Products'); await expect(page.locator('#posProductTable tr').filter({ hasText: 'COF001' })).toContainText('25');
   for (const width of [320, 1280]) { await page.setViewportSize({ width, height: 844 }); expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false); }
 });
 

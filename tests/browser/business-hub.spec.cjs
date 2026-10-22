@@ -1,0 +1,21 @@
+const {test,expect}=require('@playwright/test');
+test('business hub connects POS, expenses, budgets, planning and accountant export',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route(u=>!['127.0.0.1','localhost'].includes(u.hostname),r=>r.abort());
+ await page.goto('/demo.html#demoBusinessHub');await expect(page.locator('#demoBusinessHub')).toBeVisible();
+ const tab=async n=>page.getByRole('navigation',{name:'Business hub sections'}).getByRole('button',{name:n,exact:true}).click();
+ await expect(page.locator('#hubMetrics')).toContainText('$30.00');
+ await tab('Staff');const staff=page.locator('[data-hub-form="staff"]');
+ for(const [k,v] of Object.entries({name:'Taylor Demo',role:'Manager',hours:'10',rate:'20'}))await staff.locator(`[name="${k}"]`).fill(v);
+ await staff.getByRole('button').click();await expect(page.locator('[data-hub-list="staff"]')).toContainText('$200.00');
+ await tab('Budgets & expenses');const expense=page.locator('[data-hub-form="expenses"]');
+ for(const [k,v] of Object.entries({category:'Marketing',description:'Sample ad',amount:'200'}))await expense.locator(`[name="${k}"]`).fill(v);
+ await expense.getByRole('button').click();await expect(page.locator('[data-hub-list="budgets"]')).toContainText('-$95.00');
+ await tab('Analyst preview');await expect(page.locator('#hubAnalysis')).toContainText('1 categories over budget');
+ await tab('Tax preparation');await page.locator('[data-hub-list="documents"]').getByRole('button',{name:'Complete',exact:true}).first().click();
+ const download=page.waitForEvent('download');await page.getByRole('button',{name:'Download sample review packet (CSV)',exact:true}).click();expect((await download).suggestedFilename()).toContain('review-packet');
+ await tab('Meetings');await page.locator('[data-hub-list="meetings"]').getByRole('button',{name:'Complete',exact:true}).click();await expect(page.locator('[data-hub-list="meetings"]')).toContainText('Complete');
+ await tab('Marketing');await page.getByRole('button',{name:'Create sample campaign draft',exact:true}).click();await expect(page.locator('#hubDraftText')).toContainText('Sample draft');
+ await page.setViewportSize({width:320,height:800});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await page.reload();await tab('Staff');await expect(page.locator('[data-hub-list="staff"]')).not.toContainText('Taylor Demo');expect(errors).toEqual([]);
+});

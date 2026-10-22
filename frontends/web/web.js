@@ -3130,9 +3130,9 @@ window.addEventListener("load", async () => {
     };
     setScreen(true);
     await refreshAll();
-    if (document.documentElement.dataset.demo && window.location.hash === '#demoPos') {
+    if (document.documentElement.dataset.demo && ['#demoPos', '#demoBusinessHub'].includes(window.location.hash)) {
       setAppMode('business');
-      document.getElementById('demoPos')?.scrollIntoView({ behavior: 'auto', block: 'start' });
+      document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ behavior: 'auto', block: 'start' });
     }
     if (window.location.search) {
       window.history.replaceState({}, "", window.location.pathname);

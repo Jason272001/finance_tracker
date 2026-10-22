@@ -80,3 +80,7 @@ The demo reuses `web.js` and `settings.js` with an explicit in-memory adapter an
 ## POS demo prototype
 
 The Business demo now includes a memory-only sample POS: products/SKUs, cost/selling prices, descriptions, local raster photos, brands, categories, suppliers, CSV product import/template, supplier purchase carts/history, sales carts, example discount/tax, simulated cash/card checkout, receipt CSVs, sales history and void/restock. Receiving purchases updates stock and weighted-average cost; sales/voids retain historical line prices. This is a separate sample shop, not a live POS or personal-finance accounting integration. All data resets on refresh; no orders, payments, product files or images are uploaded to an external service.
+
+## Business operations hub (2026-10-22)
+
+The demo includes temporary staff cost planning, meetings, task ownership, category budgets, expense documentation, marketing campaign results and an accountant review CSV. The overview reads completed POS sales and historical sold inventory cost, excludes voids and separates collected example sales tax. Actual labor/campaign expenses must be entered once in the expense register. The analyst is explicitly rule-based, with no AI service connected. No payroll, tax filing, invitations, social publishing or external data writes occur.

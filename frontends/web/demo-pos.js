@@ -5,6 +5,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     const business = document.getElementById("businessWorkspace"); if (!business) return;
     const shop = new PosDemoModel.Shop(); let saleCart = [], purchaseCart = [], image = "", editing = 0;
+    window.PosDemo.snapshot = () => shop.snapshot();
     const cash = cents => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
     const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const host = document.createElement("section"); host.id = "demoPos"; host.className = "card pos-demo";
@@ -51,6 +52,7 @@
       $('posPaidLabel').hidden = $('posPayment').value !== 'cash';
     }
     function render() {
+      document.dispatchEvent(new Event('keeper-pos-change'));
       const data = shop.snapshot();
       $('posMetrics').innerHTML = [['Products', data.products.length], ['Units in stock', data.products.reduce((n, p) => n + p.stock, 0)], ['Stock value at cost', cash(data.products.reduce((n, p) => n + p.stock * p.cost, 0))], ['Completed sales', cash(data.sales.filter(s => s.status === 'completed').reduce((n, s) => n + s.total, 0))]].map(([name, value]) => `<article><span>${name}</span><strong>${value}</strong></article>`).join('');
       select('posProductBrand', data.brands, r => r.name); select('posProductCategory', data.categories, r => r.name);

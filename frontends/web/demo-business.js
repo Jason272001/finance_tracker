@@ -1,0 +1,88 @@
+(function () {
+  'use strict';
+  if (document.documentElement.dataset.demo !== 'workspace') return;
+  document.addEventListener('DOMContentLoaded', () => {
+    const workspace = document.getElementById('businessWorkspace'); if (!workspace) return;
+    const esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const money = n => new Intl.NumberFormat('en-US', {style:'currency',currency:'USD'}).format(n / 100);
+    const cents = n => Math.round(Number(n) * 100);
+    const today = new Date().toISOString().slice(0,10);
+    let next = 10;
+    const data = {
+      staff: [{id:1,name:'Alex Sample',role:'Shop assistant',hours:16,rate:1800}],
+      meetings: [{id:2,title:'Weekly shop planning',date:today,time:'10:00',owner:'Alex Sample',notes:'Review stock and next campaign.',done:false}],
+      expenses: [{id:3,date:today,category:'Marketing',description:'Sample launch materials',amount:4500,document:false}],
+      budgets: [{id:4,category:'Marketing',amount:15000},{id:5,category:'Operations',amount:30000}],
+      campaigns: [{id:6,title:'Weekend product spotlight',channel:'Instagram',date:today,budget:5000,spent:1500,leads:8,orders:2,revenue:6000,done:false}],
+      tasks: [{id:7,title:'Collect supplier invoices',owner:'Alex Sample',date:today,done:false}],
+      documents: [{id:8,title:'Sales records reviewed',done:false},{id:9,title:'Expense documents collected',done:false}]
+    };
+    const host = document.createElement('section'); host.id='demoBusinessHub'; host.className='card pos-demo';
+    const fields = (name, label, type='text', extra='') => `<label>${label}<input name="${name}" type="${type}" ${extra} required></label>`;
+    const dollars = (name,label) => fields(name,label,'number','min="0" max="1000000" step="0.01"');
+    const text = (name,label) => fields(name,label,'text','maxlength="160"');
+    const date = () => fields('date','Date','date',`value="${today}"`);
+    const form = (kind,content,label) => `<form data-hub-form="${kind}" class="pos-fields">${content}<button>${label}</button></form><div data-hub-list="${kind}" class="pos-table-wrap"></div>`;
+    const panels = {
+      overview: '<h3>Business overview</h3><p>Live sample POS figures plus the expenses, budgets and tasks you enter below. All records are temporary and independent of your real account.</p><div id="hubMetrics" class="pos-metrics"></div><div id="hubInsights"></div>',
+      staff: '<h3>Staff & work estimates</h3><p>Plan roles, hours and estimated labor cost. This is a staffing worksheet; it does not run payroll or grant account access.</p>'+form('staff',text('name','Staff name')+text('role','Role')+fields('hours','Planned hours','number','min="0" max="744" step="0.25"')+dollars('rate','Hourly rate (USD)'),'Add sample staff'),
+      meetings: '<h3>Meetings & agenda</h3><p>Plan meetings and mark them complete. No invitations or reminders are sent.</p>'+form('meetings',text('title','Meeting title')+date()+fields('time','Time','time')+text('owner','Organizer')+text('notes','Agenda'),'Add meeting'),
+      budgets: '<h3>Budget tracking</h3><p>Category budgets and expenses are shown for this sample workspace, without a date filter. Use matching category names to compare spending.</p>'+form('budgets',text('category','Budget category')+dollars('amount','Budget (USD)'),'Set category budget')+'<h3>Expense register</h3>'+form('expenses',date()+text('category','Expense category')+text('description','Expense description')+dollars('amount','Expense amount (USD)'),'Add expense'),
+      tax: '<h3>Tax preparation organizer</h3><p>Organize sample records for review with your accountant. This does not determine deductibility, calculate tax owed, file returns, or supply jurisdiction-specific deadlines. Collected POS sales tax is shown separately from revenue.</p><div id="hubTax"></div><label>Optional cash reserve (%)<input id="hubReserve" type="number" min="0" max="100" step="0.1" value="0"></label><p id="hubReserveResult"></p><p>This is your own cash-planning assumption, not a tax rate or tax liability estimate.</p><h4>Preparation checklist</h4><div data-hub-list="documents"></div><button type="button" data-hub-export>Download sample review packet (CSV)</button>',
+      marketing: '<h3>Marketing planner</h3><p>Draft campaigns and enter their observed results. No social accounts are connected and nothing is published or purchased.</p>'+form('campaigns',text('title','Campaign title')+text('channel','Channel')+date()+dollars('budget','Planned spend (USD)')+dollars('spent','Actual spend (USD)')+fields('leads','Leads','number','min="0" max="100000" step="1"')+fields('orders','Attributed orders','number','min="0" max="100000" step="1"')+dollars('revenue','Attributed revenue (USD)'),'Add campaign')+'<button type="button" id="hubDraft">Create sample campaign draft</button><p id="hubDraftText" role="status"></p>',
+      tasks: '<h3>Tasks & ownership</h3>'+form('tasks',text('title','Task title')+text('owner','Task owner')+date(),'Add task'),
+      analyst: '<h3>Business analyst preview</h3><p>Transparent, rule-based insights from your sample records. No AI model is connected and no data leaves this page. Figures change as you receive purchases, make sales or add expenses.</p><button type="button" id="hubAnalyze">Refresh analysis</button><div id="hubAnalysis" aria-live="polite"></div>'
+    };
+    const labels={overview:'Overview',staff:'Staff',meetings:'Meetings',budgets:'Budgets & expenses',tax:'Tax preparation',marketing:'Marketing',tasks:'Tasks',analyst:'Analyst preview'};
+    host.innerHTML='<p class="pos-eyebrow">BUSINESS DEMO</p><h2>Business operations hub</h2><p>Explore how a connected business workspace could work. Sample planning tools only; refresh resets everything.</p><nav class="pos-tabs" aria-label="Business hub sections">'+Object.keys(panels).map((k,i)=>`<button type="button" data-hub-tab="${k}" aria-pressed="${i===0}">${labels[k]}</button>`).join('')+'</nav><p id="hubStatus" role="status"></p>'+Object.entries(panels).map(([k,v],i)=>`<section data-hub-panel="${k}" ${i?'hidden':''}>${v}</section>`).join('');
+    workspace.insertBefore(host,document.getElementById('demoPos')?.nextSibling || null);
+    const $=id=>host.querySelector('#'+id);
+    const action=(kind,id,label,op)=>`<button type="button" class="secondary" data-hub-action="${op}" data-kind="${kind}" data-id="${id}">${label}</button>`;
+    function table(kind,headers,rows) {host.querySelector(`[data-hub-list="${kind}"]`).innerHTML=`<table><thead><tr>${headers.map(x=>`<th scope="col">${x}</th>`).join('')}<th scope="col">Actions</th></tr></thead><tbody>${rows.length?rows.map(([r,cells])=>`<tr>${cells.map(x=>`<td>${x}</td>`).join('')}<td>${['meetings','tasks','campaigns','documents','expenses'].includes(kind)?action(kind,r.id,kind==='expenses'?(r.document?'Mark missing':'Mark documented'):(r.done?'Reopen':'Complete'),'toggle'):''}${kind==='documents'?'':action(kind,r.id,'Delete','delete')}</td></tr>`).join(''):`<tr><td colspan="${headers.length+1}">No sample records.</td></tr>`}</tbody></table>`;}
+    function totals() {
+      const pos=window.PosDemo.snapshot?.() || {sales:[],products:[]};
+      const sales=pos.sales.filter(s=>s.status === "completed");
+      const revenue=sales.reduce((n,s)=>n+s.subtotal-s.discount,0), tax=sales.reduce((n,s)=>n+s.tax,0);
+      const cost=sales.reduce((n,s)=>n+s.items.reduce((a,l)=>a+l.unitCost*l.quantity,0),0);
+      const expenses=data.expenses.reduce((n,e)=>n+e.amount,0);
+      return {pos,revenue,tax,cost,expenses,profit:revenue-cost-expenses};
+    }
+    function insight(t) {
+      const low=t.pos.products.filter(p=>p.stock<=5);
+      const over=data.budgets.filter(b=>data.expenses.filter(e=>e.category.toLowerCase()===b.category.toLowerCase()).reduce((n,e)=>n+e.amount,0)>b.amount);
+      return `<ul><li>Sample operating result: ${money(t.profit)} = sales ${money(t.revenue)} − sold inventory cost ${money(t.cost)} − recorded expenses ${money(t.expenses)}. Labor plans and campaign results are separate worksheets; record actual costs once in expenses.</li><li>${low.length} products at five units or fewer: ${esc(low.map(p=>p.name).join(', ')||'none')}.</li><li>${over.length} categories over budget. ${data.expenses.filter(e=>!e.document).length} expenses need supporting documents.</li><li>${data.tasks.filter(x=>!x.done).length} open tasks and ${data.meetings.filter(x=>!x.done).length} planned meetings. Review these before your next business check-in.</li></ul>`;
+    }
+    function reserve(t) {const rate=Number($('hubReserve').value);$('hubReserveResult').textContent=Number.isFinite(rate)&&rate>=0&&rate<=100?`Cash reserve at ${rate}% of positive sample operating result: ${money(Math.round(Math.max(t.profit,0)*rate/100))}`:'Enter a percentage from 0 to 100.';}
+    function render() {
+      table('staff',['Name','Role','Hours','Rate','Planned labor'],data.staff.map(r=>[r,[esc(r.name),esc(r.role),r.hours,money(r.rate),money(Math.round(r.hours*r.rate))]]));
+      table('meetings',['Meeting','Date / time','Organizer','Agenda','Status'],data.meetings.map(r=>[r,[esc(r.title),esc(r.date+' '+r.time),esc(r.owner),esc(r.notes),r.done?'Complete':'Planned']]));
+      table('expenses',['Date','Category','Description','Amount','Documentation'],data.expenses.map(r=>[r,[esc(r.date),esc(r.category),esc(r.description),money(r.amount),r.document?'Marked documented':'Missing']]));
+      table('budgets',['Category','Budget','Recorded spend','Remaining'],data.budgets.map(r=>{const spent=data.expenses.filter(e=>e.category.toLowerCase()===r.category.toLowerCase()).reduce((n,e)=>n+e.amount,0);return [r,[esc(r.category),money(r.amount),money(spent),money(r.amount-spent)]]}));
+      table('campaigns',['Campaign / channel','Date','Budget / spend','Leads / orders','Revenue','ROAS','Status'],data.campaigns.map(r=>[r,[esc(r.title+' / '+r.channel),esc(r.date),money(r.budget)+' / '+money(r.spent),r.leads+' / '+r.orders,money(r.revenue),r.spent?(r.revenue/r.spent).toFixed(2)+'×':'No spend',r.done?'Complete':'Draft']]));
+      table('tasks',['Task','Owner','Due','Status'],data.tasks.map(r=>[r,[esc(r.title),esc(r.owner),esc(r.date),r.done?'Complete':'Open']]));
+      table('documents',['Checklist item','Status'],data.documents.map(r=>[r,[esc(r.title),r.done?'Reviewed':'Pending']]));
+      const t=totals();$('hubMetrics').innerHTML=[['POS sales before tax',t.revenue],['Recorded expenses',t.expenses],['Sample operating result',t.profit]].map(([k,v])=>`<div><span>${k}</span><strong>${money(v)}</strong></div>`).join('');
+      $('hubInsights').innerHTML=insight(t);$('hubAnalysis').innerHTML=insight(t);
+      $('hubTax').innerHTML=`<p>POS sales before tax: <strong>${money(t.revenue)}</strong> · Collected example sales tax: <strong>${money(t.tax)}</strong> · Sold inventory cost: <strong>${money(t.cost)}</strong> · Recorded expenses: <strong>${money(t.expenses)}</strong></p><p>These are sample workspace totals, not a tax return. Opening inventory and sample history may not represent a complete reporting period.</p>`;reserve(t);
+    }
+    for(const f of host.querySelectorAll('form')) f.addEventListener('submit',e=>{
+      e.preventDefault();const kind=f.dataset.hubForm;
+      try {if(data[kind].length>=100)throw Error('Demo limit: 100 records per list.');const row=Object.fromEntries(new FormData(f));
+        for(const [k,v] of Object.entries(row)){if(['amount','rate','budget','spent','revenue'].includes(k))row[k]=cents(v);else if(['hours','leads','orders'].includes(k))row[k]=Number(v);else row[k]=v.trim();if(typeof row[k]==='number'&&(!Number.isFinite(row[k])||row[k]<0))throw Error('Use a valid nonnegative amount.');if(row[k]==='')throw Error('Complete all fields.');}
+        if(kind==='budgets'){const existing=data.budgets.find(x=>x.category.toLowerCase()===row.category.toLowerCase());if(existing){existing.amount=row.amount;render();$('hubStatus').textContent='Sample budget updated.';return;}}
+        data[kind].push({id:++next,done:false,document:false,...row});f.reset();render();$('hubStatus').textContent='Sample record added. Refresh resets this workspace.';
+      } catch(error){$('hubStatus').textContent=error.message;}
+    });
+    host.addEventListener('click',e=>{
+      const tab=e.target.closest('[data-hub-tab]');if(tab){for(const p of host.querySelectorAll('[data-hub-panel]'))p.hidden=p.dataset.hubPanel!==tab.dataset.hubTab;for(const b of host.querySelectorAll('[data-hub-tab]'))b.setAttribute('aria-pressed',String(b===tab));render();}
+      const a=e.target.closest('[data-hub-action]');if(a){const list=data[a.dataset.kind],i=list.findIndex(r=>r.id===Number(a.dataset.id));if(i<0)return;if(a.dataset.hubAction==='delete')list.splice(i,1);else {const key=a.dataset.kind==='expenses'?'document':'done';list[i][key]=!list[i][key];}render();}
+    });
+    $('hubReserve').oninput=()=>reserve(totals());$('hubAnalyze').onclick=render;
+    $('hubDraft').onclick=()=>{$('hubDraftText').textContent='Sample draft: Meet your next everyday favorite. Explore our featured products this week, compare the details, and visit our shop to learn more. Add your own photo, accurate price and store link before publishing.';};
+    host.querySelector('[data-hub-export]').onclick=()=>{
+      const t=totals(),rows=[['SAMPLE REVIEW PACKET — not a tax return',''],['POS sales before tax',t.revenue/100],['Example sales tax collected',t.tax/100],['Sold inventory cost',t.cost/100],['Recorded expenses',t.expenses/100],['Sample operating result',t.profit/100],[],['Expense date','Category','Description','USD','Documentation'],...data.expenses.map(r=>[r.date,r.category,r.description,r.amount/100,r.document?'Marked documented':'Missing']),[],['Checklist','Status'],...data.documents.map(r=>[r.title,r.done?'Reviewed':'Pending'])];
+      const csv=rows.map(row=>row.map(v=>{let s=String(v);if(typeof v==='string'&&/^[\s]*[=+@-]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';}).join(',')).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='keeperbma-sample-review-packet.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    };
+    document.addEventListener('keeper-pos-change',render);render();
+  });
+})();

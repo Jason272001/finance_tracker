@@ -30,7 +30,7 @@ def render(source, settings=False):
     if not settings:
         banner += '''<section id="demoMenu" class="demo-directory card"><h1>Explore KeeperBMA</h1><p>All paid tools are unlocked here. Use sample details only. Planned modules remain marked as planned.</p>
 <nav aria-label="Demo sections">'''
-        for label, target in [('Monthly report', 'creatorReport'), ('POS & inventory', 'demoPos'), ('Accounts', 'accountsTitle'), ('Transactions & transfers', 'transactionsTitle'), ('Categories', 'categoriesTitle'), ('Banks', 'bankSyncTitle'), ('Charts & PDF', 'summaryExportTitle'), ('Daily summary', 'dailySummaryTitle'), ('Business & employees', 'businessWorkspace'), ('Settings & billing', 'settings'), ('Support', 'support')]:
+        for label, target in [('Monthly report', 'creatorReport'), ('POS & inventory', 'demoPos'), ('Business operations', 'demoBusinessHub'), ('Accounts', 'accountsTitle'), ('Transactions & transfers', 'transactionsTitle'), ('Categories', 'categoriesTitle'), ('Banks', 'bankSyncTitle'), ('Charts & PDF', 'summaryExportTitle'), ('Daily summary', 'dailySummaryTitle'), ('Business & employees', 'businessWorkspace'), ('Settings & billing', 'settings'), ('Support', 'support')]:
             banner += f'<button type="button" class="secondary" data-demo-section="{target}">{label}</button>'
         banner += '''</nav><div class="row"><button type="button" class="secondary" data-demo-share>Copy demo link</button><a href="./index.html" data-demo-exit>Leave demo</a><a href="./plans.html" data-demo-exit>View real plans</a></div></section>'''
     html = html.replace('<main class="page">', '<main class="page">\n' + banner)
@@ -44,6 +44,7 @@ def render(source, settings=False):
     scripts += f'<script defer src="./frontends/web/{"settings" if settings else "web"}.js?v=demo3"></script>'
     if not settings:
         scripts += '<script defer src="./frontends/web/pos-demo-model.js?v=1"></script><script defer src="./frontends/web/demo-pos.js?v=1"></script>'
+        scripts += '<script defer src="./frontends/web/demo-business.js?v=1"></script>'
         # srcdoc uses the same generated Settings screen without needing to
         # loosen production hosting's X-Frame-Options: DENY response header.
         settings_html = json.dumps(render(ROOT / "settings.html", True), ensure_ascii=False).replace("<", "\\u003c")

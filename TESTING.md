@@ -71,3 +71,7 @@ Verified locally for the expansion: 30 Chromium/WebKit browser checks, 6 report/
 ## Business POS demo (2026-10-22)
 
 The in-memory POS prototype covers product/brand/category/supplier records, local product photos and atomic CSV imports, purchase receiving with weighted inventory cost, sales with discounts/example tax/cash change, receipt exports and voids. Refresh restores sample data; no real payment, supplier order or accounting entry is created. Verified: 12 unit tests and the full 36 Chromium/WebKit browser checks. A direct-link restoration regression check also covers both engines.
+
+## Business hub
+
+Browser coverage exercises staff estimates, overspent budgets, expense documentation, preparation checklists/CSV, meetings, campaign drafts, narrow layout and refresh reset. The business hub reads the same in-memory POS snapshot and excludes voided sales. Run the full Playwright suite and the business-hub spec when changing these workflows.
