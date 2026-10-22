@@ -1,0 +1,35 @@
+.demo-banner { padding: 16px 20px; margin-bottom: 16px; background: #e9f7f3; color: #103a35; border: 1px solid #86c6b5; border-radius: 14px; }
+.demo-banner-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.demo-banner p { margin: 8px 0 0; }
+.demo-banner button { width: auto; }
+.demo-notice:empty { display: none; }
+.demo-directory nav { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 16px; }
+.demo-directory nav button { width: auto; min-height: 44px; }
+.demo-directory { margin-bottom: 16px; }
+.demo-directory h1 { margin: 0 0 10px; }
+.demo-directory nav button { box-shadow: none; background: #edf4ff; color: #173e6c; border: 1px solid #c8d9f2; }
+.demo-directory nav button:hover { background: #dceaff; }
+.demo-directory > .row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.demo-directory > .row button { width: auto; }
+.demo-menu-return { position: fixed; left: 14px; bottom: 14px; z-index: 35; padding: 10px 14px; background: #173e6c; color: white; border-radius: 10px; text-decoration: none; box-shadow: 0 3px 14px #0002; }
+html[data-demo] #workspaceNavigation { display: none; }
+html[data-demo] #appScreen .top { flex-wrap: wrap; gap: 16px; }
+html[data-demo] #appScreen .top-right { flex-wrap: wrap; }
+html[data-demo] #appScreen .top-right > .theme-switch,
+html[data-demo] #appScreen #langLabelApp,
+html[data-demo] #appScreen #appLangSelect,
+html[data-demo] #appScreen #appModeLabel { display: none; }
+html[data-demo] #supportLauncher { width: auto; left: auto; right: 14px; bottom: 14px; max-width: calc(100vw - 24px); }
+.demo-dialog { background: var(--card-bg, white); color: var(--text, #172b45); border: 1px solid #86c6b5; border-radius: 16px; padding: 24px; max-width: min(520px, calc(100vw - 32px)); box-sizing: border-box; }
+.demo-settings-dialog { width: min(1100px, calc(100vw - 16px)); height: 92dvh; max-width: none; padding: 8px; border: 1px solid #86c6b5; border-radius: 14px; background: var(--card-bg, white); }
+.demo-settings-dialog[open] { display: flex; flex-direction: column; gap: 8px; }
+.demo-settings-dialog iframe { width: 100%; flex: 1; min-height: 0; border: 0; border-radius: 8px; }
+dialog::backdrop { background: rgb(5 20 34 / 65%); }
+html[data-demo] { scroll-behavior: smooth; }
+html[data-demo] #supportWidget .support-note::after { content: " Demo: replies are simulated and no messages are sent."; }
+html[data-demo] h2, html[data-demo] #businessWorkspace { scroll-margin-top: 16px; }
+html[data-demo="settings"] .page { max-width: 100%; }
+@media (max-width: 640px) {
+  .demo-banner { padding: 12px; }
+  .demo-directory nav { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, minmax(44px, auto)); grid-auto-columns: 165px; overflow-x: auto; padding-bottom: 8px; }
+}

@@ -1,3 +1,5 @@
+// Demo pages use only ephemeral storage and a local API adapter.
+const appStorage = document.documentElement.dataset.demo ? window.KeeperDemo.storage : window.localStorage;
 const $ = (id) => document.getElementById(id);
 
 const state = {
@@ -97,7 +99,7 @@ function t(key) {
 
 function applyTheme(theme) {
   state.theme = String(theme || "").trim().toLowerCase() === "dark" ? "dark" : "light";
-  localStorage.setItem("keeperbma_theme", state.theme);
+  appStorage.setItem("keeperbma_theme", state.theme);
   document.documentElement.dataset.theme = state.theme;
   document.documentElement.style.colorScheme = state.theme;
   const btn = $("settingsThemeToggle");
@@ -223,7 +225,7 @@ function renderBillingPresentation() {
 
 function applyLanguage(lang) {
   state.currentLang = I18N[lang] ? lang : "en";
-  localStorage.setItem("keeperbma_lang", state.currentLang);
+  appStorage.setItem("keeperbma_lang", state.currentLang);
   if ($("appLangSelect")) $("appLangSelect").value = state.currentLang;
   document.documentElement.lang = state.currentLang;
 
@@ -276,6 +278,7 @@ function applyLanguage(lang) {
 }
 
 async function api(path, opts = {}) {
+  if (document.documentElement.dataset.demo) return window.KeeperDemo.request(path, opts);
   const headers = { ...(opts.headers || {}) };
   const hasBody = opts.body !== undefined && opts.body !== null;
   if (hasBody && !Object.keys(headers).some((k) => String(k).toLowerCase() === "content-type")) {
@@ -456,6 +459,57 @@ async function startHostedCheckout(planCode, withWebsite = false, billingCycle =
   window.location.href = checkoutUrl;
 }
 
+async function loadConnectedBanks() {
+  let section = $("connectedBanksSettings");
+  if (!section) {
+    section = document.createElement("section");
+    section.id = "connectedBanksSettings";
+    section.className = "card";
+    section.innerHTML = '<h2>Connected banks</h2><p class="muted">Disconnect a bank to stop future sync and remove its stored connection credentials. Previously imported transaction history and last-known balances remain in your records.</p><div class="connected-banks-list"></div><p class="connected-banks-status muted" role="status"></p><p><a href="https://keeperbma.com/delete-account">Request account deletion</a> · <a href="https://keeperbma.com/privacy-policy">Privacy policy</a></p>';
+    document.querySelector(".app-shell").appendChild(section);
+  }
+  const list = section.querySelector(".connected-banks-list");
+  const status = section.querySelector(".connected-banks-status");
+  try {
+    const [connectionResult, readiness] = await Promise.allSettled([
+      api(`/bank/connections?user_id=${state.userId}`), api('/ready'),
+    ]);
+    if (connectionResult.status !== 'fulfilled') throw connectionResult.reason;
+    const connections = connectionResult.value;
+    const canDisconnect = readiness.status === 'fulfilled' && readiness.value?.storage === 'sql';
+    list.replaceChildren();
+    if (!connections.length) status.textContent = "No banks connected.";
+    else if (!canDisconnect) status.textContent = "To disconnect a bank, contact support@keeperbma.com.";
+    connections.forEach((connection) => {
+      const row = document.createElement("div");
+      row.className = "row";
+      const name = document.createElement("span");
+      name.textContent = connection.institution_name || "Connected bank";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "danger";
+      button.textContent = "Disconnect bank";
+      button.disabled = !canDisconnect;
+      button.onclick = async () => {
+        if (!window.confirm("Disconnect this bank? Future sync will stop. Previously imported records will remain.")) return;
+        button.disabled = true;
+        try {
+          await api(`/bank/connections/${Number(connection.connection_id)}?user_id=${state.userId}`, { method: "DELETE" });
+          await loadConnectedBanks();
+          status.textContent = "Bank disconnected. Imported history is retained.";
+        } catch (error) {
+          status.textContent = errMessage(error);
+          button.disabled = false;
+        }
+      };
+      row.append(name, button);
+      list.appendChild(row);
+    });
+  } catch (error) {
+    status.textContent = `Could not load connected banks: ${errMessage(error)}`;
+  }
+}
+
 async function loadPageData() {
   const results = await Promise.allSettled([
     api(`/profile?user_id=${state.userId}`),
@@ -473,12 +527,13 @@ async function loadPageData() {
   if (state.profile && state.profile.name) state.userName = String(state.profile.name || state.userName || "");
   renderProfile();
   renderSubscription();
+  await loadConnectedBanks();
 }
 
 window.addEventListener("load", async () => {
-  state.authToken = String(localStorage.getItem("keeperbma_token") || "");
-  const savedLang = String(localStorage.getItem("keeperbma_lang") || "en");
-  state.theme = String(localStorage.getItem("keeperbma_theme") || "light").trim().toLowerCase() === "dark" ? "dark" : "light";
+  state.authToken = String(appStorage.getItem("keeperbma_token") || "");
+  const savedLang = String(appStorage.getItem("keeperbma_lang") || "en");
+  state.theme = String(appStorage.getItem("keeperbma_theme") || "light").trim().toLowerCase() === "dark" ? "dark" : "light";
   if ($("appLangSelect")) $("appLangSelect").onchange = (e) => applyLanguage(String(e.target.value || "en"));
   applyLanguage(savedLang);
   applyTheme(state.theme);
@@ -487,14 +542,14 @@ window.addEventListener("load", async () => {
       applyTheme(state.theme === "dark" ? "light" : "dark");
     };
   }
-  state.billingCycle = String(localStorage.getItem("keeperbma_billing_cycle") || "monthly").toLowerCase();
+  state.billingCycle = String(appStorage.getItem("keeperbma_billing_cycle") || "monthly").toLowerCase();
   if (!["monthly", "annual"].includes(state.billingCycle)) state.billingCycle = "monthly";
   if ($("billingCycleSelect")) {
     $("billingCycleSelect").value = state.billingCycle;
     $("billingCycleSelect").onchange = (e) => {
       const next = String(e.target.value || "monthly").toLowerCase();
       state.billingCycle = ["monthly", "annual"].includes(next) ? next : "monthly";
-      localStorage.setItem("keeperbma_billing_cycle", state.billingCycle);
+      appStorage.setItem("keeperbma_billing_cycle", state.billingCycle);
       setStatus("planStatusMsg", "");
       renderBillingPresentation();
     };
@@ -511,7 +566,7 @@ window.addEventListener("load", async () => {
         await api("/auth/logout", { method: "POST" });
       } catch (_) {}
       await closeEmbeddedCheckout();
-      localStorage.removeItem("keeperbma_token");
+      appStorage.removeItem("keeperbma_token");
       window.location.href = "./auth.html?mode=signin";
     };
   }
@@ -674,8 +729,12 @@ window.addEventListener("load", async () => {
           ($("billingCycleSelect") && $("billingCycleSelect").value) || state.billingCycle || "monthly"
         ).toLowerCase();
         state.billingCycle = ["monthly", "annual"].includes(billingCycle) ? billingCycle : "monthly";
-        localStorage.setItem("keeperbma_billing_cycle", state.billingCycle);
+        appStorage.setItem("keeperbma_billing_cycle", state.billingCycle);
         const useStripe = Boolean(state.billingConfig?.stripe_enabled);
+        if (useStripe && state.subscription.billing_subscription_id && state.subscription.subscription_status !== "canceled") {
+          $("btnOpenBillingPortal").click();
+          return;
+        }
         const useEmbedded = Boolean(state.billingConfig?.embedded_checkout_enabled);
         const configuredPriceKeys = new Set(
           (state.billingConfig?.configured_price_keys || []).map((x) => String(x).toLowerCase())

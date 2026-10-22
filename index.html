@@ -3,8 +3,22 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>KeeperBMA Web</title>
-  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; block-all-mixed-content" />
+  <title>KeeperBMA — Income & Expense Tracker for Side Hustles</title>
+  <link rel="canonical" href="https://keeperbma.com/" />
+  <meta property="og:title" content="KeeperBMA — See what your side hustle keeps" />
+  <meta property="og:description" content="Track creator income, expenses, and monthly net income. Try the demo or free profit calculator." />
+  <meta property="og:image" content="https://keeperbma.com/assets/creator-report-preview.png" />
+  <meta property="og:type" content="website" />
+  <meta name="description" content="Track creator income, expenses, and monthly net income. Try KeeperBMA with sample data before signing up." />
+  <script>
+    // Keep the production HTTPS policy while permitting local HTTP development.
+    if (!["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname)) {
+      const policy = document.createElement("meta");
+      policy.httpEquiv = "Content-Security-Policy";
+      policy.content = "upgrade-insecure-requests; block-all-mixed-content";
+      document.head.appendChild(policy);
+    }
+  </script>
   <link rel="icon" type="image/png" href="./assets/keeperbma-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -18,19 +32,20 @@
     }
     document.documentElement.dataset.theme = localStorage.getItem("keeperbma_theme") || "light";
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <link rel="stylesheet" href="./frontends/web/styles.css?v=44" />
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <link rel="stylesheet" href="./frontends/web/styles.css?v=45" />
 </head>
 <body>
   <main class="page">
-    <section id="landingScreen" class="landing-shell hidden">
+    <section id="landingScreen" class="landing-shell">
       <header class="landing-nav">
         <div class="brand-row">
           <img class="brand-logo small" src="./assets/keeperbma-icon.png" alt="KeeperBMA" />
           <h1>KeeperBMA</h1>
         </div>
-        <nav class="landing-links">
+        <button id="landingMenuToggle" class="landing-menu-toggle secondary" type="button" aria-expanded="false" aria-controls="landingLinks">Menu</button>
+        <nav id="landingLinks" class="landing-links" aria-label="Main navigation">
           <div class="theme-switch compact">
             <span id="landingThemeLabel">Theme</span>
             <button id="landingThemeToggle" type="button" class="theme-toggle" aria-pressed="false">
@@ -41,27 +56,35 @@
           <a id="navFeatures" href="#features">Features</a>
           <a id="navPricing" href="#pricing">Pricing</a>
           <a id="navAbout" href="#about">About</a>
+          <a href="./demo.html">Try the demo</a>
+          <a href="./profit-calculator.html">Free calculator</a>
         </nav>
       </header>
 
       <section id="home" class="landing-hero card">
-        <h2 id="landingTitle">All-in-One Finance Platform for Personal and Business Growth</h2>
+        <h2 id="landingTitle">See what your side hustle actually earns</h2>
         <p id="landingSubtitle">
-          KeeperBMA helps you track money, manage subscriptions, run business operations, and scale across web, mobile, and desktop with one secure backend.
+          Track creator income, expenses, and monthly net income. Organize your earnings by source and see what you keep.
         </p>
         <div class="landing-cta">
+          <a class="demo-cta" href="./demo.html">Try the demo — no signup</a>
           <button id="btnHeroRegister">Get Started</button>
           <button id="btnHeroLogin" class="secondary">I Already Have an Account</button>
         </div>
       </section>
 
+      <figure class="card landing-preview">
+        <a href="./demo.html"><img src="./assets/creator-report-preview.png" width="1034" height="863" loading="lazy" alt="Sample monthly report: $370 income, $70 expenses, and $300 net income, grouped by creator income source." /></a>
+        <figcaption>Fictional sample data. Try the interactive demo to explore your first monthly report.</figcaption>
+      </figure>
+
       <section id="features" class="card">
         <h2 id="featuresTitle">Features Overview</h2>
         <div class="feature-grid">
           <article class="feature-item"><h3 id="featManualTitle">Manual Tracking</h3><p id="featManualDesc">Add income, expenses, accounts, and notes manually with full control.</p></article>
-          <article class="feature-item"><h3 id="featAutoTitle">Auto Sync</h3><p id="featAutoDesc">Connect bank accounts for automatic transaction sync and smart categorization.</p></article>
-          <article class="feature-item"><h3 id="featPosTitle">POS & Inventory</h3><p id="featPosDesc">Business users get POS, inventory, sales records, and product analytics.</p></article>
-          <article class="feature-item"><h3 id="featAiTitle">AI Insights</h3><p id="featAiDesc">Get forecasting, spending patterns, and category-level performance insights.</p></article>
+          <article class="feature-item"><h3 id="featAutoTitle">Auto Sync</h3><p id="featAutoDesc">Eligible plans can connect supported banks through Plaid. Availability depends on your bank and connection.</p></article>
+          <article class="feature-item"><h3 id="featPosTitle">Monthly Net Income</h3><p id="featPosDesc">Compare recorded income and expenses for any month. Transfers stay out of your totals.</p></article>
+          <article class="feature-item"><h3 id="featAiTitle">Reports You Can Export</h3><p id="featAiDesc">Review income by source and download a monthly CSV for your records.</p></article>
         </div>
       </section>
 
@@ -72,37 +95,40 @@
           <article class="price-item">
             <h3>Basic</h3>
             <p>$2 / month</p>
+            <p>Manual accounts, income and expense tracking, monthly report, and CSV export.</p>
             <button id="btnPickBasic" class="secondary plan-pick-btn" data-signup-plan="basic">Choose Basic</button>
           </article>
           <article class="price-item">
             <h3>Regular</h3>
             <p>$7 / month</p>
+            <p>Everything in Basic, plus supported bank connections through Plaid.</p>
             <button id="btnPickRegular" class="secondary plan-pick-btn" data-signup-plan="regular">Choose Regular</button>
           </article>
           <article class="price-item">
             <h3>Business</h3>
             <p>$25 / month</p>
-            <p>Business page, starter website, staff access, and operations foundation.</p>
+            <p>Business profile and employee records. Public pages, website publishing, POS, and inventory workflows are planned.</p>
             <button id="btnPickBusiness" class="secondary plan-pick-btn" data-signup-plan="business">Choose Business</button>
           </article>
           <article class="price-item">
             <h3>Premium Plus</h3>
             <p>$50 / month</p>
-            <p>Everything in Business plus AI tools, image optimization, and stronger reporting.</p>
+            <p>Business profile and employee records. AI business tools and image optimization are planned, not available yet.</p>
             <button id="btnPickPremium" class="secondary plan-pick-btn" data-signup-plan="premium_plus">Choose Premium Plus</button>
           </article>
           <article class="price-item">
             <h3>Diamond</h3>
             <p>$70 / month</p>
-            <p>Everything in Premium Plus with the full website bundle and deeper management tools.</p>
+            <p>Business profile and employee records. The expanded website bundle and deeper management tools are planned.</p>
             <button id="btnPickDiamond" class="secondary plan-pick-btn" data-signup-plan="diamond">Choose Diamond</button>
           </article>
         </div>
       </section>
 
       <section id="about" class="card">
+        <p class="callout">Business tiers are under development. POS, inventory, public website publishing, and AI business tools are not available workflows yet.</p>
         <h2 id="aboutTitle">About KeeperBMA</h2>
-        <p id="aboutDesc">KeeperBMA is designed for individuals, families, and business owners who need one scalable platform to manage finances securely across all devices.</p>
+        <p id="aboutDesc">Built for creators, freelancers, and side hustlers who want a simpler way to organize income and expenses.</p>
       </section>
     </section>
 
@@ -494,7 +520,8 @@
     </section>
   </main>
 
-  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
-  <script src="./frontends/web/web.js?v=46"></script>
+  <script defer src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+  <script src="./frontends/web/creator-tools.js?v=1"></script>
+  <script src="./frontends/web/web.js?v=49"></script>
 </body>
 </html>

@@ -4,7 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>KeeperBMA - Payment</title>
-  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; block-all-mixed-content" />
+  <script>
+    // Keep the production HTTPS policy while permitting local HTTP development.
+    if (!["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname)) {
+      const policy = document.createElement("meta");
+      policy.httpEquiv = "Content-Security-Policy";
+      policy.content = "upgrade-insecure-requests; block-all-mixed-content";
+      document.head.appendChild(policy);
+    }
+  </script>
   <link rel="icon" type="image/png" href="../../assets/keeperbma-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
