@@ -225,8 +225,8 @@
     if (id === "btnEmailSupport") { intercept(); document.querySelector(".demo-notice").textContent = "Demo email simulated. No email was sent or opened."; return; }
     if (section) {
       intercept(); if (section === "support") { document.getElementById("supportLauncher")?.click(); return; }
-      document.getElementById(section === "businessWorkspace" ? "btnModeBusiness" : "btnModePersonal")?.click();
-      document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" }); return;
+      document.getElementById(["businessWorkspace", "demoPos"].includes(section) ? "btnModeBusiness" : "btnModePersonal")?.click();
+      document.getElementById(section)?.scrollIntoView({ behavior: "auto", block: "start" }); return;
     }
     const href = String(target.getAttribute("href") || "");
     if (target.tagName === "A" && !target.hasAttribute("data-demo-exit") && !target.hasAttribute("download") && !href.startsWith("#") && !href.startsWith("blob:")) {

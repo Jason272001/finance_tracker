@@ -1452,13 +1452,19 @@ function renderBusinessModules() {
   BUSINESS_MODULES.forEach((item) => {
     const enabled = item.key === "employee_management" && Boolean(isLifetime || flags[item.key]);
     const planned = item.key !== "employee_management";
+    const posPrototype = document.documentElement.dataset.demo && window.PosDemo && ["sales_tools", "purchase_tools", "product_catalog", "supplier_records"].includes(item.key);
     const card = document.createElement("article");
     card.className = `module-card ${enabled ? "enabled" : ""}`;
     card.innerHTML = `
       <h3>${escapeHtml(item.title)}</h3>
-      <span class="module-state ${enabled ? "enabled" : "locked"}">${escapeHtml(planned ? "Planned — not available yet" : (enabled ? t("business_included") : t("business_locked_badge")))}</span>
+      <span class="module-state ${enabled ? "enabled" : "locked"}">${escapeHtml(posPrototype ? "Interactive demo prototype" : planned ? "Planned — not available yet" : (enabled ? t("business_included") : t("business_locked_badge")))}</span>
       <p>${escapeHtml(item.description)}</p>
     `;
+    if (posPrototype) {
+      const open = document.createElement("button"); open.type = "button"; open.textContent = "Try POS demo";
+      open.onclick = () => document.getElementById("demoPos")?.scrollIntoView({ behavior: "auto" });
+      card.appendChild(open);
+    }
     box.appendChild(card);
   });
 }
@@ -3124,6 +3130,10 @@ window.addEventListener("load", async () => {
     };
     setScreen(true);
     await refreshAll();
+    if (document.documentElement.dataset.demo && window.location.hash === '#demoPos') {
+      setAppMode('business');
+      document.getElementById('demoPos')?.scrollIntoView({ behavior: 'auto', block: 'start' });
+    }
     if (window.location.search) {
       window.history.replaceState({}, "", window.location.pathname);
     }

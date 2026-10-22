@@ -18,8 +18,8 @@ def render(source, settings=False):
     html = html.replace('<html lang="en">', '<html lang="en" data-demo="settings">' if settings else '<html lang="en" data-demo="workspace">')
     additions = f'''<meta http-equiv="Content-Security-Policy" content="{POLICY}">
 <meta name="description" content="Explore KeeperBMA with fictional data. Try accounts, reports, business tools and settings. All changes reset on refresh.">
-<script src="./frontends/web/demo.js?v=2"></script>
-<link rel="stylesheet" href="./frontends/web/demo.css?v=2">'''
+<script src="./frontends/web/demo.js?v=3"></script>
+<link rel="stylesheet" href="./frontends/web/demo.css?v=3">'''
     additions += '<meta name="robots" content="noindex">' if settings else '<link rel="canonical" href="https://keeperbma.com/demo.html">'
     html = html.replace('<meta charset="utf-8" />', '<meta charset="utf-8" />\n' + additions)
     banner = '''<aside class="demo-banner" aria-label="Demo information">
@@ -30,7 +30,7 @@ def render(source, settings=False):
     if not settings:
         banner += '''<section id="demoMenu" class="demo-directory card"><h1>Explore KeeperBMA</h1><p>All paid tools are unlocked here. Use sample details only. Planned modules remain marked as planned.</p>
 <nav aria-label="Demo sections">'''
-        for label, target in [('Monthly report', 'creatorReport'), ('Accounts', 'accountsTitle'), ('Transactions & transfers', 'transactionsTitle'), ('Categories', 'categoriesTitle'), ('Banks', 'bankSyncTitle'), ('Charts & PDF', 'summaryExportTitle'), ('Daily summary', 'dailySummaryTitle'), ('Business & employees', 'businessWorkspace'), ('Settings & billing', 'settings'), ('Support', 'support')]:
+        for label, target in [('Monthly report', 'creatorReport'), ('POS & inventory', 'demoPos'), ('Accounts', 'accountsTitle'), ('Transactions & transfers', 'transactionsTitle'), ('Categories', 'categoriesTitle'), ('Banks', 'bankSyncTitle'), ('Charts & PDF', 'summaryExportTitle'), ('Daily summary', 'dailySummaryTitle'), ('Business & employees', 'businessWorkspace'), ('Settings & billing', 'settings'), ('Support', 'support')]:
             banner += f'<button type="button" class="secondary" data-demo-section="{target}">{label}</button>'
         banner += '''</nav><div class="row"><button type="button" class="secondary" data-demo-share>Copy demo link</button><a href="./index.html" data-demo-exit>Leave demo</a><a href="./plans.html" data-demo-exit>View real plans</a></div></section>'''
     html = html.replace('<main class="page">', '<main class="page">\n' + banner)
@@ -41,8 +41,9 @@ def render(source, settings=False):
     scripts = '<script defer src="./assets/vendor/chart.umd.js"></script><script defer src="./assets/vendor/jspdf.umd.min.js"></script>'
     if not settings:
         scripts += '<script defer src="./frontends/web/creator-tools.js?v=1"></script>'
-    scripts += f'<script defer src="./frontends/web/{"settings" if settings else "web"}.js?v=demo2"></script>'
+    scripts += f'<script defer src="./frontends/web/{"settings" if settings else "web"}.js?v=demo3"></script>'
     if not settings:
+        scripts += '<script defer src="./frontends/web/pos-demo-model.js?v=1"></script><script defer src="./frontends/web/demo-pos.js?v=1"></script>'
         # srcdoc uses the same generated Settings screen without needing to
         # loosen production hosting's X-Frame-Options: DENY response header.
         settings_html = json.dumps(render(ROOT / "settings.html", True), ensure_ascii=False).replace("<", "\\u003c")

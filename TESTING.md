@@ -67,3 +67,7 @@ Portable Java 21 and Android SDK tools were downloaded to the system temporary d
 The browser suite now includes full sample account/transaction CRUD, transfers, filters, business/employee permissions, simulated bank connect/sync/disconnect, Settings/profile/password/plan/cancellation interactions, local charts/PDF/support, independent tabs, refresh reset and real storage preservation. Demo pages are generated from the actual customer screens; unknown API routes fail closed. Both root and alternate demo entries are covered. Run `npm run test:e2e` for the full Chromium/WebKit suite.
 
 Verified locally for the expansion: 30 Chromium/WebKit browser checks, 6 report/calculator unit tests, JavaScript syntax checks, generated-page synchronization, static build, and dependency audit (0 known vulnerabilities in root demo/test dependencies). The existing real-account browser workflows still pass with mocked API responses.
+
+## Business POS demo (2026-10-22)
+
+The in-memory POS prototype covers product/brand/category/supplier records, local product photos and atomic CSV imports, purchase receiving with weighted inventory cost, sales with discounts/example tax/cash change, receipt exports and voids. Refresh restores sample data; no real payment, supplier order or accounting entry is created. Verified: 12 unit tests and the full 36 Chromium/WebKit browser checks. A direct-link restoration regression check also covers both engines.
