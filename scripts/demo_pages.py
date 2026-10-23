@@ -32,7 +32,13 @@ def render(source, settings=False):
 <nav aria-label="Demo sections">'''
         for label, target in [('Monthly report', 'creatorReport'), ('POS & inventory', 'demoPos'), ('Business operations', 'demoBusinessHub'), ('Accounts', 'accountsTitle'), ('Transactions & transfers', 'transactionsTitle'), ('Categories', 'categoriesTitle'), ('Banks', 'bankSyncTitle'), ('Charts & PDF', 'summaryExportTitle'), ('Daily summary', 'dailySummaryTitle'), ('Business & employees', 'businessWorkspace'), ('Settings & billing', 'settings'), ('Support', 'support')]:
             banner += f'<button type="button" class="secondary" data-demo-section="{target}">{label}</button>'
-        banner += '''</nav><div class="row"><button type="button" class="secondary" data-demo-share>Copy demo link</button><a href="./index.html" data-demo-exit>Leave demo</a><a href="./plans.html" data-demo-exit>View real plans</a></div></section>'''
+        banner += '</nav><h2>Business demo tools</h2><nav aria-label="Business demo shortcuts">'
+        for label, tab in [('Overview', 'overview'), ('Staff & labor planning', 'staff'), ('Time clock & payroll', 'time'), ('Meetings & agendas', 'meetings'), ('Budgets & expenses', 'budgets'), ('Tax preparation', 'tax'), ('Marketing campaigns', 'marketing'), ('Tasks & ownership', 'tasks'), ('Business analyst preview', 'analyst')]:
+            banner += f'<button type="button" class="secondary" data-demo-section="demoBusinessHub" data-demo-hub-tab="{tab}">{label}</button>'
+        banner += '</nav><h2>POS demo tools</h2><nav aria-label="POS demo shortcuts">'
+        for label, tab in [('Sales checkout', 'checkout'), ('Products & CSV upload', 'products'), ('Supplier purchases', 'purchases'), ('Sales & receipts', 'sales'), ('Suppliers', 'suppliers'), ('Brands', 'brands'), ('Product categories', 'categories')]:
+            banner += f'<button type="button" class="secondary" data-demo-section="demoPos" data-demo-pos-tab="{tab}">{label}</button>'
+        banner += '''</nav><p>These tools use temporary sample data. Real payments, payroll processing, tax filing, AI services and social publishing are not connected.</p><div class="row"><button type="button" class="secondary" data-demo-share>Copy demo link</button><a href="./index.html" data-demo-exit>Leave demo</a><a href="./plans.html" data-demo-exit>View real plans</a></div></section>'''
     html = html.replace('<main class="page">', '<main class="page">\n' + banner)
     # The actual marketing page is separate from the simulated signed-in app.
     if not settings:
