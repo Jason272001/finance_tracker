@@ -7,9 +7,10 @@
     const money = n => new Intl.NumberFormat('en-US', {style:'currency',currency:'USD'}).format(n / 100);
     const cents = n => Math.round(Number(n) * 100);
     const today = new Date().toISOString().slice(0,10);
-    let next = 10;
+    let next = 200;
+    const branches = new DemoBranches.Branches();
     const data = {
-      staff: [{id:1,name:'Alex Sample',role:'Shop assistant',hours:16,rate:1800},{id:101,name:'Jason',role:'Sample team member',hours:0,rate:1800},{id:102,name:'Kay',role:'Sample team member',hours:0,rate:1800}],
+      staff: [{id:1,branchId:1,name:'Alex Sample',role:'Shop assistant',hours:16,rate:1800},{id:101,branchId:1,name:'Jason',role:'Sample team member',hours:0,rate:1800},{id:102,branchId:1,name:'Kay',role:'Sample team member',hours:0,rate:1800},{id:103,branchId:2,name:'Morgan Sample',role:'Riverside team member',hours:20,rate:2000}],
       meetings: [{id:2,title:'Weekly shop planning',date:today,time:'10:00',owner:'Alex Sample',notes:'Review stock and next campaign.',done:false}],
       expenses: [{id:3,date:today,category:'Marketing',description:'Sample launch materials',amount:4500,document:false}],
       budgets: [{id:4,category:'Marketing',amount:15000},{id:5,category:'Operations',amount:30000}],
@@ -17,7 +18,7 @@
       tasks: [{id:7,title:'Collect supplier invoices',owner:'Alex Sample',date:today,done:false}],
       documents: [{id:8,title:'Sales records reviewed',done:false},{id:9,title:'Expense documents collected',done:false}]
     };
-    window.BusinessHubDemo = { staff: () => data.staff.map(p => ({...p})) };
+    window.BusinessHubDemo = { staff: () => data.staff.filter(p=>p.branchId===branches.selected).map(p => ({...p})), branch: () => branches.current() };
     const host = document.createElement('section'); host.id='demoBusinessHub'; host.className='card pos-demo';
     const fields = (name, label, type='text', extra='') => `<label>${label}<input name="${name}" type="${type}" ${extra} required></label>`;
     const dollars = (name,label) => fields(name,label,'number','min="0" max="1000000" step="0.01"');
@@ -25,6 +26,7 @@
     const date = () => fields('date','Date','date',`value="${today}"`);
     const form = (kind,content,label) => `<form data-hub-form="${kind}" class="pos-fields">${content}<button>${label}</button></form><div data-hub-list="${kind}" class="pos-table-wrap"></div>`;
     const panels = {
+      branches: '<h3>Store branches</h3><p>Create a location, then select it above to add its staff and plan their shifts. Staff, schedules and time-clock records are separate for each branch. Finance, POS and marketing demos are shared business examples.</p><form id="branchForm" class="pos-fields"><input name="id" type="hidden" value="0"><label>Branch name<input name="name" maxlength="80" required></label><label>Branch address<input name="address" maxlength="200"></label><button>Save branch</button><button type="reset" class="secondary">New branch</button></form><div id="branchList" class="pos-table-wrap"></div>',
       overview: '<h3>Business overview</h3><p>Live sample POS figures plus the expenses, budgets and tasks you enter below. All records are temporary and independent of your real account.</p><div id="hubMetrics" class="pos-metrics"></div><div id="hubInsights"></div>',
       staff: '<h3>Staff & work estimates</h3><p>Plan roles, hours and estimated labor cost. This is a staffing worksheet; it does not run payroll or grant account access.</p>'+form('staff',text('name','Staff name')+text('role','Role')+fields('hours','Planned hours','number','min="0" max="744" step="0.25"')+dollars('rate','Hourly rate (USD)'),'Add sample staff'),
       meetings: '<h3>Meetings & agenda</h3><p>Plan meetings and mark them complete. No invitations or reminders are sent.</p>'+form('meetings',text('title','Meeting title')+date()+fields('time','Time','time')+text('owner','Organizer')+text('notes','Agenda'),'Add meeting'),
@@ -34,8 +36,8 @@
       tasks: '<h3>Tasks & ownership</h3>'+form('tasks',text('title','Task title')+text('owner','Task owner')+date(),'Add task'),
       analyst: '<h3>Business analyst preview</h3><p>Transparent, rule-based insights from your sample records. No AI model is connected and no data leaves this page. Figures change as you receive purchases, make sales or add expenses.</p><button type="button" id="hubAnalyze">Refresh analysis</button><div id="hubAnalysis" aria-live="polite"></div>'
     };
-    const labels={overview:'Overview',staff:'Staff',meetings:'Meetings',budgets:'Budgets & expenses',tax:'Tax preparation',marketing:'Marketing',tasks:'Tasks',analyst:'Analyst preview'};
-    host.innerHTML='<p class="pos-eyebrow">BUSINESS DEMO</p><h2>Business operations hub</h2><p>Explore how a connected business workspace could work. Sample planning tools only; refresh resets everything.</p><nav class="pos-tabs" aria-label="Business hub sections">'+Object.keys(panels).map((k,i)=>`<button type="button" data-hub-tab="${k}" aria-pressed="${i===0}">${labels[k]}</button>`).join('')+'</nav><p id="hubStatus" role="status"></p>'+Object.entries(panels).map(([k,v],i)=>`<section data-hub-panel="${k}" ${i?'hidden':''}>${v}</section>`).join('');
+    const labels={branches:'Branches',overview:'Overview',staff:'Staff',meetings:'Meetings',budgets:'Budgets & expenses',tax:'Tax preparation',marketing:'Marketing',tasks:'Tasks',analyst:'Analyst preview'};
+    host.innerHTML='<p class="pos-eyebrow">BUSINESS DEMO</p><h2>Business operations hub</h2><p>Explore how a connected business workspace could work. Sample planning tools only; refresh resets everything.</p><div class="branch-toolbar"><label>Working branch<select id="hubBranch"></select></label><p id="branchContext" role="status"></p></div><p class="branch-scope">Branch selection applies to Staff, Staff schedule and Time clock & payroll. Other demos show shared business sample data.</p><div class="hub-quick-actions"><button type="button" data-hub-tab="staff">1 · Manage staff</button><button type="button" data-hub-tab="schedule">2 · Plan shifts</button><button type="button" data-hub-tab="time">3 · Clock & review time</button></div><nav class="pos-tabs" aria-label="Business hub sections">'+Object.keys(panels).map((k,i)=>`<button type="button" data-hub-tab="${k}" aria-pressed="${k==='overview'}">${labels[k]}</button>`).join('')+'</nav><p id="hubStatus" role="status"></p>'+Object.entries(panels).map(([k,v],i)=>`<section data-hub-panel="${k}" ${k==='overview'?'':'hidden'}>${v}</section>`).join('');
     workspace.insertBefore(host,document.getElementById('demoPos')?.nextSibling || null);
     const $=id=>host.querySelector('#'+id);
     const action=(kind,id,label,op)=>`<button type="button" class="secondary" data-hub-action="${op}" data-kind="${kind}" data-id="${id}">${label}</button>`;
@@ -55,8 +57,12 @@
     }
     function reserve(t) {const rate=Number($('hubReserve').value);$('hubReserveResult').textContent=Number.isFinite(rate)&&rate>=0&&rate<=100?`Cash reserve at ${rate}% of positive sample operating result: ${money(Math.round(Math.max(t.profit,0)*rate/100))}`:'Enter a percentage from 0 to 100.';}
     function render() {
+      const branch = branches.current();
+      $('hubBranch').innerHTML=branches.snapshot().map(b=>`<option value="${b.id}" ${b.id===branch.id?'selected':''}>${esc(b.name)}</option>`).join('');
+      $('branchContext').textContent=branch.name+' · '+data.staff.filter(p=>p.branchId===branch.id).length+' staff · '+(branch.address||'No address added');
+      $('branchList').innerHTML='<table><thead><tr><th>Branch</th><th>Address</th><th>Staff</th><th>Action</th></tr></thead><tbody>'+branches.snapshot().map(b=>`<tr><td>${esc(b.name)}</td><td>${esc(b.address)}</td><td>${data.staff.filter(p=>p.branchId===b.id).length}</td><td><button type="button" data-branch-open="${b.id}">Open branch</button> <button type="button" class="secondary" data-branch-edit="${b.id}">Edit details</button></td></tr>`).join('')+'</tbody></table>';
       document.dispatchEvent(new Event('keeper-staff-change'));
-      table('staff',['Name','Role','Hours','Rate','Planned labor'],data.staff.map(r=>[r,[esc(r.name),esc(r.role),r.hours,money(r.rate),money(Math.round(r.hours*r.rate))]]));
+      table('staff',['Name','Role','Hours','Rate','Planned labor'],data.staff.filter(r=>r.branchId===branches.selected).map(r=>[r,[esc(r.name),esc(r.role),r.hours,money(r.rate),money(Math.round(r.hours*r.rate))]]));
       table('meetings',['Meeting','Date / time','Organizer','Agenda','Status'],data.meetings.map(r=>[r,[esc(r.title),esc(r.date+' '+r.time),esc(r.owner),esc(r.notes),r.done?'Complete':'Planned']]));
       table('expenses',['Date','Category','Description','Amount','Documentation'],data.expenses.map(r=>[r,[esc(r.date),esc(r.category),esc(r.description),money(r.amount),r.document?'Marked documented':'Missing']]));
       table('budgets',['Category','Budget','Recorded spend','Remaining'],data.budgets.map(r=>{const spent=data.expenses.filter(e=>e.category.toLowerCase()===r.category.toLowerCase()).reduce((n,e)=>n+e.amount,0);return [r,[esc(r.category),money(r.amount),money(spent),money(r.amount-spent)]]}));
@@ -67,18 +73,22 @@
       $('hubInsights').innerHTML=insight(t);$('hubAnalysis').innerHTML=insight(t);
       $('hubTax').innerHTML=`<p>POS sales before tax: <strong>${money(t.revenue)}</strong> · Collected example sales tax: <strong>${money(t.tax)}</strong> · Sold inventory cost: <strong>${money(t.cost)}</strong> · Recorded expenses: <strong>${money(t.expenses)}</strong></p><p>These are sample workspace totals, not a tax return. Opening inventory and sample history may not represent a complete reporting period.</p>`;reserve(t);
     }
-    for(const f of host.querySelectorAll('form')) f.addEventListener('submit',e=>{
+    for(const f of host.querySelectorAll('[data-hub-form]')) f.addEventListener('submit',e=>{
       e.preventDefault();const kind=f.dataset.hubForm;
       try {if(data[kind].length>=100)throw Error('Demo limit: 100 records per list.');const row=Object.fromEntries(new FormData(f));
         for(const [k,v] of Object.entries(row)){if(['amount','rate','budget','spent','revenue'].includes(k))row[k]=cents(v);else if(['hours','leads','orders'].includes(k))row[k]=Number(v);else row[k]=v.trim();if(typeof row[k]==='number'&&(!Number.isFinite(row[k])||row[k]<0))throw Error('Use a valid nonnegative amount.');if(row[k]==='')throw Error('Complete all fields.');}
         if(kind==='budgets'){const existing=data.budgets.find(x=>x.category.toLowerCase()===row.category.toLowerCase());if(existing){existing.amount=row.amount;render();$('hubStatus').textContent='Sample budget updated.';return;}}
-        data[kind].push({id:++next,done:false,document:false,...row});f.reset();render();$('hubStatus').textContent='Sample record added. Refresh resets this workspace.';
+        data[kind].push({id:++next,branchId:branches.selected,done:false,document:false,...row});f.reset();render();$('hubStatus').textContent='Sample record added. Refresh resets this workspace.';
       } catch(error){$('hubStatus').textContent=error.message;}
     });
     host.addEventListener('click',e=>{
-      const tab=e.target.closest('[data-hub-tab]');if(tab){for(const p of host.querySelectorAll('[data-hub-panel]'))p.hidden=p.dataset.hubPanel!==tab.dataset.hubTab;for(const b of host.querySelectorAll('[data-hub-tab]'))b.setAttribute('aria-pressed',String(b===tab));render();}
+      const tab=e.target.closest('[data-hub-tab]');if(tab){for(const p of host.querySelectorAll('[data-hub-panel]'))p.hidden=p.dataset.hubPanel!==tab.dataset.hubTab;for(const b of host.querySelectorAll('[data-hub-tab]'))b.setAttribute('aria-pressed',String(b.dataset.hubTab===tab.dataset.hubTab));render();}
       const a=e.target.closest('[data-hub-action]');if(a){const list=data[a.dataset.kind],i=list.findIndex(r=>r.id===Number(a.dataset.id));if(i<0)return;if(a.dataset.hubAction==='delete'){if(a.dataset.kind==='staff'&&window.TimeDemo?.active(list[i].id)){$('hubStatus').textContent='Clock out this employee before deleting the staff record.';return;}list.splice(i,1);}else {const key=a.dataset.kind==='expenses'?'document':'done';list[i][key]=!list[i][key];}render();}
     });
+    $('hubBranch').onchange=()=>{branches.select($('hubBranch').value);host.querySelector('[data-hub-form="staff"]').reset();render();document.dispatchEvent(new Event('keeper-branch-change'));$('hubStatus').textContent='Switched to '+branches.current().name;};
+    $('branchForm').onsubmit=e=>{e.preventDefault();try{const f=new FormData($('branchForm'));branches.save(f.get('name'),f.get('address'),f.get('id'));$('branchForm').reset();$('branchForm').elements.id.value='0';render();$('hubStatus').textContent='Branch saved. Choose it above to manage its team.';}catch(err){$('hubStatus').textContent=err.message;}};
+    $('branchForm').onreset=()=>setTimeout(()=>{$('branchForm').elements.id.value='0';},0);
+    host.addEventListener('click',e=>{const open=e.target.closest('[data-branch-open]'),edit=e.target.closest('[data-branch-edit]');if(open){branches.select(open.dataset.branchOpen);host.querySelector('[data-hub-form="staff"]').reset();render();document.dispatchEvent(new Event('keeper-branch-change'));host.querySelector('nav [data-hub-tab="staff"]').click();}if(edit){const b=branches.snapshot().find(b=>b.id===Number(edit.dataset.branchEdit));for(const k of ['id','name','address'])$('branchForm').elements[k].value=b[k];$('branchForm').elements.name.focus();}});
     $('hubReserve').oninput=()=>reserve(totals());$('hubAnalyze').onclick=render;
     $('hubDraft').onclick=()=>{$('hubDraftText').textContent='Sample draft: Meet your next everyday favorite. Explore our featured products this week, compare the details, and visit our shop to learn more. Add your own photo, accurate price and store link before publishing.';};
     host.querySelector('[data-hub-export]').onclick=()=>{

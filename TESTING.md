@@ -83,3 +83,7 @@ Browser coverage exercises staff estimates, overspent budgets, expense documenta
 ## Staff schedule checks
 
 Schedule unit tests cover multiple assignees, atomic overlap rejection, adjacent shifts, invalid breaks/durations and cancellation. Browser checks cover the seeded Monday Jason/Kay shift, assignment, overlap errors, CSV export, cancellation, mobile width and refresh reset. Unit suite: 20 tests.
+
+## Branch isolation checks
+
+Branch model tests validate creation, edits, IDs, duplicate prevention and selection. Browser tests switch branches with active clocks, create a branch and its staff, isolate scheduled assignments/rosters, check mobile width and refresh reset. Scope is in-memory team operations; other demo workspaces remain shared sample data.

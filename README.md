@@ -92,3 +92,7 @@ Business demo adds staff clock-in/out, unpaid break start/end, manual entries, o
 ## Staff scheduling demo (2026-10-22)
 
 Weekly schedules support assigning one shift to multiple staff, overnight shifts, unpaid break planning, per-employee overlap prevention, cancellation and CSV export. The sample roster includes Jason and Kay with a Monday 9 AM–2 PM assignment in the current week. Scheduled hours are plans and never create actual clock entries or payroll hours. Browser-local time zone is shown; all records reset on refresh. Week totals list whole shifts touching that week, including overnight shifts.
+
+## Store branches (2026-10-22)
+
+The demo Business Hub supports creating/editing branches and selecting a working branch. Staff belongs to one branch; new staff is added to the selected branch. Staff lists, scheduling stores, clock entries and gross-pay estimates remain separate by branch. Switching branches clears unsaved staff/shift inputs; existing sample records remain available when returning. Schedule/time CSV exports identify the branch. Main Street has Alex, Jason and Kay; Riverside has Morgan. Other finance, POS and marketing samples remain business-wide and the UI explicitly explains this scope. No real tenancy or access control is implied. Refresh resets all branches and records.
