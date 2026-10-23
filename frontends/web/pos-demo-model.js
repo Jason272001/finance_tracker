@@ -43,6 +43,7 @@
     constructor() {
       this.next = 1001;
       this.data = {
+        promotions: [{id: 1, name: "Welcome offer", code: "WELCOME10", type: "percent", value: 10, minimum: 0, start: "", end: "", enabled: true}],
         brands: [{ id: 1, name: "Bean Co" }, { id: 2, name: "Studio Goods" }],
         categories: [{ id: 1, name: "Drinks" }, { id: 2, name: "Accessories" }, { id: 3, name: "Stationery" }],
         suppliers: [{ id: 1, name: "Sample Wholesale", email: "wholesale@example.test", phone: "", address: "Fictional warehouse" }, { id: 2, name: "Sample Paper Supply", email: "paper@example.test", phone: "", address: "" }],
@@ -129,14 +130,37 @@
       const order = { id: `PO-${++this.next}`, date: new Date().toISOString(), supplier: supplier.name, supplierId: supplier.id, reference: clean(reference, 200), items: lines, total: lines.reduce((n, l) => n + l.quantity * l.unitCost, 0) };
       this.data.purchases.unshift(order); return copy(order);
     }
-    quote(items, discount = 0, taxRate = 0) {
-      const lines = this.lines(items, "sale"), subtotal = lines.reduce((n, l) => n + l.quantity * l.unitPrice, 0), discountCents = cents(discount), rate = Number(taxRate);
+    promotion(values) {
+      const name = clean(values.name,80), code = clean(values.code,30).toUpperCase();
+      const value = Number(values.value), minimum = cents(values.minimum || 0);
+      const start = clean(values.start,10), end = clean(values.end,10);
+      const validDate = d => !d || (/^\d{4}-\d{2}-\d{2}$/.test(d) && new Date(d+'T00:00:00Z').toISOString().slice(0,10) === d);
+      if (!name || !/^[A-Z0-9_-]+$/.test(code)) throw Error("Enter an offer name and a code using letters, numbers, underscores or hyphens.");
+      if (this.data.promotions.some(p=>p.code===code)) throw Error("That promotion code already exists.");
+      if (!['percent','fixed'].includes(values.type) || !Number.isFinite(value) || value<=0 || (values.type==='percent' && value>100)) throw Error("Use a percentage from 0.01 to 100 or a positive fixed discount.");
+      cents(value);
+      if (!validDate(start) || !validDate(end) || (start && end && start>end)) throw Error("Use valid dates with the end on or after the start.");
+      if (this.data.promotions.length>=100) throw Error("Demo limit: 100 promotions.");
+      this.data.promotions.push({id:++this.next,name,code,type:values.type,value,minimum,start,end,enabled:true});
+    }
+    togglePromotion(id) { const p=this.get('promotions',id); p.enabled=!p.enabled; }
+    quote(items, discount = 0, taxRate = 0, promotionId = 0) {
+      const lines = this.lines(items, "sale"), subtotal = lines.reduce((n, l) => n + l.quantity * l.unitPrice, 0), rate = Number(taxRate);
+      let discountCents = cents(discount), promotion = null;
+      if (Number(promotionId)) {
+        const p = this.get('promotions', promotionId), now = new Date(), today = [now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+        if (discountCents) throw Error("Choose one promotion or a manual discount, not both.");
+        if (!p.enabled || (p.start && today<p.start) || (p.end && today>p.end)) throw Error("This promotion is inactive or outside its dates.");
+        if (subtotal<p.minimum) throw Error("The cart does not meet this promotion's minimum spend.");
+        discountCents = Math.min(subtotal,p.type==='percent'?Math.round(subtotal*p.value/100):cents(p.value));
+        promotion = copy(p);
+      }
       if (discountCents > subtotal || !Number.isFinite(rate) || rate < 0 || rate > 30) throw Error("Discount cannot exceed the subtotal; tax must be between 0% and 30%.");
       const tax = Math.round((subtotal - discountCents) * rate / 100);
-      return { items: lines, subtotal, discount: discountCents, tax, total: subtotal - discountCents + tax };
+      return { items: lines, promotion, subtotal, discount: discountCents, tax, total: subtotal - discountCents + tax };
     }
     sale(items, options = {}) {
-      const order = this.quote(items, options.discount || 0, options.taxRate || 0), quantities = new Map();
+      const order = this.quote(items, options.discount || 0, options.taxRate || 0, options.promotionId || 0), quantities = new Map();
       for (const line of order.items) quantities.set(line.productId, (quantities.get(line.productId) || 0) + line.quantity);
       for (const [id, qty] of quantities) if (qty > this.get("products", id).stock) throw Error(`Not enough stock for ${this.get("products", id).name}.`);
       const payment = options.payment || "cash";

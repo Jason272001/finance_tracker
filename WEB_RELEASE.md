@@ -41,3 +41,7 @@ Introduces a cohesive green/neutral demo design system, desktop sidebar with SVG
 ## Themes and product assistant, 2026-10-23
 
 Restores visible Light/Dark controls with semantic neutral/blue surfaces throughout the demo. Adds maintained product guidance for features, task navigation, billing and published pricing. Adds a separate same-origin Vercel product-assistant function using OpenAI Responses only when key/model/enable settings exist; otherwise answers are explicitly guide-only. No real OpenAI key was configured; live-model execution remains pending operator setup. The demo CSP permits same-origin product-help requests but financial workflows remain in-memory. Verified 27 unit tests and 56 browser checks, plus a final four theme/assistant checks after surface refinements. Existing production account backend is unchanged.
+
+## POS promotions and accounting, 2026-10-23
+
+Adds percentage/fixed offers, date and minimum-spend checks, enable/disable controls, frozen receipt offer details, and a connected accounting overview with profit/loss, an activity ledger and CSV exports. Accounting separates tax collected and inventory purchases from operating expenses. All new workflows remain temporary sample data and reset on refresh. This is not a full bookkeeping or tax-filing system. Production account backend is unchanged.
