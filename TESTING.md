@@ -91,3 +91,7 @@ Branch model tests validate creation, edits, IDs, duplicate prevention and selec
 ## Organized business navigation checks
 
 Browser coverage verifies six primary categories, a single visible business task, secondary navigation, remembered category selection, Settings grouping, direct-link navigation visibility and 320px layout. Existing business/POS/team workflow tests use the grouped navigation. Full browser suite: 50 checks in Chromium/WebKit; navigation checks rerun after final direct-link/branch-control layout adjustments.
+
+## Visual redesign verification
+
+Inspect desktop and mobile screenshots of overview, POS and team tools. Business layout browser coverage includes category routing, hidden unrelated screens, remembered tasks, narrow viewport layout and quick actions for checkout, scheduling and budgets. Existing business workflows remain covered in Chromium/WebKit.

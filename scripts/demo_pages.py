@@ -19,7 +19,7 @@ def render(source, settings=False):
     additions = f'''<meta http-equiv="Content-Security-Policy" content="{POLICY}">
 <meta name="description" content="Explore KeeperBMA with fictional data. Try accounts, reports, business tools and settings. All changes reset on refresh.">
 <script src="./frontends/web/demo.js?v=3"></script>
-<link rel="stylesheet" href="./frontends/web/demo.css?v=3">'''
+<link rel="stylesheet" href="./frontends/web/demo.css?v=4"><link rel="stylesheet" href="./frontends/web/demo-design.css?v=1">'''
     additions += '<meta name="robots" content="noindex">' if settings else '<link rel="canonical" href="https://keeperbma.com/demo.html">'
     html = html.replace('<meta charset="utf-8" />', '<meta charset="utf-8" />\n' + additions)
     banner = '''<aside class="demo-banner" aria-label="Demo information">
@@ -50,10 +50,10 @@ def render(source, settings=False):
     scripts += f'<script defer src="./frontends/web/{"settings" if settings else "web"}.js?v=demo3"></script>'
     if not settings:
         scripts += '<script defer src="./frontends/web/pos-demo-model.js?v=1"></script><script defer src="./frontends/web/demo-pos.js?v=1"></script>'
-        scripts += '<script defer src="./frontends/web/demo-branches-model.js?v=1"></script><script defer src="./frontends/web/demo-business.js?v=2"></script>'
+        scripts += '<script defer src="./frontends/web/demo-branches-model.js?v=1"></script><script defer src="./frontends/web/demo-business.js?v=3"></script>'
         scripts += '<script defer src="./frontends/web/demo-time-model.js?v=1"></script><script defer src="./frontends/web/demo-time.js?v=1"></script>'
         scripts += '<script defer src="./frontends/web/demo-schedule-model.js?v=1"></script><script defer src="./frontends/web/demo-schedule.js?v=1"></script>'
-        scripts += '<script defer src="./frontends/web/demo-layout.js?v=1"></script>'
+        scripts += '<script defer src="./frontends/web/demo-layout.js?v=2"></script>'
         # srcdoc uses the same generated Settings screen without needing to
         # loosen production hosting's X-Frame-Options: DENY response header.
         settings_html = json.dumps(render(ROOT / "settings.html", True), ensure_ascii=False).replace("<", "\\u003c")

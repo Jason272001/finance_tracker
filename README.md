@@ -100,3 +100,7 @@ The demo Business Hub supports creating/editing branches and selecting a working
 ## Business navigation redesign (2026-10-22)
 
 The demo business workspace now has six primary categories: Overview, POS, Team, Finance, Marketing and Settings. Only the selected category and task are visible. Category changes retain the most recent task in that category for the current page lifetime. Original forms and data handlers remain intact; business profile, access and feature availability are grouped under Settings. Team-only branch controls avoid implying that shared finance/POS records are branch-specific. Long directory shortcut lists are collapsed but available. Mobile navigation uses a three-column category grid and horizontally scrolling secondary tools. Direct demo links and directory links open the correct workspace with the main navigation visible.
+
+## Business visual redesign (2026-10-22)
+
+The public demo now uses a cohesive green/neutral application shell, a desktop sidebar with native SVG icons, a compact mobile category grid, dynamic workspace headings, consistent inputs/tables, and an overview with sample metrics, attention items and working quick actions. Account chrome and directory controls follow the same visual system. Existing in-memory data models and backend isolation are preserved; no external fonts or assets are needed. Screenshots were inspected at desktop and phone widths.

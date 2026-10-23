@@ -8,3 +8,9 @@ test('business navigation shows one category and task at a time on desktop and m
  await nav.getByRole('button',{name:'Settings',exact:true}).click();await expect(page.locator('#businessName')).toBeVisible();await expect(page.locator('#demoBusinessHub')).toBeHidden();await expect(page.locator('#businessEmployeeName')).toBeHidden();
  await page.setViewportSize({width:320,height:800});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);await nav.getByRole('button',{name:'Team',exact:true}).click();await expect(page.locator('#scheduleForm')).toBeVisible();expect(errors).toEqual([]);
 });
+
+test('dashboard actions open the relevant workspace and preserve single-task navigation',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.route(u=>!['127.0.0.1','localhost'].includes(u.hostname),r=>r.abort());await page.goto('/demo.html#demoBusinessHub');
+ await page.getByRole('button',{name:'Start a sale Open the sample checkout',exact:false}).click();await expect(page.locator('#posSaleLine')).toBeVisible();await expect(page.locator('#demoBusinessHub')).toBeHidden();
+ const nav=page.getByRole('navigation',{name:'Business categories'});await nav.getByRole('button',{name:'Overview',exact:true}).click();await page.getByRole('button',{name:'Plan the week Build your branch staff schedule',exact:false}).click();await expect(page.locator('#scheduleForm')).toBeVisible();await expect(page.locator('#demoPos')).toBeHidden();await nav.getByRole('button',{name:'Overview',exact:true}).click();await page.getByRole('button',{name:'Review spending Compare budgets and expenses',exact:false}).click();await expect(page.locator('[data-hub-panel="budgets"]')).toBeVisible();expect(errors).toEqual([]);
+});
