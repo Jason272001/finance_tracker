@@ -1,6 +1,20 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { Shop, parseCsv } = require('../frontends/web/pos-demo-model.js');
+test('promotions validate eligibility, freeze receipts and preserve atomic checkout', () => {
+  const shop=new Shop(), lines=[{productId:1,quantity:2,unitPrice:'12.50'}];
+  assert.equal(shop.quote(lines,0,10,1).total,2475);
+  assert.equal(shop.quote(lines,0,0,'0').discount,0);
+  assert.throws(()=>shop.quote(lines,1,0,1),/one promotion/);
+  shop.promotion({name:'Five off',code:'FIVE',type:'fixed',value:5,minimum:30});
+  const p=shop.snapshot().promotions.at(-1); assert.throws(()=>shop.quote(lines,0,0,p.id),/minimum/);
+  shop.promotion({name:'Expired',code:'OLD',type:'percent',value:20,end:'2000-01-01'});
+  assert.throws(()=>shop.quote(lines,0,0,shop.snapshot().promotions.at(-1).id),/inactive/);
+  const before=shop.snapshot();assert.throws(()=>shop.sale(lines,{promotionId:1,paid:0}),/cash|payment|received/i);assert.deepEqual(shop.snapshot(),before);
+  const sale=shop.sale(lines,{promotionId:1,payment:'card'});assert.equal(sale.discount,250);assert.equal(sale.promotion.code,'WELCOME10');
+  shop.togglePromotion(1); assert.equal(shop.snapshot().sales[0].promotion.enabled,true);assert.throws(()=>shop.quote(lines,0,0,1),/inactive/);
+  shop.promotion({name:'Free cart',code:'FREE',type:'fixed',value:100});assert.equal(shop.quote(lines,0,0,shop.snapshot().promotions.at(-1).id).total,0);
+});
 test('purchase receives stock with weighted cost and preserves selling prices', () => {
   const shop = new Shop(); shop.purchase(1, [{ productId: 1, quantity: 10, unitCost: '10.00' }], 'sample invoice');
   const p = shop.get('products', 1); assert.equal(p.stock, 30); assert.equal(p.cost, 800); assert.equal(p.price, 1250);

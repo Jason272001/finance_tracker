@@ -18,7 +18,7 @@
       tasks: [{id:7,title:'Collect supplier invoices',owner:'Alex Sample',date:today,done:false}],
       documents: [{id:8,title:'Sales records reviewed',done:false},{id:9,title:'Expense documents collected',done:false}]
     };
-    window.BusinessHubDemo = { staff: () => data.staff.filter(p=>p.branchId===branches.selected).map(p => ({...p})), branch: () => branches.current() };
+    window.BusinessHubDemo = { expenses: () => data.expenses.map(e=>({...e})), staff: () => data.staff.filter(p=>p.branchId===branches.selected).map(p => ({...p})), branch: () => branches.current() };
     const host = document.createElement('section'); host.id='demoBusinessHub'; host.className='card pos-demo';
     const fields = (name, label, type='text', extra='') => `<label>${label}<input name="${name}" type="${type}" ${extra} required></label>`;
     const dollars = (name,label) => fields(name,label,'number','min="0" max="1000000" step="0.01"');
@@ -62,6 +62,7 @@
       $('branchContext').textContent=branch.name+' · '+data.staff.filter(p=>p.branchId===branch.id).length+' staff · '+(branch.address||'No address added');
       $('branchList').innerHTML='<table><thead><tr><th>Branch</th><th>Address</th><th>Staff</th><th>Action</th></tr></thead><tbody>'+branches.snapshot().map(b=>`<tr><td>${esc(b.name)}</td><td>${esc(b.address)}</td><td>${data.staff.filter(p=>p.branchId===b.id).length}</td><td><button type="button" data-branch-open="${b.id}">Open branch</button> <button type="button" class="secondary" data-branch-edit="${b.id}">Edit details</button></td></tr>`).join('')+'</tbody></table>';
       document.dispatchEvent(new Event('keeper-staff-change'));
+      document.dispatchEvent(new Event('keeper-expense-change'));
       table('staff',['Name','Role','Hours','Rate','Planned labor'],data.staff.filter(r=>r.branchId===branches.selected).map(r=>[r,[esc(r.name),esc(r.role),r.hours,money(r.rate),money(Math.round(r.hours*r.rate))]]));
       table('meetings',['Meeting','Date / time','Organizer','Agenda','Status'],data.meetings.map(r=>[r,[esc(r.title),esc(r.date+' '+r.time),esc(r.owner),esc(r.notes),r.done?'Complete':'Planned']]));
       table('expenses',['Date','Category','Description','Amount','Documentation'],data.expenses.map(r=>[r,[esc(r.date),esc(r.category),esc(r.description),money(r.amount),r.document?'Marked documented':'Missing']]));
