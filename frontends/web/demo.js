@@ -226,6 +226,9 @@
     if (section) {
       intercept(); if (section === "support") { document.getElementById("supportLauncher")?.click(); return; }
       document.getElementById(["businessWorkspace", "demoPos", "demoBusinessHub"].includes(section) ? "btnModeBusiness" : "btnModePersonal")?.click();
+      const hubTab = target.dataset.demoHubTab, posTab = target.dataset.demoPosTab;
+      if (hubTab) document.querySelector(`#demoBusinessHub [data-hub-tab="${hubTab}"]`)?.click();
+      if (posTab) document.querySelector(`#demoPos [data-pos-tab="${posTab}"]`)?.click();
       document.getElementById(section)?.scrollIntoView({ behavior: "auto", block: "start" }); return;
     }
     const href = String(target.getAttribute("href") || "");
