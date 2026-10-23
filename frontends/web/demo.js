@@ -1,4 +1,4 @@
-/* Memory-only adapter for the real app screens. No network or persistent storage. */
+/* Memory-only app adapter. Product help alone may call the same-origin assistant. */
 (function () {
   "use strict";
   if (!document.documentElement.dataset.demo) return;
@@ -52,6 +52,7 @@
     const p = new URL(path, "https://demo.invalid").pathname;
     const method = String(options.method || "GET").toUpperCase(), write = method !== "GET";
     const body = options.body ? JSON.parse(options.body) : {};
+    if (p === "/support/chat" && window.DemoProductAssistant) return window.DemoProductAssistant.ask(body.message,body.history);
     let match;
     function run() {
       if (p === "/ready") return { ok: true, storage: "sql", demo: true };

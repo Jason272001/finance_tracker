@@ -1024,6 +1024,7 @@ function planLabel(planCode, withWebsite = false) {
 }
 
 function defaultSupportSuggestions() {
+  if(document.documentElement.dataset.demo) return ["What are the prices?","How do I schedule staff?","What features can I try?"];
   return [
     "Why is my data not showing?",
     "How do I reset my password?",
@@ -1035,7 +1036,7 @@ function initialSupportMessage() {
   return {
     role: "assistant",
     content:
-      "Hi, I'm Omar. I can help with common KeeperBMA questions about login, billing, coupons, bank sync, missing data, transactions, transfers, reports, and typical app issues.",
+      document.documentElement.dataset.demo ? "Hi, I’m Omar, your KeeperBMA product guide. Ask about features, how to use a tool, or published plan prices. Each answer shows whether it came from the product guide or connected AI. I cannot inspect your real account." : "Hi, I'm Omar. I can help with common KeeperBMA questions about login, billing, coupons, bank sync, missing data, transactions, transfers, reports, and typical app issues.",
     topicTitle: "Omar",
     steps: [],
     escalationMessage: "",
@@ -1136,8 +1137,8 @@ function renderSupportWidget() {
   launcher.classList.toggle("hidden", !state.userId);
   launcher.textContent = state.support.open ? t("support_close") : t("support_open");
   if ($("supportTitle")) $("supportTitle").textContent = t("support_title");
-  if ($("supportSubtitle")) $("supportSubtitle").textContent = t("support_subtitle");
-  if ($("supportNote")) $("supportNote").textContent = t("support_note");
+  if ($("supportSubtitle")) $("supportSubtitle").textContent = document.documentElement.dataset.demo ? "Features, how-to help and published pricing" : t("support_subtitle");
+  if ($("supportNote")) $("supportNote").textContent = document.documentElement.dataset.demo ? "Product help · AI answers are labeled when connected. Questions may be sent to AI; use sample details only. No account access." : t("support_note");
   if ($("supportQuickQuestionsLabel")) $("supportQuickQuestionsLabel").textContent = t("support_quick_questions");
   if ($("supportInput")) $("supportInput").placeholder = t("support_placeholder");
   if ($("btnSendSupport")) $("btnSendSupport").textContent = state.support.loading ? t("support_sending") : t("support_send");
@@ -1185,7 +1186,7 @@ async function sendSupportMessage(rawMessage = "") {
       content: String(response.reply || ""),
       topicTitle: String(response.topic_title || "Omar"),
       steps: Array.isArray(response.steps) ? response.steps : [],
-      escalationMessage: String(response.escalation_message || ""),
+      escalationMessage: String(response.notice || response.escalation_message || ""),
     });
     state.support.suggestions = Array.isArray(response.suggestions) && response.suggestions.length
       ? response.suggestions

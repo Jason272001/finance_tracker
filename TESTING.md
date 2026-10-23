@@ -95,3 +95,7 @@ Browser coverage verifies six primary categories, a single visible business task
 ## Visual redesign verification
 
 Inspect desktop and mobile screenshots of overview, POS and team tools. Business layout browser coverage includes category routing, hidden unrelated screens, remembered tasks, narrow viewport layout and quick actions for checkout, scheduling and budgets. Existing business workflows remain covered in Chromium/WebKit.
+
+## Theme and assistant verification (2026-10-23)
+
+The browser suite includes visible Light/Dark controls, semantic surface changes, mobile theme switching/reset, product-guide answers, pricing, and a mocked connected-AI path that sends only question/history. Function unit tests cover pricing-source consistency, guide-only operation without credentials, server-side Responses requests, role/input/origin validation and provider failures without leaking secrets. Full browser pass: 56 checks. The real paid OpenAI request remains unverified until hosting credentials/model/enable settings are configured. Only product help may make same-origin network requests; financial demo actions remain in-memory.

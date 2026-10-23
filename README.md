@@ -104,3 +104,7 @@ The demo business workspace now has six primary categories: Overview, POS, Team,
 ## Business visual redesign (2026-10-22)
 
 The public demo now uses a cohesive green/neutral application shell, a desktop sidebar with native SVG icons, a compact mobile category grid, dynamic workspace headings, consistent inputs/tables, and an overview with sample metrics, attention items and working quick actions. Account chrome and directory controls follow the same visual system. Existing in-memory data models and backend isolation are preserved; no external fonts or assets are needed. Screenshots were inspected at desktop and phone widths.
+
+## Themes and product assistant (2026-10-23)
+
+A visible Light/Dark control in the demo business header updates semantic colors across sidebar, dashboard, fields, tables and chat. Theme choice is memory-only and resets on refresh. The product guide replaces the fixed demo support response with feature/navigation guidance, published pricing and explicit planned/demo limits. A separate Vercel `/api/product-assistant` function can use the OpenAI Responses API when its secret key, model and enable flag are configured; it otherwise serves labeled guide replies. The demo's CSP permits same-origin product-help requests, while account/bank/payment requests remain memory-only and external connections stay blocked. See PRODUCT_ASSISTANT_SETUP.md for activation and limits. No live OpenAI key was available during implementation.
