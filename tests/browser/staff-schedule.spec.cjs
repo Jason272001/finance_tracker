@@ -1,11 +1,12 @@
+const {businessTab}=require('./business-navigation.cjs');
 const {test,expect}=require('@playwright/test');
 test('weekly schedule assigns Jason and Kay, rejects overlaps, cancels and resets',async({page})=>{
- const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.route(u=>!['127.0.0.1','localhost'].includes(u.hostname),r=>r.abort());await page.goto('/demo.html');await page.getByRole('navigation',{name:'Business demo shortcuts'}).getByRole('button',{name:'Staff schedule',exact:true}).click();
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.route(u=>!['127.0.0.1','localhost'].includes(u.hostname),r=>r.abort());await page.goto('/demo.html');await page.getByText('All business tools',{exact:true}).click();await page.getByRole('navigation',{name:'Business demo shortcuts'}).getByRole('button',{name:'Staff schedule',exact:true}).click();
  await expect(page.locator('#scheduleTable')).toContainText('Jason');await expect(page.locator('#scheduleTable')).toContainText('Kay');await expect(page.locator('#scheduleTable')).toContainText('9:00 AM');await expect(page.locator('#scheduleTable')).toContainText('2:00 PM');await expect(page.locator('#scheduleTotal')).toContainText('10.00');
  await page.locator('#scheduleWeek').fill('2026-11-02');const f=page.locator('#scheduleForm');await f.getByLabel('Jason',{exact:true}).check();await f.getByLabel('Kay',{exact:true}).check();await f.getByRole('button',{name:'Assign shift',exact:true}).click();await expect(page.locator('#scheduleTable tbody tr')).toHaveCount(2);await expect(page.locator('#scheduleTotal')).toContainText('10.00');
  await f.getByRole('button',{name:'Assign shift',exact:true}).click();await expect(page.locator('#scheduleStatus')).toContainText('overlapping');await expect(page.locator('#scheduleTable tbody tr')).toHaveCount(2);
  const dl=page.waitForEvent('download');await page.locator('#scheduleExport').click();expect((await dl).suggestedFilename()).toContain('staff-schedule.csv');
  await page.locator('#scheduleTable').getByRole('button',{name:'Cancel assignment',exact:true}).first().click();await expect(page.locator('#scheduleTable tbody tr')).toHaveCount(1);await expect(page.locator('#scheduleTotal')).toContainText('5.00');
  await page.setViewportSize({width:320,height:800});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
- await page.reload();await page.getByRole('navigation',{name:'Business demo shortcuts'}).getByRole('button',{name:'Staff schedule',exact:true}).click();await expect(page.locator('#scheduleTable tbody tr')).toHaveCount(2);expect(errors).toEqual([]);
+ await page.reload();await page.getByText('All business tools',{exact:true}).click();await page.getByRole('navigation',{name:'Business demo shortcuts'}).getByRole('button',{name:'Staff schedule',exact:true}).click();await expect(page.locator('#scheduleTable tbody tr')).toHaveCount(2);expect(errors).toEqual([]);
 });

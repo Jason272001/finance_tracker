@@ -1,9 +1,10 @@
+const {businessTab}=require('./business-navigation.cjs');
 const {test,expect}=require('@playwright/test');
 test('business hub connects POS, expenses, budgets, planning and accountant export',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route(u=>!['127.0.0.1','localhost'].includes(u.hostname),r=>r.abort());
  await page.goto('/demo.html#demoBusinessHub');await expect(page.locator('#demoBusinessHub')).toBeVisible();
- const tab=async n=>page.getByRole('navigation',{name:'Business hub sections'}).getByRole('button',{name:n,exact:true}).click();
+ const tab=n=>businessTab(page,n);
  await expect(page.locator('#hubMetrics')).toContainText('$30.00');
  await tab('Staff');const staff=page.locator('[data-hub-form="staff"]');
  for(const [k,v] of Object.entries({name:'Taylor Demo',role:'Manager',hours:'10',rate:'20'}))await staff.locator(`[name="${k}"]`).fill(v);

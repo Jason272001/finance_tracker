@@ -29,3 +29,7 @@ Adds weekly shift planning, multiple staff per shift, overnight/break planning, 
 ## Store branches, 2026-10-22
 
 Adds branch creation/editing, working-branch selector, separate staff/schedule/clock stores and branch-labeled schedule/time exports. Main Street and Riverside seed different teams. Three quick actions guide staff setup, scheduling and clock review. Shared POS/finance scope is clearly labeled. All data is temporary; no real tenancy or access control. Verified 22 unit tests and 48 Chromium/WebKit checks; branch checks rerun after draft-reset adjustment.
+
+## Clear business navigation, 2026-10-22
+
+Reorganizes the public demo into Overview, POS, Team, Finance, Marketing and Settings. Shows one category/task at a time, remembers task selection per category in memory, collapses directory shortcuts and groups profile/access/module forms under Settings. Team branch controls remain scoped to team tools. Responsive category grid and secondary navigation. Full 50 browser checks passed; final navigation/shortcut checks passed after direct-link scroll adjustment. No production backend changes.

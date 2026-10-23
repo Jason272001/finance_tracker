@@ -227,9 +227,12 @@
       intercept(); if (section === "support") { document.getElementById("supportLauncher")?.click(); return; }
       document.getElementById(["businessWorkspace", "demoPos", "demoBusinessHub"].includes(section) ? "btnModeBusiness" : "btnModePersonal")?.click();
       const hubTab = target.dataset.demoHubTab, posTab = target.dataset.demoPosTab;
+      if (hubTab) window.BusinessDemoLayout?.hub(hubTab);
+      else if (posTab || section === "demoPos") window.BusinessDemoLayout?.pos(posTab);
+      else if (section === "demoBusinessHub" || section === "businessWorkspace") window.BusinessDemoLayout?.overview();
       if (hubTab) document.querySelector(`#demoBusinessHub [data-hub-tab="${hubTab}"]`)?.click();
       if (posTab) document.querySelector(`#demoPos [data-pos-tab="${posTab}"]`)?.click();
-      document.getElementById(section)?.scrollIntoView({ behavior: "auto", block: "start" }); return;
+      document.getElementById(window.BusinessDemoLayout && ["demoBusinessHub","demoPos","businessWorkspace"].includes(section) ? "businessWorkspace" : section)?.scrollIntoView({ behavior: "auto", block: "start" }); return;
     }
     const href = String(target.getAttribute("href") || "");
     if (target.tagName === "A" && !target.hasAttribute("data-demo-exit") && !target.hasAttribute("download") && !href.startsWith("#") && !href.startsWith("blob:")) {
