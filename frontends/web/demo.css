@@ -57,3 +57,6 @@ html[data-demo="settings"] .page { max-width: 100%; }
 .pos-import summary { cursor: pointer; font-weight: 700; }
 .pos-receipt { width: min(760px, calc(100vw - 24px)); max-width: none; }
 .pos-demo [hidden] { display: none !important; }
+#scheduleForm label:has(input[type="checkbox"]) { display: flex; align-items: center; justify-content: flex-start; gap: .6rem; padding: .5rem 0; }
+#scheduleForm input[type="checkbox"] { width: auto; margin: 0; flex: 0 0 auto; }
+#scheduleForm fieldset { margin: .75rem 0; border: 1px solid #cfe0ff; border-radius: 12px; }

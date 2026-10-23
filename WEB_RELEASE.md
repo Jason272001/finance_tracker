@@ -21,3 +21,7 @@ Adds in-memory staffing, meetings, tasks, budget/expense tracking, tax preparati
 ## Time clock demo, 2026-10-22
 
 Adds staff clock-in/out, unpaid breaks, manual timesheets, overlap prevention, review/reopen, period-clipped gross-pay estimates and CSV export. Rates are captured per shift. Configurable threshold/multiplier are sample assumptions; no withholding, payroll processing or filing. Refresh clears all data. Verified 17 unit tests and 42 Chromium/WebKit checks.
+
+## Weekly staff schedule, 2026-10-22
+
+Adds weekly shift planning, multiple staff per shift, overnight/break planning, atomic overlap prevention, cancellation and CSV export. Sample Monday 9 AM–2 PM assigned to Jason and Kay. Planned hours never create actual timesheets/payroll entries. All changes reset. Verified 20 unit tests and 46 Chromium/WebKit checks; schedule checks rerun after checkbox layout adjustment.

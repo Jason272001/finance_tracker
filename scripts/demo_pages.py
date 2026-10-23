@@ -33,7 +33,7 @@ def render(source, settings=False):
         for label, target in [('Monthly report', 'creatorReport'), ('POS & inventory', 'demoPos'), ('Business operations', 'demoBusinessHub'), ('Accounts', 'accountsTitle'), ('Transactions & transfers', 'transactionsTitle'), ('Categories', 'categoriesTitle'), ('Banks', 'bankSyncTitle'), ('Charts & PDF', 'summaryExportTitle'), ('Daily summary', 'dailySummaryTitle'), ('Business & employees', 'businessWorkspace'), ('Settings & billing', 'settings'), ('Support', 'support')]:
             banner += f'<button type="button" class="secondary" data-demo-section="{target}">{label}</button>'
         banner += '</nav><h2>Business demo tools</h2><nav aria-label="Business demo shortcuts">'
-        for label, tab in [('Overview', 'overview'), ('Staff & labor planning', 'staff'), ('Time clock & payroll', 'time'), ('Meetings & agendas', 'meetings'), ('Budgets & expenses', 'budgets'), ('Tax preparation', 'tax'), ('Marketing campaigns', 'marketing'), ('Tasks & ownership', 'tasks'), ('Business analyst preview', 'analyst')]:
+        for label, tab in [('Overview', 'overview'), ('Staff & labor planning', 'staff'), ('Time clock & payroll', 'time'), ('Staff schedule', 'schedule'), ('Meetings & agendas', 'meetings'), ('Budgets & expenses', 'budgets'), ('Tax preparation', 'tax'), ('Marketing campaigns', 'marketing'), ('Tasks & ownership', 'tasks'), ('Business analyst preview', 'analyst')]:
             banner += f'<button type="button" class="secondary" data-demo-section="demoBusinessHub" data-demo-hub-tab="{tab}">{label}</button>'
         banner += '</nav><h2>POS demo tools</h2><nav aria-label="POS demo shortcuts">'
         for label, tab in [('Sales checkout', 'checkout'), ('Products & CSV upload', 'products'), ('Supplier purchases', 'purchases'), ('Sales & receipts', 'sales'), ('Suppliers', 'suppliers'), ('Brands', 'brands'), ('Product categories', 'categories')]:
@@ -52,6 +52,7 @@ def render(source, settings=False):
         scripts += '<script defer src="./frontends/web/pos-demo-model.js?v=1"></script><script defer src="./frontends/web/demo-pos.js?v=1"></script>'
         scripts += '<script defer src="./frontends/web/demo-business.js?v=1"></script>'
         scripts += '<script defer src="./frontends/web/demo-time-model.js?v=1"></script><script defer src="./frontends/web/demo-time.js?v=1"></script>'
+        scripts += '<script defer src="./frontends/web/demo-schedule-model.js?v=1"></script><script defer src="./frontends/web/demo-schedule.js?v=1"></script>'
         # srcdoc uses the same generated Settings screen without needing to
         # loosen production hosting's X-Frame-Options: DENY response header.
         settings_html = json.dumps(render(ROOT / "settings.html", True), ensure_ascii=False).replace("<", "\\u003c")
