@@ -87,3 +87,7 @@ Schedule unit tests cover multiple assignees, atomic overlap rejection, adjacent
 ## Branch isolation checks
 
 Branch model tests validate creation, edits, IDs, duplicate prevention and selection. Browser tests switch branches with active clocks, create a branch and its staff, isolate scheduled assignments/rosters, check mobile width and refresh reset. Scope is in-memory team operations; other demo workspaces remain shared sample data.
+
+## Organized business navigation checks
+
+Browser coverage verifies six primary categories, a single visible business task, secondary navigation, remembered category selection, Settings grouping, direct-link navigation visibility and 320px layout. Existing business/POS/team workflow tests use the grouped navigation. Full browser suite: 50 checks in Chromium/WebKit; navigation checks rerun after final direct-link/branch-control layout adjustments.

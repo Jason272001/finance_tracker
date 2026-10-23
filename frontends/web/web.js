@@ -1462,7 +1462,7 @@ function renderBusinessModules() {
     `;
     if (posPrototype) {
       const open = document.createElement("button"); open.type = "button"; open.textContent = "Try POS demo";
-      open.onclick = () => document.getElementById("demoPos")?.scrollIntoView({ behavior: "auto" });
+      open.onclick = () => { window.BusinessDemoLayout?.pos(); document.getElementById("demoPos")?.scrollIntoView({ behavior: "auto" }); };
       card.appendChild(open);
     }
     box.appendChild(card);
@@ -3132,7 +3132,7 @@ window.addEventListener("load", async () => {
     await refreshAll();
     if (document.documentElement.dataset.demo && ['#demoPos', '#demoBusinessHub'].includes(window.location.hash)) {
       setAppMode('business');
-      document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ behavior: 'auto', block: 'start' });
+      document.getElementById(window.BusinessDemoLayout ? "businessWorkspace" : window.location.hash.slice(1))?.scrollIntoView({ behavior: 'auto', block: 'start' });
     }
     if (window.location.search) {
       window.history.replaceState({}, "", window.location.pathname);

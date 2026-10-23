@@ -96,3 +96,7 @@ Weekly schedules support assigning one shift to multiple staff, overnight shifts
 ## Store branches (2026-10-22)
 
 The demo Business Hub supports creating/editing branches and selecting a working branch. Staff belongs to one branch; new staff is added to the selected branch. Staff lists, scheduling stores, clock entries and gross-pay estimates remain separate by branch. Switching branches clears unsaved staff/shift inputs; existing sample records remain available when returning. Schedule/time CSV exports identify the branch. Main Street has Alex, Jason and Kay; Riverside has Morgan. Other finance, POS and marketing samples remain business-wide and the UI explicitly explains this scope. No real tenancy or access control is implied. Refresh resets all branches and records.
+
+## Business navigation redesign (2026-10-22)
+
+The demo business workspace now has six primary categories: Overview, POS, Team, Finance, Marketing and Settings. Only the selected category and task are visible. Category changes retain the most recent task in that category for the current page lifetime. Original forms and data handlers remain intact; business profile, access and feature availability are grouped under Settings. Team-only branch controls avoid implying that shared finance/POS records are branch-specific. Long directory shortcut lists are collapsed but available. Mobile navigation uses a three-column category grid and horizontally scrolling secondary tools. Direct demo links and directory links open the correct workspace with the main navigation visible.

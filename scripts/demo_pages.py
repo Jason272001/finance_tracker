@@ -53,6 +53,7 @@ def render(source, settings=False):
         scripts += '<script defer src="./frontends/web/demo-branches-model.js?v=1"></script><script defer src="./frontends/web/demo-business.js?v=2"></script>'
         scripts += '<script defer src="./frontends/web/demo-time-model.js?v=1"></script><script defer src="./frontends/web/demo-time.js?v=1"></script>'
         scripts += '<script defer src="./frontends/web/demo-schedule-model.js?v=1"></script><script defer src="./frontends/web/demo-schedule.js?v=1"></script>'
+        scripts += '<script defer src="./frontends/web/demo-layout.js?v=1"></script>'
         # srcdoc uses the same generated Settings screen without needing to
         # loosen production hosting's X-Frame-Options: DENY response header.
         settings_html = json.dumps(render(ROOT / "settings.html", True), ensure_ascii=False).replace("<", "\\u003c")

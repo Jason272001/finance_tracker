@@ -1,7 +1,8 @@
+const {businessTab}=require('./business-navigation.cjs');
 const {test,expect}=require('@playwright/test');
 test('branches isolate staff, schedules and time and support a new store',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.route(u=>!['127.0.0.1','localhost'].includes(u.hostname),r=>r.abort());await page.goto('/demo.html#demoBusinessHub');
- const tab=n=>page.getByRole('navigation',{name:'Business hub sections'}).getByRole('button',{name:n,exact:true}).click();
+ const tab=n=>businessTab(page,n);
  await tab('Staff');await expect(page.locator('[data-hub-list="staff"]')).toContainText('Jason');await expect(page.locator('[data-hub-list="staff"]')).not.toContainText('Morgan');
  await tab('Time clock & payroll');await page.locator('#timeIn').click();await expect(page.locator('#timeActive')).toContainText('Alex Sample');
  await page.locator('#hubBranch').selectOption('2');await expect(page.locator('#timeEmployee')).toContainText('Morgan');await expect(page.locator('#timeEmployee')).not.toContainText('Alex');await expect(page.locator('#timeTable')).toContainText('No sample records');await page.locator('#timeIn').click();

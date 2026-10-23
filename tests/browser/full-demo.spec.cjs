@@ -62,9 +62,11 @@ test('account editing, deletion, transactions, transfers and filters work', asyn
 
 test('business profile and employee permissions can be edited without publishing', async ({ page }) => {
   await open(page); await page.getByRole('button', { name: 'Business & employees', exact: true }).click();
+  await page.getByRole('navigation',{name:'Business categories'}).getByRole('button',{name:'Settings',exact:true}).click();
   await expect(page.locator('#businessName')).toHaveValue('Sample Creator Studio');
   await page.locator('#businessName').fill('Demo Studio Updated'); await page.locator('#btnSaveBusiness').click();
   await expect(page.locator('#businessSelect')).toContainText('Demo Studio Updated');
+  await page.getByRole('navigation',{name:'Business settings tools'}).getByRole('button',{name:'Employee access',exact:true}).click();
   await page.locator('#businessEmployeeName').fill('Demo editor'); await page.locator('#businessEmployeeEmail').fill('editor@example.test'); await page.locator('#permReports').check(); await page.locator('#btnSaveEmployee').click();
   await expect(page.locator('#businessEmployeeSelect')).toContainText('Demo editor');
   const id = await page.locator('#businessEmployeeSelect option').filter({ hasText: 'Demo editor' }).getAttribute('value');

@@ -66,3 +66,44 @@ html[data-demo="settings"] .page { max-width: 100%; }
 .branch-scope { color:#51627b; font-size:.9rem; }
 .hub-quick-actions { display:flex; flex-wrap:wrap; gap:.6rem; margin:1rem 0; }
 #demoBusinessHub .pos-tabs { border-bottom:1px solid #dbe7fa; padding-bottom:1rem; }
+/* Business demo: one workspace and one task at a time. */
+.business-demo-organized > .business-hero,
+.business-demo-organized > #businessUpgradeCard,
+.business-demo-organized #demoBusinessHub > .pos-eyebrow,
+.business-demo-organized #demoBusinessHub > h2,
+.business-demo-organized #demoBusinessHub > h2 + p,
+.business-demo-organized .hub-quick-actions,
+.business-demo-organized #demoPos > .section-head { display:none !important; }
+.business-demo-organized [hidden] { display:none !important; }
+.business-demo-header { padding:24px; background:#fff; border:1px solid #d8e5f4; border-radius:18px; box-shadow:0 8px 30px #15385b08; }
+.business-demo-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+.business-demo-heading h2 { margin:4px 0 8px; font-size:1.9rem; letter-spacing:-.03em; }
+.business-demo-heading p { margin:0 0 10px; color:#53667b; }
+.business-demo-badge { font-size:.8rem; border-radius:30px; padding:8px 12px; background:#edf8f3; color:#236a50; }
+.business-category-nav { display:flex; gap:4px; padding:6px; border-radius:12px; background:#f0f4fa; margin-top:20px; flex-wrap:wrap; }
+.business-category-nav button { flex:1; min-width:90px; min-height:46px; padding:10px 16px; border-radius:8px; background:transparent; color:#425973; box-shadow:none; font-weight:650; }
+.business-category-nav button[aria-pressed="true"] { background:#173e6c; color:white; box-shadow:0 2px 6px #173e6c22; }
+.business-breadcrumb { font-size:.85rem; color:#5b6d81; margin:16px 2px 0; }
+.business-demo-organized > .card { margin-top:16px; padding:24px; }
+.business-demo-organized .pos-tabs { gap:6px; padding:0 0 16px; margin:16px 0; border-bottom:1px solid #e1e9f3; }
+.business-demo-organized .pos-tabs button { background:transparent; border-radius:7px; color:#4c6076; min-height:40px; padding:8px 14px; }
+.business-demo-organized .pos-tabs button[aria-pressed="true"] { background:#eaf2ff; color:#173e6c; font-weight:750; }
+.business-demo-organized .branch-toolbar { margin-top:0; background:#f8faff; padding:14px; }
+.business-demo-organized .branch-scope { font-size:.8rem; margin:8px 0; }
+.demo-tool-directory { padding:12px 0; border-top:1px solid #e2eaf5; }
+.demo-tool-directory summary { cursor:pointer; font-weight:650; color:#173e6c; padding:8px 0; }
+.demo-tool-directory nav { padding:12px 0; }
+@media(max-width:640px) {
+ .business-demo-header,.business-demo-organized > .card { padding:16px; }
+ .business-demo-heading h2 { font-size:1.5rem; }
+ .business-category-nav { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); }
+ .business-category-nav button { min-width:0; padding:10px 6px; }
+ .business-demo-organized .pos-tabs { flex-wrap:nowrap; overflow-x:auto; }
+ .business-demo-organized .pos-tabs button { flex:0 0 auto; }
+ .branch-toolbar label { min-width:0; max-width:none; flex-basis:100%; }
+ .branch-toolbar p { flex-basis:100%; font-size:.85rem; }
+}
+.business-demo-organized #demoBusinessHub:not([data-business-category="team"]) > .branch-toolbar,
+.business-demo-organized #demoBusinessHub:not([data-business-category="team"]) > .branch-scope { display:none; }
+.business-demo-organized #demoBusinessHub > .pos-tabs:first-child { margin-top:0; }
+.business-demo-organized { padding-bottom:70px; }
