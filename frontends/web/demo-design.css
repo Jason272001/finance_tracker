@@ -128,3 +128,7 @@ html[data-demo="workspace"] .demo-menu-return { background:white; color:#5b7564;
 @media(max-width:700px) { html[data-demo="workspace"] .business-sidebar .business-category-nav { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); } html[data-demo="workspace"] .business-sidebar .business-category-nav button { justify-content:center; padding:9px 5px; font-size:.76rem; gap:5px; } .business-category-nav svg { width:15px; height:15px; } }
 html[data-demo="workspace"] .business-app-main [data-hub-panel="overview"] > h3,
 html[data-demo="workspace"] .business-app-main [data-hub-panel="overview"] > p:first-of-type { display:none; }
+html[data-demo="workspace"] input[type="checkbox"] { width:16px; height:16px; min-height:16px; padding:0; accent-color:#177b60; }
+html[data-demo="workspace"] #scheduleForm label:has(input[type="checkbox"]) { display:flex; flex-direction:row; align-items:center; justify-content:flex-start; gap:9px; margin:8px 0; }
+html[data-demo="workspace"] #scheduleForm fieldset { border:1px solid #e1e9e3; border-radius:8px; padding:14px 16px; }
+html[data-demo="workspace"] #scheduleForm legend { color:#66796b; font-size:.8rem; padding:0 6px; }

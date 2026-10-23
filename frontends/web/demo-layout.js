@@ -30,6 +30,7 @@
       header.querySelector('#businessExtraTools').hidden=category!=='settings';
       header.querySelectorAll('[data-business-screen]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.businessScreen===key)));
       hubNav.querySelectorAll('[data-hub-tab]').forEach(b=>b.hidden=!groups[category]?.includes(b.dataset.hubTab));
+      hubNav.querySelectorAll('[data-hub-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.hubTab===key)));
       const label=category==='pos'?pos.querySelector(`[data-pos-tab="${key}"]`)?.textContent:category==='settings'?header.querySelector(`[data-business-screen="${key}"]`)?.textContent:hubNav.querySelector(`[data-hub-tab="${key}"]`)?.textContent;
       const titles={overview:'Business overview',pos:'Point of sale',team:'Team & operations',finance:'Business finances',growth:'Marketing workspace',settings:'Workspace settings'};
       header.querySelector('h2').textContent=titles[category];
