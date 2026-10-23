@@ -88,3 +88,7 @@ The demo includes temporary staff cost planning, meetings, task ownership, categ
 ## Time clock demo (2026-10-22)
 
 Business demo adds staff clock-in/out, unpaid break start/end, manual entries, overlap checks, manager-style review/reopen, and CSV timesheets with gross-pay estimates. Only approved closed time is included; period boundaries clip elapsed work/break intervals. Rates are captured per entry; overtime threshold/multiplier are sample inputs applied per employee over the selected seven-day period. No payroll processing, withholding, daily overtime rules or payroll filing is implemented. Active staff cannot be deleted until clocked out. All entries reset on refresh.
+
+## Staff scheduling demo (2026-10-22)
+
+Weekly schedules support assigning one shift to multiple staff, overnight shifts, unpaid break planning, per-employee overlap prevention, cancellation and CSV export. The sample roster includes Jason and Kay with a Monday 9 AM–2 PM assignment in the current week. Scheduled hours are plans and never create actual clock entries or payroll hours. Browser-local time zone is shown; all records reset on refresh. Week totals list whole shifts touching that week, including overnight shifts.

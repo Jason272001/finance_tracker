@@ -9,7 +9,7 @@
     const today = new Date().toISOString().slice(0,10);
     let next = 10;
     const data = {
-      staff: [{id:1,name:'Alex Sample',role:'Shop assistant',hours:16,rate:1800}],
+      staff: [{id:1,name:'Alex Sample',role:'Shop assistant',hours:16,rate:1800},{id:101,name:'Jason',role:'Sample team member',hours:0,rate:1800},{id:102,name:'Kay',role:'Sample team member',hours:0,rate:1800}],
       meetings: [{id:2,title:'Weekly shop planning',date:today,time:'10:00',owner:'Alex Sample',notes:'Review stock and next campaign.',done:false}],
       expenses: [{id:3,date:today,category:'Marketing',description:'Sample launch materials',amount:4500,document:false}],
       budgets: [{id:4,category:'Marketing',amount:15000},{id:5,category:'Operations',amount:30000}],
