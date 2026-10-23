@@ -17,3 +17,7 @@ Adds in-memory catalog, brands, categories, suppliers, purchase receiving, check
 ## Business operations demo, 2026-10-22
 
 Adds in-memory staffing, meetings, tasks, budget/expense tracking, tax preparation checklist and review CSV, campaign planning/results and rule-based analysis. Linked to sample POS totals; no real AI, payroll, filing or social publishing. Browser workflows verified in Chromium and WebKit, including mobile layout and refresh reset.
+
+## Time clock demo, 2026-10-22
+
+Adds staff clock-in/out, unpaid breaks, manual timesheets, overlap prevention, review/reopen, period-clipped gross-pay estimates and CSV export. Rates are captured per shift. Configurable threshold/multiplier are sample assumptions; no withholding, payroll processing or filing. Refresh clears all data. Verified 17 unit tests and 42 Chromium/WebKit checks.
