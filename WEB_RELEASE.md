@@ -33,3 +33,7 @@ Adds branch creation/editing, working-branch selector, separate staff/schedule/c
 ## Clear business navigation, 2026-10-22
 
 Reorganizes the public demo into Overview, POS, Team, Finance, Marketing and Settings. Shows one category/task at a time, remembers task selection per category in memory, collapses directory shortcuts and groups profile/access/module forms under Settings. Team branch controls remain scoped to team tools. Responsive category grid and secondary navigation. Full 50 browser checks passed; final navigation/shortcut checks passed after direct-link scroll adjustment. No production backend changes.
+
+## Business visual redesign, 2026-10-22
+
+Introduces a cohesive green/neutral demo design system, desktop sidebar with SVG icons, compact mobile navigation, dynamic workspace headings, consistent controls/tables and a dashboard with live sample metrics, attention items and working checkout/schedule/budget quick actions. Existing models and demo isolation remain unchanged. Desktop and phone screenshots inspected. Full 50 browser checks passed; 4 navigation/quick-action checks passed after final typography/content refinements.
