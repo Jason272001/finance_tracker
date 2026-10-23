@@ -105,7 +105,7 @@ test('charts, PDF and support work locally and alternate demo entry works', asyn
   await page.goto('/frontends/web/demo.html'); await expect(page.locator('.creator-net')).toHaveText('$300.00');
   expect(await page.evaluate(() => typeof Chart)).toBe('function');
   const download = page.waitForEvent('download'); await page.locator('#btnDownloadPdf').click(); expect((await download).suggestedFilename()).toBe('keeperbma-summary.pdf');
-  await page.getByRole('button', { name: 'Support', exact: true }).click(); await page.locator('#supportInput').fill('How do I add income?'); await page.locator('#btnSendSupport').click(); await expect(page.locator('#supportMessages')).toContainText('Demo support response');
+  await page.getByRole('button', { name: 'Support', exact: true }).click(); await page.locator('#supportInput').fill('How do I add income?'); await page.locator('#btnSendSupport').click(); await expect(page.locator('#supportMessages')).toContainText('Personal finance and reports');
   await page.locator('#btnCloseSupport').click();
   for (const width of [320, 1280]) { await page.setViewportSize({ width, height: 844 }); expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false); }
   await page.getByRole('button', { name: 'Settings & billing', exact: true }).click(); await expect(page.frameLocator('iframe').locator('#profileUsername')).toHaveValue('Sample creator');

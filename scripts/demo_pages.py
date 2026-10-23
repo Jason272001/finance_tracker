@@ -4,7 +4,7 @@ import re
 import json
 
 ROOT = Path(__file__).resolve().parents[1]
-POLICY = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; frame-src 'self'; form-action 'none'; object-src 'none'; base-uri 'self'"
+POLICY = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; object-src 'none'; base-uri 'self'"
 
 
 def render(source, settings=False):
@@ -18,13 +18,13 @@ def render(source, settings=False):
     html = html.replace('<html lang="en">', '<html lang="en" data-demo="settings">' if settings else '<html lang="en" data-demo="workspace">')
     additions = f'''<meta http-equiv="Content-Security-Policy" content="{POLICY}">
 <meta name="description" content="Explore KeeperBMA with fictional data. Try accounts, reports, business tools and settings. All changes reset on refresh.">
-<script src="./frontends/web/demo.js?v=3"></script>
-<link rel="stylesheet" href="./frontends/web/demo.css?v=4"><link rel="stylesheet" href="./frontends/web/demo-design.css?v=2">'''
+<script src="./frontends/web/demo.js?v=4"></script>
+<link rel="stylesheet" href="./frontends/web/demo.css?v=4"><link rel="stylesheet" href="./frontends/web/demo-design.css?v=3">'''
     additions += '<meta name="robots" content="noindex">' if settings else '<link rel="canonical" href="https://keeperbma.com/demo.html">'
     html = html.replace('<meta charset="utf-8" />', '<meta charset="utf-8" />\n' + additions)
     banner = '''<aside class="demo-banner" aria-label="Demo information">
 <div class="demo-banner-line"><strong>DEMO · Fictional data only</strong><button type="button" data-demo-reset>Restart demo</button></div>
-<p>Try every working section. Nothing is saved: refreshing resets everything. No real bank, payment, email, or account changes.</p>
+<p>Try every working section. Nothing is saved: refreshing resets everything. No real bank, payment, email, or account changes. Product-help questions may be sent to AI when connected; use sample details only.</p>
 <p class="demo-notice" role="status" aria-live="polite"></p>
 </aside>'''
     if not settings:
@@ -46,14 +46,14 @@ def render(source, settings=False):
         html = html.replace('<section id="appScreen"', '<section id="landingScreen" hidden></section>\n<section id="appScreen"', 1)
     scripts = '<script defer src="./assets/vendor/chart.umd.js"></script><script defer src="./assets/vendor/jspdf.umd.min.js"></script>'
     if not settings:
-        scripts += '<script defer src="./frontends/web/creator-tools.js?v=1"></script>'
-    scripts += f'<script defer src="./frontends/web/{"settings" if settings else "web"}.js?v=demo3"></script>'
+        scripts += '<script defer src="./frontends/web/creator-tools.js?v=1"></script><script defer src="./frontends/web/product-guide.js?v=1"></script><script defer src="./frontends/web/demo-assistant.js?v=1"></script>'
+    scripts += f'<script defer src="./frontends/web/{"settings" if settings else "web"}.js?v=demo4"></script>'
     if not settings:
         scripts += '<script defer src="./frontends/web/pos-demo-model.js?v=1"></script><script defer src="./frontends/web/demo-pos.js?v=1"></script>'
         scripts += '<script defer src="./frontends/web/demo-branches-model.js?v=1"></script><script defer src="./frontends/web/demo-business.js?v=3"></script>'
         scripts += '<script defer src="./frontends/web/demo-time-model.js?v=1"></script><script defer src="./frontends/web/demo-time.js?v=1"></script>'
         scripts += '<script defer src="./frontends/web/demo-schedule-model.js?v=1"></script><script defer src="./frontends/web/demo-schedule.js?v=1"></script>'
-        scripts += '<script defer src="./frontends/web/demo-layout.js?v=3"></script>'
+        scripts += '<script defer src="./frontends/web/demo-layout.js?v=4"></script>'
         # srcdoc uses the same generated Settings screen without needing to
         # loosen production hosting's X-Frame-Options: DENY response header.
         settings_html = json.dumps(render(ROOT / "settings.html", True), ensure_ascii=False).replace("<", "\\u003c")

@@ -254,5 +254,10 @@
       "destination": "/settings",
       "permanent": true
     }
-  ]
+  ],
+  "functions": {
+    "api/product-assistant.js": {
+      "maxDuration": 30
+    }
+  }
 }

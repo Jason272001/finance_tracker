@@ -37,3 +37,7 @@ Reorganizes the public demo into Overview, POS, Team, Finance, Marketing and Set
 ## Business visual redesign, 2026-10-22
 
 Introduces a cohesive green/neutral demo design system, desktop sidebar with SVG icons, compact mobile navigation, dynamic workspace headings, consistent controls/tables and a dashboard with live sample metrics, attention items and working checkout/schedule/budget quick actions. Existing models and demo isolation remain unchanged. Desktop and phone screenshots inspected. Full 50 browser checks passed; 4 navigation/quick-action checks passed after final typography/content refinements.
+
+## Themes and product assistant, 2026-10-23
+
+Restores visible Light/Dark controls with semantic neutral/blue surfaces throughout the demo. Adds maintained product guidance for features, task navigation, billing and published pricing. Adds a separate same-origin Vercel product-assistant function using OpenAI Responses only when key/model/enable settings exist; otherwise answers are explicitly guide-only. No real OpenAI key was configured; live-model execution remains pending operator setup. The demo CSP permits same-origin product-help requests but financial workflows remain in-memory. Verified 27 unit tests and 56 browser checks, plus a final four theme/assistant checks after surface refinements. Existing production account backend is unchanged.
