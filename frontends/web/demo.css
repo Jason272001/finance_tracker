@@ -60,3 +60,9 @@ html[data-demo="settings"] .page { max-width: 100%; }
 #scheduleForm label:has(input[type="checkbox"]) { display: flex; align-items: center; justify-content: flex-start; gap: .6rem; padding: .5rem 0; }
 #scheduleForm input[type="checkbox"] { width: auto; margin: 0; flex: 0 0 auto; }
 #scheduleForm fieldset { margin: .75rem 0; border: 1px solid #cfe0ff; border-radius: 12px; }
+.branch-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:1rem; padding:1rem; margin:1rem 0 .4rem; border:1px solid #cfe0ff; border-radius:12px; background:#f2f7ff; }
+.branch-toolbar label { min-width:200px; flex:1; max-width:400px; }
+.branch-toolbar p { flex:2; margin:0; font-weight:600; }
+.branch-scope { color:#51627b; font-size:.9rem; }
+.hub-quick-actions { display:flex; flex-wrap:wrap; gap:.6rem; margin:1rem 0; }
+#demoBusinessHub .pos-tabs { border-bottom:1px solid #dbe7fa; padding-bottom:1rem; }

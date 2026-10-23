@@ -25,3 +25,7 @@ Adds staff clock-in/out, unpaid breaks, manual timesheets, overlap prevention, r
 ## Weekly staff schedule, 2026-10-22
 
 Adds weekly shift planning, multiple staff per shift, overnight/break planning, atomic overlap prevention, cancellation and CSV export. Sample Monday 9 AM–2 PM assigned to Jason and Kay. Planned hours never create actual timesheets/payroll entries. All changes reset. Verified 20 unit tests and 46 Chromium/WebKit checks; schedule checks rerun after checkbox layout adjustment.
+
+## Store branches, 2026-10-22
+
+Adds branch creation/editing, working-branch selector, separate staff/schedule/clock stores and branch-labeled schedule/time exports. Main Street and Riverside seed different teams. Three quick actions guide staff setup, scheduling and clock review. Shared POS/finance scope is clearly labeled. All data is temporary; no real tenancy or access control. Verified 22 unit tests and 48 Chromium/WebKit checks; branch checks rerun after draft-reset adjustment.
