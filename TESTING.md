@@ -75,3 +75,7 @@ The in-memory POS prototype covers product/brand/category/supplier records, loca
 ## Business hub
 
 Browser coverage exercises staff estimates, overspent budgets, expense documentation, preparation checklists/CSV, meetings, campaign drafts, narrow layout and refresh reset. The business hub reads the same in-memory POS snapshot and excludes voided sales. Run the full Playwright suite and the business-hub spec when changing these workflows.
+
+## Time clock checks
+
+`tests/demo-time.test.cjs` verifies break/approval state, chronology, overlap rejection, period splitting, historical rates, per-employee overtime and reopening. Browser coverage checks clock/break/out, manual time, gross estimates, approval locking, CSV download, mobile layout and reset in Chromium/WebKit. Full unit suite: 17 tests.

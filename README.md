@@ -84,3 +84,7 @@ The Business demo now includes a memory-only sample POS: products/SKUs, cost/sel
 ## Business operations hub (2026-10-22)
 
 The demo includes temporary staff cost planning, meetings, task ownership, category budgets, expense documentation, marketing campaign results and an accountant review CSV. The overview reads completed POS sales and historical sold inventory cost, excludes voids and separates collected example sales tax. Actual labor/campaign expenses must be entered once in the expense register. The analyst is explicitly rule-based, with no AI service connected. No payroll, tax filing, invitations, social publishing or external data writes occur.
+
+## Time clock demo (2026-10-22)
+
+Business demo adds staff clock-in/out, unpaid break start/end, manual entries, overlap checks, manager-style review/reopen, and CSV timesheets with gross-pay estimates. Only approved closed time is included; period boundaries clip elapsed work/break intervals. Rates are captured per entry; overtime threshold/multiplier are sample inputs applied per employee over the selected seven-day period. No payroll processing, withholding, daily overtime rules or payroll filing is implemented. Active staff cannot be deleted until clocked out. All entries reset on refresh.

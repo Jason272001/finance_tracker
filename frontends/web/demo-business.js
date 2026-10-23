@@ -17,6 +17,7 @@
       tasks: [{id:7,title:'Collect supplier invoices',owner:'Alex Sample',date:today,done:false}],
       documents: [{id:8,title:'Sales records reviewed',done:false},{id:9,title:'Expense documents collected',done:false}]
     };
+    window.BusinessHubDemo = { staff: () => data.staff.map(p => ({...p})) };
     const host = document.createElement('section'); host.id='demoBusinessHub'; host.className='card pos-demo';
     const fields = (name, label, type='text', extra='') => `<label>${label}<input name="${name}" type="${type}" ${extra} required></label>`;
     const dollars = (name,label) => fields(name,label,'number','min="0" max="1000000" step="0.01"');
@@ -54,6 +55,7 @@
     }
     function reserve(t) {const rate=Number($('hubReserve').value);$('hubReserveResult').textContent=Number.isFinite(rate)&&rate>=0&&rate<=100?`Cash reserve at ${rate}% of positive sample operating result: ${money(Math.round(Math.max(t.profit,0)*rate/100))}`:'Enter a percentage from 0 to 100.';}
     function render() {
+      document.dispatchEvent(new Event('keeper-staff-change'));
       table('staff',['Name','Role','Hours','Rate','Planned labor'],data.staff.map(r=>[r,[esc(r.name),esc(r.role),r.hours,money(r.rate),money(Math.round(r.hours*r.rate))]]));
       table('meetings',['Meeting','Date / time','Organizer','Agenda','Status'],data.meetings.map(r=>[r,[esc(r.title),esc(r.date+' '+r.time),esc(r.owner),esc(r.notes),r.done?'Complete':'Planned']]));
       table('expenses',['Date','Category','Description','Amount','Documentation'],data.expenses.map(r=>[r,[esc(r.date),esc(r.category),esc(r.description),money(r.amount),r.document?'Marked documented':'Missing']]));
@@ -75,7 +77,7 @@
     });
     host.addEventListener('click',e=>{
       const tab=e.target.closest('[data-hub-tab]');if(tab){for(const p of host.querySelectorAll('[data-hub-panel]'))p.hidden=p.dataset.hubPanel!==tab.dataset.hubTab;for(const b of host.querySelectorAll('[data-hub-tab]'))b.setAttribute('aria-pressed',String(b===tab));render();}
-      const a=e.target.closest('[data-hub-action]');if(a){const list=data[a.dataset.kind],i=list.findIndex(r=>r.id===Number(a.dataset.id));if(i<0)return;if(a.dataset.hubAction==='delete')list.splice(i,1);else {const key=a.dataset.kind==='expenses'?'document':'done';list[i][key]=!list[i][key];}render();}
+      const a=e.target.closest('[data-hub-action]');if(a){const list=data[a.dataset.kind],i=list.findIndex(r=>r.id===Number(a.dataset.id));if(i<0)return;if(a.dataset.hubAction==='delete'){if(a.dataset.kind==='staff'&&window.TimeDemo?.active(list[i].id)){$('hubStatus').textContent='Clock out this employee before deleting the staff record.';return;}list.splice(i,1);}else {const key=a.dataset.kind==='expenses'?'document':'done';list[i][key]=!list[i][key];}render();}
     });
     $('hubReserve').oninput=()=>reserve(totals());$('hubAnalyze').onclick=render;
     $('hubDraft').onclick=()=>{$('hubDraftText').textContent='Sample draft: Meet your next everyday favorite. Explore our featured products this week, compare the details, and visit our shop to learn more. Add your own photo, accurate price and store link before publishing.';};
