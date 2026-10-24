@@ -32,6 +32,65 @@ html[data-demo="workspace"] .demo-directory { padding:24px; }
 html[data-demo="workspace"] .demo-directory h1 { font-size:1.65rem; }
 html[data-demo="workspace"] .demo-directory nav button { background:var(--ui-raised); color:var(--ui-muted); border-color:var(--ui-line); }
 html[data-demo="workspace"] .demo-directory nav button:hover { background:var(--ui-accent-soft); }
+/* The demo entry directory: workspace cards, quiet shortcuts and a clear footer. */
+html[data-demo="workspace"] .demo-directory [hidden] { display:none!important; }
+.demo-directory-tabs { display:flex; gap:22px; border-bottom:1px solid var(--ui-line); margin:0 0 16px; }
+html[data-demo="workspace"] .demo-directory-tabs button { width:auto; border:0; border-bottom:2px solid transparent; border-radius:0; background:transparent; color:var(--ui-muted); padding:10px 0 12px; font-size:.82rem; }
+html[data-demo="workspace"] .demo-directory-tabs button:hover { background:transparent; color:var(--ui-ink); }
+html[data-demo="workspace"] .demo-directory-tabs button[aria-selected="true"] { color:var(--ui-accent); border-bottom-color:var(--ui-accent); }
+html[data-demo="workspace"] .demo-directory nav.demo-direct-tools { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:0; padding:0; overflow:visible; grid-auto-flow:row; grid-auto-columns:auto; grid-template-rows:none; }
+html[data-demo="workspace"] .demo-directory nav.demo-direct-tools button { display:flex; justify-content:space-between; align-items:center; gap:12px; text-align:start; min-height:46px; width:100%; padding:11px 14px; font-size:.8rem; font-weight:500; color:var(--ui-ink); background:var(--ui-raised); }
+.demo-direct-tools button::after { content:'→'; color:var(--ui-muted); }
+@media(max-width:700px) { html[data-demo="workspace"] .demo-directory nav.demo-direct-tools { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:420px) { .demo-directory-tabs { gap:16px; } html[data-demo="workspace"] .demo-directory-tabs button { font-size:.75rem; } html[data-demo="workspace"] .demo-directory nav.demo-direct-tools { grid-template-columns:minmax(0,1fr); } }
+html[data-demo="workspace"] .demo-directory { padding:32px; border-radius:18px; overflow:hidden; }
+.demo-directory-heading { display:flex; justify-content:space-between; align-items:center; gap:24px; margin-bottom:26px; }
+html[data-demo="workspace"] .demo-directory .demo-directory-eyebrow { display:flex; align-items:center; gap:8px; margin:0 0 10px; font-size:.68rem; font-weight:700; letter-spacing:.13em; color:var(--ui-accent); }
+.demo-directory-eyebrow > span { width:7px; height:7px; background:currentColor; border-radius:50%; }
+html[data-demo="workspace"] .demo-directory h1 { margin:0; font-size:clamp(1.6rem,2.5vw,2rem); line-height:1.2; }
+.demo-directory-heading > div > p:last-child { margin:10px 0 0; color:var(--ui-muted); font-size:.9rem; }
+.demo-directory-access { flex-shrink:0; background:var(--ui-accent-soft); color:var(--ui-accent); border:1px solid var(--ui-line); padding:7px 12px; border-radius:30px; font-size:.73rem; font-weight:600; }
+html[data-demo="workspace"] .demo-directory .demo-workspace-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:0; padding:0; overflow:visible; }
+html[data-demo="workspace"] .demo-directory button.demo-workspace-card { display:flex; align-items:flex-start; gap:13px; width:100%; min-height:112px; padding:20px 16px; text-align:start; background:var(--ui-surface); border:1px solid var(--ui-line); border-radius:12px; color:var(--ui-ink); transition:border-color .18s,background .18s,box-shadow .18s; }
+html[data-demo="workspace"] .demo-directory button.demo-workspace-card:hover { background:var(--ui-raised); border-color:var(--ui-accent); box-shadow:0 4px 14px #132b4b08; }
+.demo-workspace-icon { display:grid; place-items:center; width:38px; height:38px; border-radius:10px; background:var(--ui-accent-soft); color:var(--ui-accent); flex-shrink:0; }
+.demo-workspace-icon svg { width:21px; height:21px; }
+.demo-workspace-copy { display:flex; flex-direction:column; gap:6px; min-width:0; }
+.demo-workspace-copy strong { font-size:.86rem; font-weight:650; line-height:1.35; }
+.demo-workspace-copy > span { color:var(--ui-muted); font-size:.76rem; font-weight:400; line-height:1.5; }
+.demo-workspace-arrow { margin-inline-start:auto; color:var(--ui-muted); font-size:1rem; font-weight:400; }
+.demo-utility-row { display:flex; align-items:baseline; gap:18px; padding:18px 0; margin-top:6px; }
+.demo-utility-label { flex-shrink:0; color:var(--ui-muted); font-size:.73rem; }
+html[data-demo="workspace"] .demo-directory .demo-utility-row nav { display:flex; flex-wrap:wrap; gap:4px 16px; margin:0; padding:0; overflow:visible; }
+html[data-demo="workspace"] .demo-directory .demo-utility-row button { background:transparent; color:var(--ui-muted); border:0; border-radius:4px; padding:5px 0; min-height:32px; font-size:.75rem; font-weight:500; }
+html[data-demo="workspace"] .demo-directory .demo-utility-row button:hover { color:var(--ui-accent); background:transparent; text-decoration:underline; text-underline-offset:4px; }
+.demo-directory-footer { display:flex; justify-content:space-between; align-items:center; gap:32px; margin-top:26px; padding-top:22px; border-top:1px solid var(--ui-line); }
+.demo-directory-note { max-width:620px; }
+.demo-directory-note > strong { display:block; color:var(--ui-ink); font-size:.75rem; font-weight:600; }
+.demo-directory-note p { color:var(--ui-muted); font-size:.72rem; line-height:1.65; margin:5px 0 0; }
+.demo-directory-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:12px 16px; flex-shrink:0; max-width:300px; }
+html[data-demo="workspace"] .demo-directory-actions button { width:auto; padding:9px 14px; min-height:38px; font-size:.75rem; }
+.demo-directory-actions a { text-decoration:none; font-size:.75rem; font-weight:600; }
+.demo-directory-actions .demo-plans-link { color:var(--ui-accent); }
+.demo-directory-actions .demo-exit-link { color:var(--ui-muted); }
+.demo-directory-actions a:hover { text-decoration:underline; text-underline-offset:4px; }
+@media(max-width:1100px) { html[data-demo="workspace"] .demo-directory .demo-workspace-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .demo-directory-footer { align-items:flex-start; } .demo-directory-actions { max-width:180px; } }
+@media(max-width:640px) { html[data-demo="workspace"] .demo-directory { padding:20px; } .demo-directory-heading { align-items:flex-start; flex-direction:column; gap:14px; margin-bottom:20px; } html[data-demo="workspace"] .demo-directory .demo-workspace-grid { grid-template-columns:minmax(0,1fr); grid-auto-flow:row; grid-auto-columns:auto; grid-template-rows:none; } html[data-demo="workspace"] .demo-directory button.demo-workspace-card { min-height:96px; } .demo-utility-row { flex-direction:column; gap:5px; } .demo-directory-collections { grid-template-columns:minmax(0,1fr); } .demo-directory-footer { flex-direction:column; gap:18px; margin-top:20px; } .demo-directory-actions { max-width:none; justify-content:flex-start; } }
+/* Keep the entry menu concise, with comfortable targets and less empty space. */
+html[data-demo="workspace"] .demo-directory { padding:24px; }
+.demo-directory-heading { margin-bottom:14px; }
+html[data-demo="workspace"] .demo-directory h1 { font-size:1.5rem; }
+html[data-demo="workspace"] .demo-directory .demo-directory-eyebrow { margin-bottom:6px; }
+.demo-directory-heading > div > p:last-child { margin-top:6px; font-size:.82rem; }
+html[data-demo="workspace"] .demo-directory button.demo-workspace-card { min-height:78px; padding:14px; gap:10px; }
+.demo-workspace-icon { width:32px; height:32px; border-radius:8px; }
+.demo-workspace-icon svg { width:18px; height:18px; }
+.demo-workspace-copy { gap:3px; }
+.demo-workspace-copy strong { font-size:.8rem; }
+.demo-workspace-copy > span { font-size:.72rem; }
+.demo-utility-row { padding:12px 0 0; margin-top:0; }
+.demo-directory-footer { margin-top:18px; padding-top:14px; gap:20px; }
+@media(max-width:640px) { html[data-demo="workspace"] .demo-directory { padding:18px; } .demo-directory-heading { gap:10px; } .demo-directory-access { font-size:.68rem; padding:5px 9px; } .demo-directory-footer { gap:12px; } }
 html[data-demo="workspace"] #businessWorkspace.business-demo-organized { display:grid; grid-template-columns:216px minmax(0,1fr); gap:0; align-items:start; background:var(--ui-canvas); border:1px solid var(--ui-line); border-radius:16px; padding:0; min-height:850px; overflow:clip; }
 html[data-demo="workspace"] #businessWorkspace.hidden { display:none !important; }
 .business-sidebar { background:var(--ui-nav); align-self:stretch; padding:28px 16px; display:flex; flex-direction:column; min-height:850px; color:var(--ui-ink); }
@@ -160,3 +219,16 @@ html[data-demo="workspace"] #supportWidget .support-suggestion-btn { font-size:.
 @media(max-width:700px){ .business-sidebar{border-right:0;border-bottom:1px solid var(--ui-line);} .business-header-controls{width:100%;} .business-demo-heading{gap:12px;} html[data-demo="workspace"] #supportWidget{right:12px;bottom:68px;max-height:calc(100dvh - 88px);padding:14px;} }
 
 html[data-demo="workspace"][data-theme="dark"] #appModeSwitch button.active { color:#10182a; }
+
+/* Compact workspace rhythm: a clear header and one active tool. */
+html[data-demo="workspace"] .business-app-main { padding:22px 24px 36px; }
+html[data-demo="workspace"] .business-demo-header { padding-bottom:16px; }
+html[data-demo="workspace"] .business-demo-organized .pos-tabs { gap:4px; margin:12px 0; padding-bottom:10px; }
+html[data-demo="workspace"] .business-demo-organized .pos-tabs button { min-height:40px; padding:8px 12px; }
+html[data-demo="workspace"] .business-demo-organized .pos-tabs button[aria-pressed="false"] { background:transparent; color:var(--ui-muted); border-color:transparent; }
+html[data-demo="workspace"] .business-sidebar .business-category-nav button[aria-pressed="false"] { background:transparent; color:var(--ui-muted); }
+html[data-demo="workspace"] .business-demo-organized .card { padding:20px; }
+html[data-demo="workspace"] .business-demo-organized h3 { margin:12px 0 8px; }
+html[data-demo="workspace"] .business-demo-organized .pos-metrics { gap:10px; margin:12px 0; }
+html[data-demo="workspace"] .business-demo-organized .pos-metrics article { padding:14px 16px; }
+@media(max-width:700px) { html[data-demo="workspace"] .business-app-main { padding:16px 12px 28px; } html[data-demo="workspace"] .business-demo-organized .card { padding:14px; } .demo-directory-tabs { gap:14px; } html[data-demo="workspace"] .demo-directory-tabs button { min-height:44px; } }

@@ -48,11 +48,23 @@
     workspace.addEventListener('click',e=>{const theme=e.target.closest('[data-demo-theme]');if(theme){window.applyTheme(theme.dataset.demoTheme);syncTheme();}const category=e.target.closest('[data-business-category]'),screen=e.target.closest('[data-business-screen]');if(category)select(category.dataset.businessCategory,remember[category.dataset.businessCategory]);if(screen)select('settings',screen.dataset.businessScreen);});
     document.addEventListener('click',e=>{if(routing)return;const quick=e.target.closest('[data-design-hub]');if(quick)openHub(quick.dataset.designHub);if(e.target.closest('[data-design-pos]'))select('pos','checkout');
       const hubButton=e.target.closest('[data-hub-tab]'),posButton=e.target.closest('[data-pos-tab]');if(hubButton)openHub(hubButton.dataset.hubTab,false);if(posButton)select('pos',posButton.dataset.posTab,false);},true);
-    // Shortcuts stay available without occupying the whole landing screen.
+    // A compact directory with direct tool links; no nested disclosure menus.
     const directory=document.getElementById('demoMenu');
-    for(const [aria,title] of [['Business demo shortcuts','All business tools'],['POS demo shortcuts','All POS tools']]){
-      const nav=directory.querySelector(`nav[aria-label="${aria}"]`);if(!nav)continue;const heading=nav.previousElementSibling;const details=document.createElement('details');details.className='demo-tool-directory';const summary=document.createElement('summary');summary.textContent=title;details.append(summary);heading.before(details);heading.remove();details.append(nav);
-    }
+    const tabs=document.createElement('div');tabs.className='demo-directory-tabs';tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label','Explore demo tools');
+    const general=document.createElement('div');general.className='demo-directory-panel';general.append(directory.querySelector('.demo-workspace-grid'),directory.querySelector('.demo-utility-row'));
+    const collections=directory.querySelector('.demo-directory-collections');collections.before(tabs,general);
+    const panels=[['start','Start here',general],['business','Business tools',directory.querySelector('nav[aria-label="Business demo shortcuts"]')],['pos','POS & inventory',directory.querySelector('nav[aria-label="POS demo shortcuts"]')]];
+    const tabButtons=[];
+    panels.forEach(([key,label,panel],index)=>{
+      if(key!=='start'){const nav=panel;nav.previousElementSibling?.remove();nav.classList.add('demo-direct-tools');panel=document.createElement('div');panel.className='demo-directory-panel';collections.before(panel);panel.append(nav);panels[index][2]=panel;}
+      panel.id='demo-directory-panel-'+key;panel.setAttribute('role','tabpanel');panel.setAttribute('aria-labelledby','demo-directory-tab-'+key);panel.tabIndex=0;
+      const tab=document.createElement('button');tab.type='button';tab.id='demo-directory-tab-'+key;tab.setAttribute('role','tab');tab.setAttribute('aria-controls',panel.id);tab.textContent=label;tabs.append(tab);tabButtons.push(tab);
+      tab.addEventListener('click',()=>showDirectory(index));
+    });
+    collections.remove();
+    function showDirectory(index){panels.forEach(([, ,panel],i)=>{panel.hidden=i!==index;tabButtons[i].setAttribute('aria-selected',String(i===index));tabButtons[i].tabIndex=i===index?0:-1;});}
+    tabs.addEventListener('keydown',e=>{const current=tabButtons.indexOf(e.target);if(current<0)return;let next;if(e.key==='ArrowRight')next=(current+1)%tabButtons.length;else if(e.key==='ArrowLeft')next=(current+tabButtons.length-1)%tabButtons.length;else if(e.key==='Home')next=0;else if(e.key==='End')next=tabButtons.length-1;else return;e.preventDefault();showDirectory(next);tabButtons[next].focus();});
+    showDirectory(0);
     select(location.hash==='#demoPos'?'pos':'overview',location.hash==='#demoPos'?'checkout':'overview');
     if (['#demoPos','#demoBusinessHub'].includes(location.hash)) {
       window.addEventListener('load',()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{
