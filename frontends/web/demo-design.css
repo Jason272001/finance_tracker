@@ -40,7 +40,7 @@ html[data-demo="workspace"] .demo-directory-tabs button:hover { background:trans
 html[data-demo="workspace"] .demo-directory-tabs button[aria-selected="true"] { color:var(--ui-accent); border-bottom-color:var(--ui-accent); }
 html[data-demo="workspace"] .demo-directory nav.demo-direct-tools { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:0; padding:0; overflow:visible; grid-auto-flow:row; grid-auto-columns:auto; grid-template-rows:none; }
 html[data-demo="workspace"] .demo-directory nav.demo-direct-tools button { display:flex; justify-content:space-between; align-items:center; gap:12px; text-align:start; min-height:46px; width:100%; padding:11px 14px; font-size:.8rem; font-weight:500; color:var(--ui-ink); background:var(--ui-raised); }
-.demo-direct-tools button::after { content:'→'; color:var(--ui-muted); }
+
 @media(max-width:700px) { html[data-demo="workspace"] .demo-directory nav.demo-direct-tools { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:420px) { .demo-directory-tabs { gap:16px; } html[data-demo="workspace"] .demo-directory-tabs button { font-size:.75rem; } html[data-demo="workspace"] .demo-directory nav.demo-direct-tools { grid-template-columns:minmax(0,1fr); } }
 html[data-demo="workspace"] .demo-directory { padding:32px; border-radius:18px; overflow:hidden; }
