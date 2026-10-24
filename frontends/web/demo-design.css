@@ -232,3 +232,6 @@ html[data-demo="workspace"] .business-demo-organized h3 { margin:12px 0 8px; }
 html[data-demo="workspace"] .business-demo-organized .pos-metrics { gap:10px; margin:12px 0; }
 html[data-demo="workspace"] .business-demo-organized .pos-metrics article { padding:14px 16px; }
 @media(max-width:700px) { html[data-demo="workspace"] .business-app-main { padding:16px 12px 28px; } html[data-demo="workspace"] .business-demo-organized .card { padding:14px; } .demo-directory-tabs { gap:14px; } html[data-demo="workspace"] .demo-directory-tabs button { min-height:44px; } }
+
+html[data-demo="workspace"] .customer-consent { display:flex; flex-direction:row; justify-content:flex-start; align-items:center; gap:10px; margin:12px 0; font-weight:400; }
+html[data-demo="workspace"] .customer-consent input { width:18px; min-height:18px; height:18px; flex:0 0 18px; margin:0; }

@@ -49,3 +49,7 @@ Adds percentage/fixed offers, date and minimum-spend checks, enable/disable cont
 ## Cleaner demo navigation, 2026-10-24
 
 Replaces expanding tool lists with keyboard-accessible Start here, Business tools and POS tabs. Adds concise workspace cards, visible task links and tighter workspace spacing. Keeps one directory panel visible at a time, both themes and existing demo functionality. No production account backend changes.
+
+## Customer relationships and sharing, 2026-10-24
+
+Adds temporary customer profiles with contact preference and source, manual follow-up tasks, archive/restore, and completed POS sales linked by stable customer identity. Voids are excluded from customer totals. Adds a sharing kit with editable invitations and public demo links labeled by channel. No messages are sent, no signup leads are captured, and the demo does not measure clicks. New tools remain fictional and reset on refresh. The production account backend is unchanged.

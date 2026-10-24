@@ -163,12 +163,14 @@
       const order = this.quote(items, options.discount || 0, options.taxRate || 0, options.promotionId || 0), quantities = new Map();
       for (const line of order.items) quantities.set(line.productId, (quantities.get(line.productId) || 0) + line.quantity);
       for (const [id, qty] of quantities) if (qty > this.get("products", id).stock) throw Error(`Not enough stock for ${this.get("products", id).name}.`);
+      const customerId = Number(options.customerId || 0);
+      if (!Number.isSafeInteger(customerId) || customerId < 0) throw Error("Choose a valid sample customer.");
       const payment = options.payment || "cash";
       if (!["cash", "card"].includes(payment)) throw Error("Choose cash or simulated card.");
       const paid = payment === "card" ? order.total : cents(options.paid);
       if (paid < order.total) throw Error("Cash received must cover the sale total.");
       for (const [id, qty] of quantities) this.get("products", id).stock -= qty;
-      Object.assign(order, { id: `SALE-${++this.next}`, date: new Date().toISOString(), customer: clean(options.customer) || "Walk-in sample customer", payment, paid, change: paid - order.total, status: "completed" });
+      Object.assign(order, { id: `SALE-${++this.next}`, date: new Date().toISOString(), customerId: customerId || null, customer: clean(options.customer) || "Walk-in sample customer", payment, paid, change: paid - order.total, status: "completed" });
       this.data.sales.unshift(order); return copy(order);
     }
     voidSale(id) {
