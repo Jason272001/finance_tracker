@@ -53,3 +53,7 @@ Replaces expanding tool lists with keyboard-accessible Start here, Business tool
 ## Customer relationships and sharing, 2026-10-24
 
 Adds temporary customer profiles with contact preference and source, manual follow-up tasks, archive/restore, and completed POS sales linked by stable customer identity. Voids are excluded from customer totals. Adds a sharing kit with editable invitations and public demo links labeled by channel. No messages are sent, no signup leads are captured, and the demo does not measure clicks. New tools remain fictional and reset on refresh. The production account backend is unchanged.
+
+## Register attribution and loyalty, 2026-10-24
+
+Adds required demo register sign-in for sales, purchases and voids, with immutable operator snapshots and sign-out on branch change. Public sample PINs are explicitly simulations, not secure authentication. Adds optional phone-based fictional membership, configurable earning and whole-dollar point redemption, balances and purchase previews, frozen receipt rules, and safe void reversal. A starting sample member has 1,000 labeled opening points. Promotion conversation previews require opt-in and accept STOP to opt out; no SMS, verification, real account login or messaging provider is connected. Existing customer relationships, promotions and accounting totals remain linked. Refresh resets all new data. Production account backend is unchanged.

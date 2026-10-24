@@ -235,3 +235,5 @@ html[data-demo="workspace"] .business-demo-organized .pos-metrics article { padd
 
 html[data-demo="workspace"] .customer-consent { display:flex; flex-direction:row; justify-content:flex-start; align-items:center; gap:10px; margin:12px 0; font-weight:400; }
 html[data-demo="workspace"] .customer-consent input { width:18px; min-height:18px; height:18px; flex:0 0 18px; margin:0; }
+
+.demo-register { margin:12px 0; padding:16px; background:var(--ui-raised); border:1px solid var(--ui-line); border-radius:9px; }

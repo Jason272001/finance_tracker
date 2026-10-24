@@ -2,7 +2,7 @@
   'use strict';if(document.documentElement.dataset.demo!=='workspace')return;
   document.addEventListener('DOMContentLoaded',()=>{
     const workspace=document.getElementById('businessWorkspace'),hub=document.getElementById('demoBusinessHub'),pos=document.getElementById('demoPos');if(!workspace||!hub||!pos)return;
-    const groups={overview:['overview','analyst'],pos:[],team:['staff','schedule','time','meetings','tasks','branches'],finance:['budgets','accounting','tax'],growth:['marketing','customers','sharekit'],settings:[]};
+    const groups={overview:['overview','analyst'],pos:[],team:['staff','schedule','time','meetings','tasks','branches'],finance:['budgets','accounting','tax'],growth:['marketing','customers','loyalty','sharekit'],settings:[]};
     const names={overview:'Overview',pos:'POS',team:'Team',finance:'Finance',growth:'Marketing',settings:'Settings'};
     const defaults={overview:'overview',pos:'checkout',team:'staff',finance:'budgets',growth:'marketing',settings:'profile'};
     const remember={...defaults};let active='overview',routing=false;
