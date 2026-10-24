@@ -7,8 +7,8 @@
   function validDay(d){return /^\d{4}-\d{2}-\d{2}$/.test(d)&&Number.isFinite(Date.parse(d+'T00:00:00Z'))&&new Date(d+'T00:00:00Z').toISOString().slice(0,10)===d;}
   const sources=['WhatsApp','Referral','Google Play','Instagram','Walk-in','Other'];
   class Customers {
-    constructor(){this.next=10;this.customers=[{id:1,name:'Jamie Sample',email:'jamie@example.test',phone:'',source:'Referral',notes:'Fictional customer. Interested in the weekend offer.',consent:false,archived:false}];this.followups=[{id:2,customerId:1,date:localDay(),task:'Review interest in the weekend offer',done:false}];}
-    snapshot(){return copy({customers:this.customers,followups:this.followups});}
+    constructor(){this.next=10;this.customers=[{id:1,name:'Jamie Sample',email:'jamie@example.test',phone:'+15550100100',member:true,source:'Referral',notes:'Fictional customer. Interested in the weekend offer.',consent:false,archived:false}];this.messages=[];this.followups=[{id:2,customerId:1,date:localDay(),task:'Review interest in the weekend offer',done:false}];}
+    snapshot(){return copy({customers:this.customers,followups:this.followups,messages:this.messages});}
     get(id){const c=this.customers.find(c=>c.id===Number(id));if(!c)throw Error('Choose an existing sample customer.');return copy(c);}
     save(v,id=0){
       const name=clean(v.name,100),email=clean(v.email,150).toLowerCase(),phone=clean(v.phone,40),notes=clean(v.notes,1000),source=clean(v.source,30);
@@ -17,10 +17,27 @@
       if(phone&&!/^[+\d().\s-]{6,40}$/.test(phone))throw Error('Enter a sample phone number using digits and normal phone punctuation.');
       if(!sources.includes(source))throw Error('Choose a customer source.');
       if(email&&this.customers.some(c=>c.id!==Number(id)&&c.email===email))throw Error('That email already belongs to a sample customer.');
+      if(phone&&this.customers.some(c=>c.id!==Number(id)&&c.phone.replace(/\D/g,'')===phone.replace(/\D/g,'')))throw Error('That phone already belongs to a sample customer.');
+      if(id&&this.get(id).member&&!/^\+\d{8,15}$/.test(phone.replace(/[ ().-]/g,'')))throw Error('Members need a phone number with +country code.');
       const values={name,email,phone,notes,source,consent:v.consent===true||v.consent==='on'};
       if(id){this.get(id);Object.assign(this.customers.find(c=>c.id===Number(id)),values);return Number(id);}
       if(this.customers.length>=100)throw Error('Demo limit: 100 customers.');
       const key=++this.next;this.customers.push({id:key,...values,archived:false});return key;
+    }
+    enroll(v) {
+      const phone=clean(v.phone,40).replace(/[ ().-]/g,'');
+      if(!/^\+\d{8,15}$/.test(phone))throw Error('Use a fictional phone with +country code and 8–15 digits.');
+      const existing=this.customers.find(c=>c.phone.replace(/\D/g,'')===phone.slice(1));
+      if(existing?.archived)throw Error('Restore this customer before enrolling them.');
+      const id=this.save({...(existing||{}),name:clean(v.name,100)||existing?.name||'Member · '+phone.slice(-4),phone,source:existing?.source||'Walk-in',consent:v.consent},existing?.id||0);
+      this.customers.find(c=>c.id===id).member=true;return id;
+    }
+    message(id,body,incoming=false){
+      const c=this.get(id),text=clean(body,500);if(!c.member||c.archived||!text)throw Error('Choose an active enrolled member and enter a message.');
+      if(!incoming&&!c.consent)throw Error('This member has not agreed to promotional contact.');
+      if(this.messages.length>=100)throw Error('Demo limit: 100 sample messages.');
+      if(incoming&&text.toUpperCase()==='STOP')this.customers.find(r=>r.id===c.id).consent=false;
+      this.messages.push({id:++this.next,customerId:c.id,text,incoming,date:new Date().toISOString()});
     }
     archive(id){this.get(id);const c=this.customers.find(c=>c.id===Number(id));c.archived=!c.archived;}
     followup(v){const c=this.get(v.customerId),date=clean(v.date,10),task=clean(v.task,200);if(c.archived)throw Error('Restore the customer before adding a follow-up.');if(!validDay(date)||!task)throw Error('Enter a valid follow-up date and task.');if(this.followups.length>=300)throw Error('Demo limit: 300 follow-ups.');this.followups.push({id:++this.next,customerId:c.id,date,task,done:false});}

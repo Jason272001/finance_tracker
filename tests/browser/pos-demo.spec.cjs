@@ -4,6 +4,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/demo.html');
   await page.getByRole('button', { name: 'POS & inventory', exact: true }).click();
   await expect(page.locator('#demoPos')).toBeVisible();
+  await page.locator('#registerPin').fill('0000');await page.locator('#registerSignIn').getByRole('button',{name:'Sign in to demo register',exact:true}).click();
 });
 const tab = (page, name) => page.getByRole('navigation', { name: 'POS sections' }).getByRole('button', { name, exact: true }).click();
 test('products, brands, categories, photo and CSV uploads are temporary and local', async ({ page }) => {

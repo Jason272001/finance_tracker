@@ -19,7 +19,7 @@ def render(source, settings=False):
     additions = f'''<meta http-equiv="Content-Security-Policy" content="{POLICY}">
 <meta name="description" content="Explore KeeperBMA with fictional data. Try accounts, reports, business tools and settings. All changes reset on refresh.">
 <script src="./frontends/web/demo.js?v=4"></script>
-<link rel="stylesheet" href="./frontends/web/demo.css?v=4"><link rel="stylesheet" href="./frontends/web/demo-design.css?v=6">'''
+<link rel="stylesheet" href="./frontends/web/demo.css?v=4"><link rel="stylesheet" href="./frontends/web/demo-design.css?v=7">'''
     additions += '<meta name="robots" content="noindex">' if settings else '<link rel="canonical" href="https://keeperbma.com/demo.html">'
     html = html.replace('<meta charset="utf-8" />', '<meta charset="utf-8" />\n' + additions)
     banner = '''<aside class="demo-banner" aria-label="Demo information">
@@ -45,7 +45,7 @@ def render(source, settings=False):
         for label, target in [('Categories', 'categoriesTitle'), ('Banks', 'bankSyncTitle'), ('Charts & PDF', 'summaryExportTitle'), ('Daily summary', 'dailySummaryTitle'), ('Business & employees', 'businessWorkspace'), ('Support', 'support')]:
             banner += f'<button type="button" class="secondary" data-demo-section="{target}">{label}</button>'
         banner += '</nav></div><div class="demo-directory-collections"><h2>Business demo tools</h2><nav aria-label="Business demo shortcuts">'
-        for label, tab in [('Overview', 'overview'), ('Store branches', 'branches'), ('Staff & labor planning', 'staff'), ('Time clock & payroll', 'time'), ('Staff schedule', 'schedule'), ('Meetings & agendas', 'meetings'), ('Budgets & expenses', 'budgets'), ('Accounting', 'accounting'), ('Tax preparation', 'tax'), ('Customers & follow-ups', 'customers'), ('Sharing kit', 'sharekit'), ('Marketing campaigns', 'marketing'), ('Tasks & ownership', 'tasks'), ('Business analyst preview', 'analyst')]:
+        for label, tab in [('Overview', 'overview'), ('Store branches', 'branches'), ('Staff & labor planning', 'staff'), ('Time clock & payroll', 'time'), ('Staff schedule', 'schedule'), ('Meetings & agendas', 'meetings'), ('Budgets & expenses', 'budgets'), ('Accounting', 'accounting'), ('Tax preparation', 'tax'), ('Customers & follow-ups', 'customers'), ('Phone membership & loyalty', 'loyalty'), ('Sharing kit', 'sharekit'), ('Marketing campaigns', 'marketing'), ('Tasks & ownership', 'tasks'), ('Business analyst preview', 'analyst')]:
             banner += f'<button type="button" class="secondary" data-demo-section="demoBusinessHub" data-demo-hub-tab="{tab}">{label}</button>'
         banner += '</nav><h2>POS demo tools</h2><nav aria-label="POS demo shortcuts">'
         for label, tab in [('Sales checkout', 'checkout'), ('Products & CSV upload', 'products'), ('Supplier purchases', 'purchases'), ('Sales & receipts', 'sales'), ('Promotions & discounts', 'promotions'), ('Suppliers', 'suppliers'), ('Brands', 'brands'), ('Product categories', 'categories')]:
@@ -58,14 +58,14 @@ def render(source, settings=False):
         html = html.replace('<section id="appScreen"', '<section id="landingScreen" hidden></section>\n<section id="appScreen"', 1)
     scripts = '<script defer src="./assets/vendor/chart.umd.js"></script><script defer src="./assets/vendor/jspdf.umd.min.js"></script>'
     if not settings:
-        scripts += '<script defer src="./frontends/web/creator-tools.js?v=1"></script><script defer src="./frontends/web/product-guide.js?v=3"></script><script defer src="./frontends/web/demo-assistant.js?v=1"></script>'
+        scripts += '<script defer src="./frontends/web/creator-tools.js?v=1"></script><script defer src="./frontends/web/product-guide.js?v=4"></script><script defer src="./frontends/web/demo-assistant.js?v=1"></script>'
     scripts += f'<script defer src="./frontends/web/{"settings" if settings else "web"}.js?v=demo4"></script>'
     if not settings:
-        scripts += '<script defer src="./frontends/web/pos-demo-model.js?v=3"></script><script defer src="./frontends/web/demo-pos.js?v=3"></script>'
+        scripts += '<script defer src="./frontends/web/pos-demo-model.js?v=4"></script><script defer src="./frontends/web/demo-pos.js?v=4"></script>'
         scripts += '<script defer src="./frontends/web/demo-branches-model.js?v=1"></script><script defer src="./frontends/web/demo-business.js?v=4"></script>'
         scripts += '<script defer src="./frontends/web/demo-time-model.js?v=1"></script><script defer src="./frontends/web/demo-time.js?v=1"></script>'
         scripts += '<script defer src="./frontends/web/demo-schedule-model.js?v=1"></script><script defer src="./frontends/web/demo-schedule.js?v=1"></script>'
-        scripts += '<script defer src="./frontends/web/demo-accounting.js?v=1"></script><script defer src="./frontends/web/demo-customers-model.js?v=1"></script><script defer src="./frontends/web/demo-customers.js?v=1"></script><script defer src="./frontends/web/demo-layout.js?v=7"></script>'
+        scripts += '<script defer src="./frontends/web/demo-accounting.js?v=1"></script><script defer src="./frontends/web/demo-customers-model.js?v=2"></script><script defer src="./frontends/web/demo-customers.js?v=2"></script><script defer src="./frontends/web/demo-loyalty.js?v=1"></script><script defer src="./frontends/web/demo-layout.js?v=8"></script>'
         # srcdoc uses the same generated Settings screen without needing to
         # loosen production hosting's X-Frame-Options: DENY response header.
         settings_html = json.dumps(render(ROOT / "settings.html", True), ensure_ascii=False).replace("<", "\\u003c")
