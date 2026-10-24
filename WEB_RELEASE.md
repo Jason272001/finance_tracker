@@ -45,3 +45,7 @@ Restores visible Light/Dark controls with semantic neutral/blue surfaces through
 ## POS promotions and accounting, 2026-10-23
 
 Adds percentage/fixed offers, date and minimum-spend checks, enable/disable controls, frozen receipt offer details, and a connected accounting overview with profit/loss, an activity ledger and CSV exports. Accounting separates tax collected and inventory purchases from operating expenses. All new workflows remain temporary sample data and reset on refresh. This is not a full bookkeeping or tax-filing system. Production account backend is unchanged.
+
+## Cleaner demo navigation, 2026-10-24
+
+Replaces expanding tool lists with keyboard-accessible Start here, Business tools and POS tabs. Adds concise workspace cards, visible task links and tighter workspace spacing. Keeps one directory panel visible at a time, both themes and existing demo functionality. No production account backend changes.
