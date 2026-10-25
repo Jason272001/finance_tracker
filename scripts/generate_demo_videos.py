@@ -1,7 +1,8 @@
-"""Render silent, captioned product videos from fictional demo screenshots.
+"""Render captioned visual tracks from fictional demo screenshots.
 
 Run capture_demo_video.cjs first. Requires Pillow and an ffmpeg with libx264.
 Use --ffmpeg /path/to/ffmpeg when it is not on PATH.
+After rendering, run add_demo_audio.py with the same ffmpeg to add narration/music.
 """
 import argparse
 import json
