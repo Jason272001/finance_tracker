@@ -41,7 +41,7 @@
   }
   class Shop {
     constructor({requireStaff = false} = {}) {
-      this.requireStaff = requireStaff; this.operator = null;
+      this.requireStaff = requireStaff; this.sessions = new Map(); this.deviceId = 'register-1';
       this.next = 1001;
       this.data = {
         promotions: [{id: 1, name: "Welcome offer", code: "WELCOME10", type: "percent", value: 10, minimum: 0, start: "", end: "", enabled: true}],
@@ -59,21 +59,28 @@
         sales: [{ id: "SALE-1000", date: new Date().toISOString(), customer: "Walk-in sample customer", payment: "cash", status: "completed", subtotal: 3000, discount: 0, tax: 0, total: 3000, paid: 3000, change: 0, items: [{ productId: 2, name: "Ceramic mug", sku: "MUG001", quantity: 2, unitPrice: 1500, unitCost: 600 }] }],
       };
     }
+    get operator() { return this.sessions.get(this.deviceId)||null; }
+    set operator(value) { if(value)this.sessions.set(this.deviceId,value);else this.sessions.delete(this.deviceId); }
+    selectDevice(id) { if(!['register-1','register-2'].includes(id))throw Error('Choose a sample register.');this.deviceId=id; }
+    lock() { if(this.operator)this.operator.locked=true; }
+    revokeEmployee(id) { for(const [key,s] of this.sessions)if(s.id===Number(id))this.sessions.delete(key); }
     signIn(staff, pin) {
+      if(this.operator&&!this.operator.locked)throw Error('Sign out of the current register before signing in another cashier.');
+      if(this.operator&&this.operator.id!==staff?.id)throw Error('Unlock with the same staff member, or sign out to switch cashier.');
       if (staff?.id === 'owner') {
         if (String(pin) !== '0000') throw Error('Use the public demo owner PIN 0000.');
-        this.operator = {id:'owner', name:'Demo owner', role:'owner', branchId:staff.branchId || 1};
+        this.operator = {id:'owner', name:'Demo owner', role:'owner', staffCode:staff.staffCode||'90000', branchId:staff.branchId || 1, deviceId:this.deviceId, locked:false};
       } else {
         if (!Number.isSafeInteger(staff?.id) || staff.id<1 || !clean(staff.name) || !Number.isSafeInteger(staff.branchId)) throw Error('Select an existing demo staff member.');
         if (String(pin) !== '1111') throw Error('Use the public demo staff PIN 1111.');
-        this.operator = {id:staff.id,name:clean(staff.name),role:'cashier',branchId:staff.branchId};
+        this.operator = {id:staff.id,name:clean(staff.name),role:'cashier',staffCode:staff.staffCode||String(10000+staff.id),branchId:staff.branchId,deviceId:this.deviceId,locked:false};
       }
       return copy(this.operator);
     }
     signOut() { this.operator = null; }
     session() { return copy(this.operator); }
     requireOperator(owner = false) {
-      if (this.requireStaff && (!this.operator || (owner && this.operator.role!=='owner'))) throw Error(owner?'Sign in as demo owner to change loyalty rules.':'Sign in to the demo register before completing this action.');
+      if (this.requireStaff && (!this.operator || this.operator.locked || (owner && this.operator.role!=='owner'))) throw Error(owner?'Sign in as demo owner to change loyalty rules.':'Sign in to the demo register before completing this action.');
     }
     setLoyalty(values) {
       this.requireOperator(true);
@@ -141,7 +148,7 @@
       if (!items.length || items.length > 100) throw Error("Add 1–100 order lines.");
       return items.map(item => {
         const p = this.get("products", item.productId), quantity = integer(item.quantity, 1);
-        return { productId: p.id, name: p.name, sku: p.sku, quantity, unitCost: kind === "purchase" ? cents(item.unitCost) : p.cost, ...(kind === "sale" ? { unitPrice: item.unitPrice === undefined ? p.price : cents(item.unitPrice) } : {}) };
+        return { productId: p.id, name: p.name, sku: p.sku, note:clean(item.note,200), groupId:clean(item.groupId,60), quantity, unitCost: kind === "purchase" ? cents(item.unitCost) : p.cost, ...(kind === "sale" ? { unitPrice: item.unitPrice === undefined ? p.price : cents(item.unitPrice) } : {}) };
       });
     }
     purchase(supplierId, items, reference = "") {
@@ -210,7 +217,7 @@
       const paid = payment === "card" ? order.total : cents(options.paid);
       if (paid < order.total) throw Error("Cash received must cover the sale total.");
       for (const [id, qty] of quantities) this.get("products", id).stock -= qty;
-      Object.assign(order, { id: `SALE-${++this.next}`, date: new Date().toISOString(), cashier: this.session(), customerId: customerId || null, customer: clean(options.customer) || "Walk-in sample customer", payment, paid, change: paid - order.total, status: "completed" });
+      Object.assign(order, { id: `SALE-${++this.next}`, date: new Date().toISOString(), industry: options.industry==='restaurant'?'restaurant':'retail', fulfillment:options.industry==='restaurant'&&options.fulfillment==='dine-in'?'Dine-in':options.industry==='restaurant'?'Takeaway':null, cashier: this.session(), customerId: customerId || null, customer: clean(options.customer) || "Walk-in sample customer", payment, paid, change: paid - order.total, status: "completed" });
       this.data.sales.unshift(order); return copy(order);
     }
     voidSale(id) {

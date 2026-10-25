@@ -18,7 +18,7 @@
       tasks: [{id:7,title:'Collect supplier invoices',owner:'Alex Sample',date:today,done:false}],
       documents: [{id:8,title:'Sales records reviewed',done:false},{id:9,title:'Expense documents collected',done:false}]
     };
-    window.BusinessHubDemo = { expenses: () => data.expenses.map(e=>({...e})), staff: () => data.staff.filter(p=>p.branchId===branches.selected).map(p => ({...p})), branch: () => branches.current() };
+    window.BusinessHubDemo = { allStaff:()=>data.staff.map(p=>({...p})), profile:()=>({id:'demo-business',name:document.getElementById('businessName')?.value||'Sample business'}), expenses: () => data.expenses.map(e=>({...e})), staff: () => data.staff.filter(p=>p.branchId===branches.selected).map(p => ({...p})), branch: () => branches.current() };
     const host = document.createElement('section'); host.id='demoBusinessHub'; host.className='card pos-demo';
     const fields = (name, label, type='text', extra='') => `<label>${label}<input name="${name}" type="${type}" ${extra} required></label>`;
     const dollars = (name,label) => fields(name,label,'number','min="0" max="1000000" step="0.01"');
