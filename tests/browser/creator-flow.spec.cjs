@@ -103,7 +103,7 @@ test('failed transaction loading never presents a zero report as real data', asy
 test('public landing stays visible when session restoration fails', async ({ page }) => {
   await page.route('https://api.keeperbma.com/**', route => route.abort());
   await page.goto('/index.html');
-  await expect(page.locator('#landingTitle')).toHaveText('See what your side hustle actually earns');
+  await expect(page.locator('#landingTitle')).toHaveText('Your business, connected.');
   await expect(page.getByRole('link', { name: 'Try the demo — no signup' })).toBeVisible();
   const menu = page.getByRole('button', { name: 'Menu', exact: true });
   await expect(menu).toHaveAttribute('aria-expanded', 'false');

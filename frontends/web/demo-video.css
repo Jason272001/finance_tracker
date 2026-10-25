@@ -38,3 +38,50 @@
 .tour-page a:focus-visible,.tour-page video:focus-visible { outline:3px solid #6366f1; outline-offset:4px; }
 @media(max-width:800px) { .tour-grid { grid-template-columns:minmax(0,1fr); } .tour-portrait { max-height:600px; } .tour-header { padding:18px; gap:12px; } .tour-header nav { gap:12px; } .tour-header nav>a:first-child { display:none; } .tour-page main { padding:18px; } .tour-transcript ol { columns:1; } .tour-footer { flex-wrap:wrap; padding:20px 18px; } }
 @media(max-width:380px) { .tour-header nav>a:not(.tour-button) { display:none; } .tour-card-heading { align-items:flex-start; padding:16px; } .tour-brand { font-size:.95rem; } }
+
+/* Homepage content stays inside the existing landing shell and theme tokens. */
+#landingScreen .landing-nav .brand-row h1 { font-size:1.2rem; margin:0; letter-spacing:-.025em; }
+#landingScreen .landing-nav .brand-logo { width:38px; height:38px; }
+#landingScreen .landing-links { font-size:.82rem; gap:14px; }
+#landingScreen #btnHeroLogin { background:var(--surface); color:var(--heading); border:1px solid var(--border); box-shadow:none; }
+#landingScreen .home-business-hero { padding:clamp(26px,4vw,48px); background:var(--card-bg); }
+#landingScreen .home-business-hero h2 { font-size:clamp(2rem,4vw,3.4rem); line-height:1.12; letter-spacing:-.04em; max-width:900px; margin:12px 0 18px; }
+#landingScreen .home-business-hero #landingSubtitle { max-width:850px; font-size:1.05rem; line-height:1.7; }
+#landingScreen .home-eyebrow { font-size:.67rem; letter-spacing:.13em; font-weight:750; color:var(--link); margin:0 0 8px; }
+#landingScreen .home-hero-note { font-size:.76rem; margin:18px 0 0; color:var(--muted); }
+#landingScreen .home-section { padding:28px; background:var(--card-bg); border:1px solid var(--border); border-radius:14px; scroll-margin-top:100px; }
+#landingScreen .home-section-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; margin-bottom:22px; }
+#landingScreen .home-section-heading h2 { font-size:clamp(1.35rem,2.5vw,1.85rem); line-height:1.25; letter-spacing:-.025em; margin:0 0 10px; color:var(--heading); }
+#landingScreen .home-section-heading p:not(.home-eyebrow) { color:var(--muted); max-width:790px; font-size:.88rem; line-height:1.7; margin:0; }
+#landingScreen .home-section-heading>a { color:var(--link); white-space:nowrap; font-size:.8rem; font-weight:650; text-underline-offset:4px; }
+#landingScreen .home-video-grid { display:grid; grid-template-columns:minmax(0,2.3fr) minmax(260px,1fr); gap:20px; align-items:start; }
+#landingScreen .tour-card { background:var(--card-bg); border-color:var(--border); }
+#landingScreen .tour-card-heading { padding:18px; }
+#landingScreen .tour-card-heading h3 { margin:0; font-size:.95rem; line-height:1.4; color:var(--heading); }
+#landingScreen .tour-card-heading>span,#landingScreen .tour-card-body { color:var(--muted); }
+#landingScreen .tour-card-body a { color:var(--link); text-underline-offset:4px; }
+#landingScreen .tour-card video { width:100%; display:block; background:#0d1425; }
+#landingScreen .tour-portrait { max-height:480px; }
+#landingScreen .home-transcript { margin-top:18px; padding:14px 16px; border:1px solid var(--border); border-radius:9px; background:var(--surface); }
+#landingScreen .home-transcript summary { cursor:pointer; font-size:.83rem; font-weight:600; color:var(--text); }
+#landingScreen .home-transcript ol { columns:2; gap:30px; font-size:.83rem; line-height:1.7; color:var(--muted); padding-left:18px; }
+#landingScreen .home-transcript li { break-inside:avoid; margin-bottom:12px; }
+#landingScreen .home-status { flex-shrink:0; display:inline-block; padding:6px 10px; border:1px solid var(--border); border-radius:20px; background:var(--surface); color:var(--link); font-size:.7rem; font-weight:650; }
+#landingScreen .home-feature-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+#landingScreen .home-feature-card { padding:21px; border:1px solid var(--border); border-radius:11px; background:var(--surface); display:flex; flex-direction:column; }
+#landingScreen .home-card-number { font-size:.62rem; letter-spacing:.12em; color:var(--link); font-weight:750; }
+#landingScreen .home-feature-card h3 { margin:10px 0; color:var(--heading); font-size:1.02rem; }
+#landingScreen .home-feature-card p,#landingScreen .home-feature-card li { font-size:.82rem; line-height:1.75; color:var(--muted); }
+#landingScreen .home-feature-card p { margin:0; }
+#landingScreen .home-feature-card ul { padding-left:17px; margin:12px 0 18px; }
+#landingScreen .home-feature-card li+li { margin-top:7px; }
+#landingScreen .home-feature-card>a { margin-top:auto; color:var(--link); font-size:.77rem; font-weight:650; text-decoration:none; }
+#landingScreen .home-use-cases { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; }
+#landingScreen .home-use-cases h3,#landingScreen .home-roadmap-grid h3 { font-size:.98rem; margin:0 0 10px; color:var(--heading); }
+#landingScreen .home-use-cases p,#landingScreen .home-roadmap-grid p { font-size:.84rem; line-height:1.8; margin:0; color:var(--muted); }
+#landingScreen .home-roadmap-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+#landingScreen .home-roadmap-grid article { padding:20px; border:1px dashed var(--border-strong); border-radius:10px; background:var(--surface); }
+#landingScreen .home-pricing-note { font-size:.8rem; line-height:1.7; color:var(--muted); }
+@media(max-width:1000px) { #landingScreen .home-feature-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:760px) { #landingScreen .home-video-grid,#landingScreen .home-use-cases,#landingScreen .home-roadmap-grid { grid-template-columns:minmax(0,1fr); } #landingScreen .home-section { padding:18px; scroll-margin-top:80px; } #landingScreen .home-section-heading { flex-direction:column; gap:12px; margin-bottom:18px; } #landingScreen .home-transcript ol { columns:1; } }
+@media(max-width:500px) { #landingScreen .home-feature-grid { grid-template-columns:minmax(0,1fr); } #landingScreen .home-feature-card { padding:18px; } #landingScreen .home-business-hero { padding:24px 20px; } #landingScreen .home-business-hero #landingSubtitle { font-size:.93rem; } #landingScreen .home-eyebrow { font-size:.6rem; letter-spacing:.1em; } }
