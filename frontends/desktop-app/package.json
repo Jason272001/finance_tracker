@@ -1,0 +1,70 @@
+{
+  "name": "keeperbma-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "KeeperBMA desktop preview for the hosted website and business demo",
+  "author": "KeeperBMA",
+  "license": "UNLICENSED",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test policy.test.cjs",
+    "dist": "electron-builder --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "com.keeperbma.desktop",
+    "productName": "KeeperBMA",
+    "files": [
+      "main.cjs",
+      "policy.cjs",
+      "offline.html",
+      "icons/**"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icons/app.ico",
+      "artifactName": "KeeperBMA-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "icon": "icons/app.icns",
+      "artifactName": "KeeperBMA-${version}-universal.${ext}",
+      "category": "public.app-category.business",
+      "identity": null,
+      "hardenedRuntime": false,
+      "minimumSystemVersion": "13.0"
+    },
+    "dmg": {
+      "sign": false
+    }
+  }
+}
