@@ -65,3 +65,7 @@ Adds a silent 74-second landscape walkthrough and 29-second vertical social clip
 ## Unified business homepage, 2026-10-24
 
 Moves both existing videos directly into the main landing page with captions, downloads and a transcript. Adds six grouped business-demo explanations, three audience examples and a clearly labeled future-projects section. Personal finance and existing plan controls remain available, with explicit demo-versus-production availability. The previous watch-demo page redirects to the homepage video section, including the alternate static entry. Both themes and mobile layouts are supported. Public web.js changes are limited to four English landing-copy strings. Production account backend is unchanged.
+
+## Narrated videos with music, 2026-10-25
+
+Adds scene-aligned local English speech synthesis and an original synthesized instrumental score to both existing videos. AAC stereo narration-forward audio is normalized around -16 LUFS, with true peaks below 0 dBFS and music approximately 17 dB below active speech. Video durations remain 74 and 29 seconds. English caption tracks and the homepage transcript now match the spoken script. Homepage source/download links use a new media version, sound defaults on after user playback, and starting either player pauses the other. No autoplay or external speech/music service is introduced. Six browser checks passed, including Chromium AAC-to-PCM decoding, media playback and mutual-pause behavior; ffmpeg separately decoded and measured both audio streams. Production account backend is unchanged.

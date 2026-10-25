@@ -8,64 +8,82 @@
       {
         "start": 0,
         "title": "Your business. One workspace.",
-        "duration": 5
+        "duration": 5,
+        "narration": "Welcome to Keeper B M A. Explore your business in one workspace."
       },
       {
         "start": 5,
         "title": "Start with a clear overview.",
-        "duration": 6
+        "duration": 6,
+        "narration": "Start with your overview. Choose point of sale, team, finance, or marketing."
       },
       {
         "start": 11,
         "title": "Organize your products.",
-        "duration": 6
+        "duration": 6,
+        "narration": "Add products and prices. Import your catalog and receive supplier purchases."
       },
       {
         "start": 17,
         "title": "Sign in. Ring up a sale.",
-        "duration": 7
+        "duration": 7,
+        "narration": "Sign in as a demo cashier. Add products and choose a customer or walk-in. Payments here are simulated."
       },
       {
         "start": 24,
         "title": "Keep the sale connected.",
-        "duration": 6
+        "duration": 6,
+        "narration": "See the cashier, customer, total, and points earned on each sample receipt."
       },
       {
         "start": 30,
         "title": "Plan your team by branch.",
-        "duration": 7
+        "duration": 7,
+        "narration": "Plan each branch’s shifts. Assign Jason and Kay to Monday, nine to two, and review planned hours."
       },
       {
         "start": 37,
         "title": "Track time. Review hours.",
-        "duration": 6
+        "duration": 6,
+        "narration": "Track hours, breaks, and gross pay estimates. No payroll payments are made."
       },
       {
         "start": 43,
         "title": "Bring customers back with points.",
-        "duration": 7
+        "duration": 7,
+        "narration": "Preview phone membership and adjustable customer rewards. No real texts are sent."
       },
       {
         "start": 50,
         "title": "See the numbers together.",
-        "duration": 7
+        "duration": 7,
+        "narration": "Review sales, costs, expenses, and tax collected. This is not full bookkeeping or tax filing."
       },
       {
         "start": 57,
         "title": "Plan your next campaign.",
-        "duration": 6
+        "duration": 6,
+        "narration": "Plan campaigns, meetings, tasks, and follow ups. Nothing is posted or sent."
       },
       {
         "start": 63,
         "title": "Personal finance is here too.",
-        "duration": 6
+        "duration": 6,
+        "narration": "Explore personal income, expenses, and monthly reports with fictional sample records."
       },
       {
         "start": 69,
         "title": "Try it yourself.",
-        "duration": 5
+        "duration": 5,
+        "narration": "Try the demo at keeper B M A dot com. No signup needed."
       }
-    ]
+    ],
+    "audio": {
+      "narration": "English synthetic narration",
+      "voice": "Microsoft Zira Desktop",
+      "music": "Original locally synthesized instrumental; no third-party recording",
+      "mix": "Narration-forward stereo AAC"
+    }
   },
   {
     "file": "keeperbma-social.mp4",
@@ -76,38 +94,51 @@
       {
         "start": 0,
         "title": "Your business. One workspace.",
-        "duration": 3
+        "duration": 3,
+        "narration": "Keeper B M A."
       },
       {
         "start": 3,
         "title": "Sign in. Ring up a sale.",
-        "duration": 5
+        "duration": 5,
+        "narration": "Sign in as a demo cashier. Add products and choose your customer."
       },
       {
         "start": 8,
         "title": "Keep the sale connected.",
-        "duration": 4
+        "duration": 4,
+        "narration": "See the cashier, sale total, and points."
       },
       {
         "start": 12,
         "title": "Plan your team by branch.",
-        "duration": 4
+        "duration": 4,
+        "narration": "Plan staff shifts for each branch."
       },
       {
         "start": 16,
         "title": "Bring customers back with points.",
-        "duration": 5
+        "duration": 5,
+        "narration": "Preview phone membership and rewards. No real texts are sent."
       },
       {
         "start": 21,
         "title": "See the numbers together.",
-        "duration": 4
+        "duration": 4,
+        "narration": "Explore reports. Full bookkeeping is not connected."
       },
       {
         "start": 25,
         "title": "Try it yourself.",
-        "duration": 4
+        "duration": 4,
+        "narration": "Try the demo at keeper B M A dot com."
       }
-    ]
+    ],
+    "audio": {
+      "narration": "English synthetic narration",
+      "voice": "Microsoft Zira Desktop",
+      "music": "Original locally synthesized instrumental; no third-party recording",
+      "mix": "Narration-forward stereo AAC"
+    }
   }
 ]
