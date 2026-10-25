@@ -61,3 +61,7 @@ Adds required demo register sign-in for sales, purchases and voids, with immutab
 ## Captioned demo videos, 2026-10-24
 
 Adds a silent 74-second landscape walkthrough and 29-second vertical social clip, animated from fictional demo screenshots. Adds native HTML video players with on-screen captions, English VTT tracks, a readable transcript, posters, downloadable MP4s and explicit demo limitations. Adds Watch demo links on the home page and demo directory plus the new page in the sitemap. Videos do not autoplay and use preload=none. Nothing is posted to social networks. Production account backend is unchanged.
+
+## Unified business homepage, 2026-10-24
+
+Moves both existing videos directly into the main landing page with captions, downloads and a transcript. Adds six grouped business-demo explanations, three audience examples and a clearly labeled future-projects section. Personal finance and existing plan controls remain available, with explicit demo-versus-production availability. The previous watch-demo page redirects to the homepage video section, including the alternate static entry. Both themes and mobile layouts are supported. Public web.js changes are limited to four English landing-copy strings. Production account backend is unchanged.
