@@ -1,0 +1,113 @@
+[
+  {
+    "file": "keeperbma-walkthrough.mp4",
+    "width": 1280,
+    "height": 720,
+    "seconds": 74,
+    "chapters": [
+      {
+        "start": 0,
+        "title": "Your business. One workspace.",
+        "duration": 5
+      },
+      {
+        "start": 5,
+        "title": "Start with a clear overview.",
+        "duration": 6
+      },
+      {
+        "start": 11,
+        "title": "Organize your products.",
+        "duration": 6
+      },
+      {
+        "start": 17,
+        "title": "Sign in. Ring up a sale.",
+        "duration": 7
+      },
+      {
+        "start": 24,
+        "title": "Keep the sale connected.",
+        "duration": 6
+      },
+      {
+        "start": 30,
+        "title": "Plan your team by branch.",
+        "duration": 7
+      },
+      {
+        "start": 37,
+        "title": "Track time. Review hours.",
+        "duration": 6
+      },
+      {
+        "start": 43,
+        "title": "Bring customers back with points.",
+        "duration": 7
+      },
+      {
+        "start": 50,
+        "title": "See the numbers together.",
+        "duration": 7
+      },
+      {
+        "start": 57,
+        "title": "Plan your next campaign.",
+        "duration": 6
+      },
+      {
+        "start": 63,
+        "title": "Personal finance is here too.",
+        "duration": 6
+      },
+      {
+        "start": 69,
+        "title": "Try it yourself.",
+        "duration": 5
+      }
+    ]
+  },
+  {
+    "file": "keeperbma-social.mp4",
+    "width": 720,
+    "height": 1280,
+    "seconds": 29,
+    "chapters": [
+      {
+        "start": 0,
+        "title": "Your business. One workspace.",
+        "duration": 3
+      },
+      {
+        "start": 3,
+        "title": "Sign in. Ring up a sale.",
+        "duration": 5
+      },
+      {
+        "start": 8,
+        "title": "Keep the sale connected.",
+        "duration": 4
+      },
+      {
+        "start": 12,
+        "title": "Plan your team by branch.",
+        "duration": 4
+      },
+      {
+        "start": 16,
+        "title": "Bring customers back with points.",
+        "duration": 5
+      },
+      {
+        "start": 21,
+        "title": "See the numbers together.",
+        "duration": 4
+      },
+      {
+        "start": 25,
+        "title": "Try it yourself.",
+        "duration": 4
+      }
+    ]
+  }
+]
