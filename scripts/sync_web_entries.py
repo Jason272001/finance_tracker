@@ -4,7 +4,7 @@ from pathlib import Path
 from demo_pages import generate
 
 ROOT = Path(__file__).resolve().parents[1]
-PAGES = ("index.html", "demo.html", "demo-settings.html", "profit-calculator.html")
+PAGES = ("index.html", "demo.html", "demo-settings.html", "profit-calculator.html", "watch-demo.html")
 
 
 def main():

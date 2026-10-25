@@ -16,4 +16,5 @@ test('website and demo link to the video page',async({page})=>{
  await page.route(u=>!['127.0.0.1','localhost'].includes(u.hostname),r=>r.abort());await page.goto('/index.html');
  await expect(page.locator('.landing-cta').getByRole('link',{name:/Watch the 74-second walkthrough/})).toHaveAttribute('href','./watch-demo.html');
  await page.goto('/demo.html');await page.getByRole('link',{name:'Watch demo video',exact:true}).click();await expect(page).toHaveURL(/watch-demo.html$/);
+ await page.goto('/frontends/web/watch-demo.html');await expect(page.locator('#walkthroughVideo source')).toHaveAttribute('src','../../assets/video/keeperbma-walkthrough.mp4');
 });
