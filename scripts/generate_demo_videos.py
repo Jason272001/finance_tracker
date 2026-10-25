@@ -2,7 +2,8 @@
 
 Run capture_demo_video.cjs first. Requires Pillow and an ffmpeg with libx264.
 Use --ffmpeg /path/to/ffmpeg when it is not on PATH.
-After rendering, run add_demo_audio.py with the same ffmpeg to add narration/music.
+After rendering, run add_demo_audio.py to build the instrumental stems, then
+create_natural_narration.py for the current two-voice narration release.
 """
 import argparse
 import json

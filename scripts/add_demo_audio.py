@@ -1,5 +1,7 @@
 """Add scene-aligned English narration and an original instrumental bed.
 
+Legacy local-voice fallback and instrumental-stem builder. For the current
+two neural narrator choices, run create_natural_narration.py afterward.
 Windows speech synthesis runs locally. Requires numpy and ffmpeg with AAC.
 No speech, music, account or messaging service is called.
 """

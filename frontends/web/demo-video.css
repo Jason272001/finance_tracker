@@ -60,6 +60,11 @@
 #landingScreen .tour-card-heading h3 { margin:0; font-size:.95rem; line-height:1.4; color:var(--heading); }
 #landingScreen .tour-card-heading>span,#landingScreen .tour-card-body { color:var(--muted); }
 #landingScreen .tour-card-body a { color:var(--link); text-underline-offset:4px; }
+#landingScreen .home-narrator-picker { display:flex; align-items:center; flex-wrap:wrap; gap:7px; padding:0 18px 12px; }
+#landingScreen .home-narrator-picker>span { color:var(--muted); font-size:.72rem; margin-right:4px; }
+#landingScreen .home-narrator-picker button { width:auto; min-height:40px; padding:7px 11px; border:1px solid var(--border); border-radius:7px; font-size:.75rem; font-weight:600; background:var(--surface); color:var(--text); box-shadow:none; transform:none; }
+#landingScreen .home-narrator-picker button[aria-pressed="true"] { background:var(--heading); color:var(--card-bg); border-color:var(--heading); }
+#landingScreen .home-voice-note { padding:0 18px 14px; margin:0; color:var(--muted); font-size:.73rem; line-height:1.55; }
 #landingScreen .tour-card video { width:100%; display:block; background:#0d1425; }
 #landingScreen .tour-portrait { max-height:480px; }
 #landingScreen .home-transcript { margin-top:18px; padding:14px 16px; border:1px solid var(--border); border-radius:9px; background:var(--surface); }

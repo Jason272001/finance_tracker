@@ -2,7 +2,7 @@ const {test,expect}=require('@playwright/test');
 test('video page exposes downloads, transcript, responsive players and playable MP4s',async({page,browserName})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.route(u=>!['127.0.0.1','localhost'].includes(u.hostname),r=>r.abort());await page.goto('/index.html#watch');
  await expect(page.getByRole('heading',{name:'See how everything connects.'})).toBeVisible();
- await expect(page.locator('video[autoplay]')).toHaveCount(0);await expect(page.locator('video[muted]')).toHaveCount(0);await expect(page.locator('#watch')).toContainText('English narration, gentle background music, and captions');await expect(page.locator('.home-transcript li')).toHaveCount(12);
+ await expect(page.locator('video[autoplay]')).toHaveCount(0);await expect(page.locator('video[muted]')).toHaveCount(0);await expect(page.locator('#watch')).toContainText('a choice of English narrators, the same gentle background music, and captions');await expect(page.locator('.home-transcript li')).toHaveCount(12);
  await expect(page.getByRole('link',{name:'Download vertical MP4',exact:true})).toHaveAttribute('download','');
  // The Windows WebKit port omits WebAudio; Chromium decodes AAC PCM here, and ffmpeg validates both files separately.
  for(const [id,seconds,width,height] of [['walkthroughVideo',74,1280,720],['socialVideo',29,720,1280]]){
@@ -18,7 +18,7 @@ test('videos stay on the homepage and old links redirect to the inline section',
  await page.route(u=>!['127.0.0.1','localhost'].includes(u.hostname),r=>r.abort());await page.goto('/index.html');
  await expect(page.locator('.landing-cta').getByRole('link',{name:/Watch the 74-second walkthrough/})).toHaveAttribute('href','#watch');
  await page.goto('/demo.html');await page.getByRole('link',{name:'Watch demo video',exact:true}).click();await expect(page).toHaveURL(/index.html#watch$/);
- await page.goto('/frontends/web/watch-demo.html');await expect(page).toHaveURL(/frontends\/web\/index.html#watch$/);await expect(page.locator('#walkthroughVideo source')).toHaveAttribute('src','../../assets/video/keeperbma-walkthrough.mp4?v=2');
+ await page.goto('/frontends/web/watch-demo.html');await expect(page).toHaveURL(/frontends\/web\/index.html#watch$/);await expect(page.locator('#walkthroughVideo source')).toHaveAttribute('src','../../assets/video/keeperbma-walkthrough.mp4?v=3');
 });
 
 test('homepage explains business previews and future projects in both themes',async({page})=>{
@@ -26,4 +26,20 @@ test('homepage explains business previews and future projects in both themes',as
  await expect(page.locator('#landingTitle')).toHaveText('Your business, connected.');await expect(page.locator('.home-feature-card')).toHaveCount(6);await expect(page.locator('.home-roadmap-grid article')).toHaveCount(4);await expect(page.locator('#roadmap')).toContainText('Planned / future direction');await expect(page.locator('#features')).toContainText('not yet live business operations');
  await page.locator('#landingThemeToggle').click();await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
  for(const width of [390,320]){await page.setViewportSize({width,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);await expect(page.locator('#watch')).toContainText('Download vertical MP4');}
+});
+
+test('each video offers two playable narrator choices and downloads the selected voice',async({page,browserName})=>{
+ await page.route(u=>!['127.0.0.1','localhost'].includes(u.hostname),r=>r.abort());await page.goto('/index.html#watch');
+ for(const [id,groupName,seconds] of [['walkthroughVideo','Walkthrough narrator',74],['socialVideo','Social video narrator',29]]){
+  const group=page.getByRole('group',{name:groupName,exact:true});
+  for(const [voice,label] of [['male','Warm male'],['female','Friendly female']]){
+   await group.getByRole('button',{name:label,exact:true}).click();await expect(group.getByRole('button',{pressed:true})).toHaveCount(1);await expect(group.getByRole('button',{name:label,exact:true})).toHaveAttribute('aria-pressed','true');
+   const suffix=id==='walkthroughVideo'?(voice==='female'?'-female':''):(voice==='male'?'-male':'');const base=id==='walkthroughVideo'?'walkthrough':'social';
+   await expect(page.locator('[data-video-download="'+id+'"]').first()).toHaveAttribute('href',new RegExp('keeperbma-'+base+suffix+'\\.mp4\\?v=3$'));
+   await page.locator('#'+id).evaluate(async v=>{v.muted=true;await v.play();});await expect.poll(()=>page.locator('#'+id).evaluate(v=>v.currentTime)).toBeGreaterThan(0);expect(await page.locator('#'+id).evaluate(v=>v.duration)).toBeCloseTo(seconds,0);
+   if(browserName==='chromium'){const pcm=await page.locator('#'+id).evaluate(async v=>{const c=new OfflineAudioContext(2,1,48000),b=await c.decodeAudioData(await(await fetch(v.currentSrc)).arrayBuffer()),d=b.getChannelData(0);let sum=0,n=0;for(let i=0;i<d.length;i+=100){sum+=d[i]*d[i];n++;}return {channels:b.numberOfChannels,rms:Math.sqrt(sum/n)};});expect(pcm.channels).toBe(2);expect(pcm.rms).toBeGreaterThan(.01);}
+   await page.locator('#'+id).evaluate(v=>v.pause());
+  }
+ }
+ await page.goto('/frontends/web/index.html#watch');await page.getByRole('group',{name:'Walkthrough narrator',exact:true}).getByRole('button',{name:'Friendly female',exact:true}).click();await expect(page.locator('[data-video-download="walkthroughVideo"]')).toHaveAttribute('href',/\/assets\/video\/keeperbma-walkthrough-female\.mp4\?v=3$/);
 });

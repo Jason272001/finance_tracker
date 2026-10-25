@@ -79,10 +79,23 @@
       }
     ],
     "audio": {
-      "narration": "English synthetic narration",
-      "voice": "Microsoft Zira Desktop",
-      "music": "Original locally synthesized instrumental; no third-party recording",
-      "mix": "Narration-forward stereo AAC"
+      "narration": "English neural synthetic narration",
+      "default_narrator": "male",
+      "variants": {
+        "male": {
+          "file": "keeperbma-walkthrough.mp4",
+          "voice": "en-US-AndrewNeural",
+          "label": "Warm male"
+        },
+        "female": {
+          "file": "keeperbma-walkthrough-female.mp4",
+          "voice": "en-US-EmmaNeural",
+          "label": "Friendly female"
+        }
+      },
+      "music": "Previously approved original instrumental, preserved from the published mix",
+      "approved_music_sha256": "7f86174b971af5383fc37a8823f0a4a64ae7262379b85cc99fcd2e80c97c3994",
+      "mix": "Narration-forward stereo AAC; no digital speech time stretching"
     }
   },
   {
@@ -135,10 +148,23 @@
       }
     ],
     "audio": {
-      "narration": "English synthetic narration",
-      "voice": "Microsoft Zira Desktop",
-      "music": "Original locally synthesized instrumental; no third-party recording",
-      "mix": "Narration-forward stereo AAC"
+      "narration": "English neural synthetic narration",
+      "default_narrator": "female",
+      "variants": {
+        "male": {
+          "file": "keeperbma-social-male.mp4",
+          "voice": "en-US-AndrewNeural",
+          "label": "Warm male"
+        },
+        "female": {
+          "file": "keeperbma-social.mp4",
+          "voice": "en-US-EmmaNeural",
+          "label": "Friendly female"
+        }
+      },
+      "music": "Previously approved original instrumental, preserved from the published mix",
+      "approved_music_sha256": "d9910733bc93ee857bf0279c7c1907dee0aeb7fdb1d257933b67da88597d1997",
+      "mix": "Narration-forward stereo AAC; no digital speech time stretching"
     }
   }
 ]
