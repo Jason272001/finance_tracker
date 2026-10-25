@@ -5,7 +5,7 @@
     const clocks=new Map(),staff=()=>BusinessHubDemo.staff();
     function currentClock(){const id=BusinessHubDemo.branch().id;if(!clocks.has(id))clocks.set(id,new DemoTime.Clock());return clocks.get(id);}
     let clock=currentClock();
-    window.TimeDemo={active:id=>[...clocks.values()].some(c=>c.snapshot().some(s=>s.employeeId===id&&s.end===null))};
+    window.TimeDemo={punch:(person,action)=>{const p=staff().find(p=>p.id===person.id);if(!p)throw Error('Choose a staff member in this branch.');const active=clock.active(p);if(action==='in')clock.clockIn(p);else if(action==='out'){if(!active)throw Error('This staff member is not clocked in.');clock.clockOut(active.id);}else throw Error('Choose clock in or clock out.');render();return {name:p.name,action,branch:BusinessHubDemo.branch().name};},active:id=>[...clocks.values()].some(c=>c.snapshot().some(s=>s.employeeId===id&&s.end===null))};
     const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const money=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n/100);
     const hours=ms=>(ms/3600000).toFixed(2);

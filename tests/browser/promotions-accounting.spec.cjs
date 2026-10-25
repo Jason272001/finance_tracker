@@ -1,6 +1,6 @@
 const {test,expect}=require('@playwright/test');
 test('promotion checkout flows into accounting and resets on refresh',async({page})=>{
- await page.goto('/demo.html#demoPos');await page.locator('#registerPin').fill('0000');await page.locator('#registerSignIn').getByRole('button',{name:'Sign in to demo register',exact:true}).click();
+ await page.goto('/demo.html#demoPos');await page.locator('#registerStaffId').fill('90000');await page.locator('#registerPin').fill('0000');await page.locator('#registerSignIn').getByRole('button',{name:'Sign in to demo register',exact:true}).click();
  const tab=name=>page.getByRole('navigation',{name:'POS sections'}).getByRole('button',{name,exact:true}).click();
  await tab('Promotions');const form=page.locator('#posPromotionForm');
  await form.locator('[name="name"]').fill('Five dollar offer');await form.locator('[name="code"]').fill('FIVE');await form.locator('[name="type"]').selectOption('fixed');await form.locator('[name="value"]').fill('5');await form.getByRole('button',{name:'Create promotion'}).click();

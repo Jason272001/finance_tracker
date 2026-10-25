@@ -7,7 +7,7 @@ test('register gates sales, purchases and voids; captures immutable cashier and 
  assert.throws(()=>shop.sale(lines,{payment:'card'}),/Sign in/);assert.throws(()=>shop.purchase(1,[{productId:1,quantity:1,unitCost:7}]),/Sign in/);assert.throws(()=>shop.voidSale('SALE-1000'),/Sign in/);assert.deepEqual(shop.snapshot(),before);
  assert.throws(()=>shop.signIn(cashier,'wrong'),/1111/);shop.signIn(cashier,'1111');assert.throws(()=>shop.setLoyalty({earnPerDollar:2,pointsPerDollar:1000}),/owner/);
  const sale=shop.sale(lines,{payment:'card'}),purchase=shop.purchase(1,[{productId:1,quantity:1,unitCost:7}]);assert.equal(sale.cashier.name,'Jason');assert.equal(purchase.cashier.id,101);
- shop.signIn({id:102,name:'Kay',branchId:1},'1111');assert.equal(shop.snapshot().sales[0].cashier.name,'Jason');shop.voidSale(sale.id);assert.equal(shop.snapshot().sales[0].voidedBy.name,'Kay');shop.signOut();assert.equal(shop.session(),null);
+ assert.throws(()=>shop.signIn({id:102,name:'Kay',branchId:1},'1111'),/Sign out/);shop.signOut();shop.signIn({id:102,name:'Kay',branchId:1},'1111');assert.equal(shop.snapshot().sales[0].cashier.name,'Jason');shop.voidSale(sale.id);assert.equal(shop.snapshot().sales[0].voidedBy.name,'Kay');shop.signOut();assert.equal(shop.session(),null);
 });
 test('loyalty earns on discounted pretax spend; redemption/void is atomic and rules are frozen',()=>{
  const s=new Shop(),reward={customerId:1,member:true,points:100};

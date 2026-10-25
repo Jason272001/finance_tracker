@@ -34,3 +34,6 @@ frontends/desktop/trials/
 frontends/web/photos/
 frontends/web/trials/
 CNAME
+
+frontends/desktop-app/
+output/

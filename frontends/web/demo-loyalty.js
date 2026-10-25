@@ -9,7 +9,7 @@
     const $=id=>document.getElementById(id);
     const roster=()=>window.BusinessHubDemo.staff();
     const bar=document.createElement('section');bar.className='demo-register';
-    bar.innerHTML='<h3>Register sign-in</h3><p>Demo accounts only. Staff PIN <strong>1111</strong> · Owner PIN <strong>0000</strong>. These public PINs simulate switching users; they do not secure an account or clock staff into a shift.</p><form id="registerSignIn" class="pos-fields"><label>Register account<select id="registerAccount"></select></label><label>Demo PIN<input id="registerPin" type="password" inputmode="numeric" autocomplete="off" maxlength="4" required></label><button>Sign in to demo register</button><button type="button" class="secondary" id="registerSignOut">Sign out</button></form><p id="registerStatus" role="status" aria-live="polite"></p>';
+    bar.innerHTML='<h3>Register sign-in</h3><p>Public demo credentials only. Owner ID <strong>90000</strong> / PIN <strong>0000</strong>; new staff PIN <strong>1111</strong>. This is a simulation, not secure account authentication.</p><p id="registerExamples"></p><label>Simulated register<select id="registerDevice"><option value="register-1">Front till · register 1</option><option value="register-2">Tablet till · register 2</option></select></label><p class="muted">These two tills share sample stock in this tab. Separate physical devices do not sync yet.</p><form id="registerSignIn" class="pos-fields"><label>Staff ID<input id="registerStaffId" inputmode="numeric" autocomplete="off" pattern="[0-9]{5,6}" maxlength="6" required placeholder="5 or 6 digits"></label><label>Demo PIN<input id="registerPin" type="password" inputmode="numeric" autocomplete="off" pattern="[0-9]{4,6}" maxlength="6" required></label><button id="registerSubmit">Sign in to demo register</button><button type="button" class="secondary" id="registerLock">Lock register</button><button type="button" class="secondary" id="registerSignOut">Sign out / switch cashier</button></form><p id="registerStatus" role="status" aria-live="polite"></p><p class="muted">Sign in once per cashier. Lock when stepping away; after five idle minutes the demo locks automatically. Switching cashier clears an unfinished cart. Time clock actions are separate.</p>';
     $('posMetrics').before(bar);
     const nav=hub.querySelector('nav[aria-label="Business hub sections"]'),tab=document.createElement('button');tab.type='button';tab.dataset.hubTab='loyalty';tab.textContent='Loyalty & membership';tab.setAttribute('aria-pressed','false');nav.append(tab);
     const panel=document.createElement('section');panel.dataset.hubPanel='loyalty';panel.hidden=true;
@@ -23,15 +23,18 @@
       return {customerId:id,member:!!c?.member,points:Number($('posRedeemPoints').value||0)};
     }};
     function run(id,action){return e=>{e.preventDefault();try{action(e);if(id!=='registerStatus')$(id).textContent='Sample updated. Nothing was sent or saved outside this demo.';}catch(err){$(id).textContent=err.message;}};}
-    function updateRoster(){const old=$('registerAccount').value;$('registerAccount').innerHTML='<option value="owner">Demo owner</option>'+roster().map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');if([...$('registerAccount').options].some(o=>o.value===old))$('registerAccount').value=old;
-      const s=pos.session();if(s&&s.role!=='owner'&&!roster().some(r=>r.id===s.id))pos.signOut();
+    function updateRoster(){
+      const examples=window.StaffDemoAccess?.list().filter(p=>p.branchId===BusinessHubDemo.branch().id)||[];
+      $('registerExamples').textContent=examples.map(p=>p.name+': '+p.staffCode).join(' · ');
+      const s=pos.session();if(s&&(s.branchId!==BusinessHubDemo.branch().id||(s.role!=='owner'&&!roster().some(r=>r.id===s.id))))pos.signOut();
     }
     function member(){const id=Number($('loyaltyMember').value);return id?window.CustomerDemo.get(id):null;}
     function render(){
       const session=pos.session(),rules=pos.snapshot().loyalty;
-      $('registerStatus').textContent=session?'Signed in: '+session.name+' · '+session.role+' · sample branch '+session.branchId:'Signed out. Sign in before completing a sale, receiving a purchase or voiding a sale.';
-      $('registerSignOut').disabled=!session;
-      for(const field of $('loyaltyRules').elements)field.disabled=session?.role!=='owner';
+      $('registerStatus').textContent=session?(session.locked?'Locked: ':'Signed in: ')+session.name+' · ID '+session.staffCode+' · '+session.deviceId+' · sample branch '+session.branchId:'Signed out. Sign in before completing a sale, receiving a purchase or voiding a sale.';
+      $('registerSignOut').disabled=!session;$('registerLock').disabled=!session||session.locked;
+      $('registerStaffId').disabled=!!session&&!session.locked;$('registerPin').disabled=!!session&&!session.locked;$('registerSubmit').disabled=!!session&&!session.locked;$('registerSubmit').textContent=session?.locked?'Unlock demo register':'Sign in to demo register';
+      for(const field of $('loyaltyRules').elements)field.disabled=session?.role!=='owner'||session.locked;
       $('loyaltyRulesSummary').textContent=rules.earnPerDollar+' points earned per $1; '+rules.pointsPerDollar+' points = $1; '+(rules.pointsPerDollar*10)+' points = $10. '+(session?.role==='owner'?'Owner controls unlocked.':'Sign in as demo owner at POS to edit.');
       const data=window.CustomerDemo.snapshot(),old=$('loyaltyMember').value,rows=data.customers.filter(c=>c.member&&!c.archived);
       $('loyaltyMember').innerHTML=rows.map(c=>'<option value="'+c.id+'">'+esc(c.name)+' · '+esc(c.phone)+'</option>').join('');if(rows.some(c=>String(c.id)===old))$('loyaltyMember').value=old;
@@ -45,8 +48,13 @@
       if(!customer?.member)$('posRedeemPoints').value='0';
       $('posPointsInfo').textContent=customer?.member?customer.name+': '+pos.points(selected)+' available points. Redeem in multiples of '+rules.pointsPerDollar+' points = $1.':'Walk-in and non-member checkout earn no points. Joining is optional.';
     }
-    $('registerSignIn').onsubmit=run('registerStatus',()=>{const id=$('registerAccount').value,branchId=window.BusinessHubDemo.branch().id;pos.signIn(id==='owner'?{id:'owner',branchId}:roster().find(s=>s.id===Number(id)),$('registerPin').value);$('registerPin').value='';render();});
-    $('registerSignOut').onclick=()=>{pos.signOut();render();};
+    let lastActivity=Date.now();
+    $('registerSignIn').onsubmit=run('registerStatus',()=>{const staff=window.StaffDemoAccess.authenticate($('registerStaffId').value,$('registerPin').value);pos.signIn(staff,staff.role==='owner'?'0000':'1111');$('registerPin').value='';lastActivity=Date.now();render();});
+    $('registerSignOut').onclick=()=>{if(pos.cart().length&&!confirm('Discard the unfinished sale and sign out of this till?'))return;pos.signOut();$('registerStaffId').value='';$('registerPin').value='';render();};
+    $('registerLock').onclick=()=>{pos.lock();render();};
+    $('registerDevice').onchange=()=>{if(pos.cart().length&&!confirm('Discard this unfinished cart before changing the simulated till?')){$('registerDevice').value=pos.device();return;}pos.selectDevice($('registerDevice').value);updateRoster();render();};
+    for(const event of ['pointerdown','keydown'])document.addEventListener(event,()=>{lastActivity=Date.now();},{passive:true});
+    setInterval(()=>{if(pos.session()&&!pos.session().locked&&Date.now()-lastActivity>=300000)pos.lock();},10000);
     $('loyaltyRules').onsubmit=run('memberStatus',()=>{pos.setLoyalty(Object.fromEntries(new FormData($('loyaltyRules'))));render();pos.refreshCart();});
     $('memberEnrollment').onsubmit=run('memberStatus',()=>{const id=window.CustomerDemo.enroll(Object.fromEntries(new FormData($('memberEnrollment'))));$('memberEnrollment').reset();render();$('loyaltyMember').value=id;$('posSavedCustomer').value=id;render();pos.refreshCart();});
     $('loyaltyMessage').onsubmit=run('loyaltyMessageStatus',()=>{const c=member();window.CustomerDemo.message(c?.id,$('loyaltyMessage').elements.text.value,false);render();});
@@ -54,7 +62,7 @@
     $('loyaltyMember').onchange=render;$('posRedeemPoints').oninput=()=>pos.refreshCart();
     document.addEventListener('keeper-customer-selection',()=>{$('posRedeemPoints').value='0';render();pos.refreshCart();});
     document.addEventListener('keeper-pos-change',render);document.addEventListener('keeper-customers-change',render);
-    document.addEventListener('keeper-staff-change',updateRoster);
+    document.addEventListener('keeper-staff-change',updateRoster);document.addEventListener('keeper-credentials-change',()=>{updateRoster();render();});
     document.addEventListener('keeper-branch-change',()=>{pos.signOut();updateRoster();render();});
     $('posCheckout').addEventListener('reset',()=>queueMicrotask(()=>{render();pos.refreshCart();}));
     updateRoster();render();pos.refreshCart();

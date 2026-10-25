@@ -1,5 +1,5 @@
 const {test,expect}=require('@playwright/test');
-const signin=async(page,account='101',pin='1111')=>{await page.locator('#registerAccount').selectOption(account);await page.locator('#registerPin').fill(pin);await page.locator('#registerSignIn').getByRole('button',{name:'Sign in to demo register',exact:true}).click();};
+const signin=async(page,account='101',pin='1111')=>{if(await page.locator('#registerSignOut').isEnabled())await page.locator('#registerSignOut').click();await page.locator('#registerStaffId').fill(account==='owner'?'90000':String(10000+Number(account)));await page.locator('#registerPin').fill(pin);await page.locator('#registerSignIn').getByRole('button',{name:'Sign in to demo register',exact:true}).click();};
 const loyalty=async page=>{await page.locator('[data-business-category="growth"]').click();await page.locator('nav[aria-label="Business hub sections"] [data-hub-tab="loyalty"]').click();};
 test('register requires sign-in and links cashier, points and a reversible reward sale',async({page})=>{
  await page.goto('/demo.html#demoPos');await page.getByRole('button',{name:'Add to sale',exact:true}).click();await expect(page.locator('#posCompleteSale')).toBeDisabled();await signin(page);await expect(page.locator('#registerStatus')).toContainText('Jason');

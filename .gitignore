@@ -36,3 +36,5 @@ frontends/android/android/.idea/
 frontends/android/android/gradle/gradle-daemon-jvm.properties
 
 /frontends/desktop-app/release/
+
+/output/
