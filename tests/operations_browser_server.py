@@ -71,9 +71,14 @@ app.include_router(create_operations_router(lambda: engine, owner, lambda owner,
 
 
 @app.post("/__test__/reset")
-def reset():
+def reset(empty: bool = False):
     global fixture
-    fixture = seed()
+    if empty:
+        metadata.drop_all(engine)
+        metadata.create_all(engine)
+        fixture = {}
+    else:
+        fixture = seed()
     return fixture
 
 
