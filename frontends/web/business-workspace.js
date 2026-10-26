@@ -79,6 +79,7 @@
       editEmployee:()=>{current='team';editorOpen=true;view();$('businessEmployeeName').focus();},
       render(snapshot){
         const business=snapshot.business,id=business?.business_id||0;
+        document.body.classList.toggle('live-business-creating',snapshot.creating);
         if(id!==lastBusinessId){editorOpen=false;lastBusinessId=id;}
         const created=wasCreating&&!snapshot.creating&&business&&id!==lastSavedBusinessId;
         if(id)lastSavedBusinessId=id;
