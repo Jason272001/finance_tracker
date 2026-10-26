@@ -5,7 +5,7 @@ The business account owns the subscription and authorizes devices. Staff do not 
 ## Owner setup
 
 1. Sign in on the owner's private browser and choose the business.
-2. Open **Devices & staff access**. Set an owner staff ID and a separate device-management password of at least 12 characters. Choose the business time zone.
+2. Open **Devices & staff access**. A six-digit owner ID is suggested automatically. Choose a separate owner password of at least 12 characters and confirm it. The business time zone is detected; expand the time-zone option if needed. Your saved owner ID remains visible in the owner controls after signing in again.
 3. Existing staff records import as inactive. Edit each record, assign its operational role and branch, set a credential, and explicitly activate access.
 4. Add branch-specific products, prices in USD, stock and the business's configured tax rate.
 5. Under Devices, create a one-time code for each cashier, kitchen, clock or office station. Codes expire in five minutes and work once. Open `business-device.html` on the intended device and enter its code.
