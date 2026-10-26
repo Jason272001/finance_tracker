@@ -51,7 +51,7 @@ class Body(BaseModel):
 
 class Setup(Body):
     staff_code: str = Field(pattern=r"^[0-9]{5,6}$")
-    credential: str = Field(min_length=12, max_length=128)
+    credential: str = Field(min_length=6, max_length=128)
     timezone: str = Field(default="America/Los_Angeles", max_length=80)
 
 

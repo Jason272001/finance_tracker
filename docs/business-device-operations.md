@@ -1,11 +1,11 @@
 # One business, separate authorized devices
 
-The business account owns the subscription and authorizes devices. Staff do not receive its account password or bearer token. Each staff member has a business-specific ID and credential. No default owner or staff credentials are created.
+The business account owns the subscription and authorizes devices. Staff do not receive its account password or bearer token. Each staff member has a business-specific ID and credential. No default owner or staff credentials are created. Owner PIN attempts are limited per business ID across devices as well as per device.
 
 ## Owner setup
 
 1. Sign in on the owner's private browser and choose the business.
-2. Open **Devices & staff access**. A six-digit owner ID is suggested automatically. Choose a separate owner password of at least 12 characters and confirm it. The business time zone is detected; expand the time-zone option if needed. Your saved owner ID remains visible in the owner controls after signing in again.
+2. Open **Devices & staff access**. A six-digit owner ID is suggested automatically. Choose a six-digit owner PIN and confirm it. Existing long owner passwords continue to work. The business time zone is detected; expand the time-zone option if needed. Your saved owner ID remains visible in the owner controls after signing in again.
 3. Existing staff records import as inactive. Edit each record, assign its operational role and branch, set a credential, and explicitly activate access.
 4. Add branch-specific products, prices in USD, stock and the business's configured tax rate.
 5. Under Devices, create a one-time code for each cashier, kitchen, clock or office station. Codes expire in five minutes and work once. Open `business-device.html` on the intended device and enter its code.

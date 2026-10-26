@@ -214,9 +214,11 @@ class Operations:
     def validate_credential(code, credential, role):
         if not re.fullmatch(r"[0-9]{5,6}", str(code)):
             raise OperationsError("Staff IDs must contain 5 or 6 digits.")
+        if role == "owner" and isinstance(credential, str) and re.fullmatch(r"[0-9]{6}", credential):
+            return
         minimum = 12 if role in {"owner", "manager"} else 6
         if not isinstance(credential, str) or not minimum <= len(credential) <= 128:
-            raise OperationsError(f"Use at least {minimum} characters for this role's credential.")
+            raise OperationsError("Use a six-digit owner PIN or a password of at least 12 characters." if role == "owner" else f"Use at least {minimum} characters for this role's credential.")
 
     def _branch(self, c, business, branch):
         if not row(c, branches, (branches.c.business == business) & (branches.c.id == branch)):
@@ -327,6 +329,7 @@ class Operations:
             d = self._device(c, device_token)
             allowed = self._rate(c, "staff-device:" + d["id"], 30, 60)
             allowed = self._rate(c, "staff-code:" + d["id"] + ":" + str(code), 5) and allowed
+            allowed = self._rate(c, "staff-business:" + str(business) + ":" + str(code), 5) and allowed
             person = row(c, staff, (staff.c.business == business) & (staff.c.code == str(code)))
             if not allowed:
                 error = OperationsError("Too many sign-in attempts. Try again in five minutes.", 429)
@@ -371,6 +374,7 @@ class Operations:
                     if not error:
                         self.log(c, business, person["id"], d["id"], "staff." + action)
                         c.execute(delete(limits).where(limits.c.key == digest("staff-code:" + d["id"] + ":" + str(code))))
+                        c.execute(delete(limits).where(limits.c.key == digest("staff-business:" + str(business) + ":" + str(code))))
         if error:
             raise error
         return result
