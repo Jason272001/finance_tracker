@@ -44,6 +44,11 @@ let state = {
   linkedBankAccounts: [],
   businesses: [],
   businessEmployees: [],
+  businessesLoaded: false,
+  businessesError: "",
+  employeesLoaded: false,
+  employeesError: "",
+  creatingBusiness: false,
   selectedBusinessId: 0,
   selectedEmployeeId: 0,
   charts: { income: null, expense: null, debt: null },
@@ -89,7 +94,7 @@ const BUSINESS_MODULES = [
   {
     key: "sales_tools",
     title: "Sales and POS",
-    description: "POS-ready sales tools are unlocked through the business workspace.",
+    description: "Retail and restaurant POS are interactive demos; live sales processing is not connected.",
   },
   {
     key: "purchase_tools",
@@ -321,14 +326,14 @@ const I18N = {
     mode_personal: "Personal",
     mode_business: "Business",
     business_workspace_title: "Business Workspace",
-    business_workspace_hint: "Switch into business mode to manage your business profile, employee access, and POS-ready plan tools.",
+    business_workspace_hint: "Manage your business profile and staff access. Explore clearly marked previews of upcoming business tools.",
     business_workspace_plan_prefix: "Current plan",
     business_locked: "Business workspace access is available on Business, Premium Plus, Diamond, and Lifetime plans.",
-    business_lifetime_unlocked: "Lifetime users can access every business and POS-ready plan feature on web and mobile.",
+    business_lifetime_unlocked: "Lifetime plan · available features included. POS, scheduling and payroll are demo previews, not live business services.",
     business_profile_title: "Business Profile",
     business_profile_hint: "Create or update your business workspace, public page slug, and website slug.",
     business_modules_title: "Plan Modules",
-    business_modules_hint: "These business and POS-ready features follow your current subscription plan.",
+    business_modules_hint: "Availability is separate from your subscription. Preview tools do not yet save real business operations.",
     business_employees_title: "Employees and Access",
     business_employees_hint: "Manage staff roles and permissions from the business workspace.",
     business_new: "New Business",
@@ -1378,8 +1383,8 @@ function fillBusinessForm(business) {
   if ($("businessLogoUrl")) $("businessLogoUrl").value = String(row.logo_url || "");
   if ($("businessCoverUrl")) $("businessCoverUrl").value = String(row.cover_url || "");
   if ($("businessAboutText")) $("businessAboutText").value = String(row.about_text || "");
-  if ($("businessPageEnabled")) $("businessPageEnabled").checked = row.page_enabled !== false;
-  if ($("businessWebsiteEnabled")) $("businessWebsiteEnabled").checked = row.website_enabled !== false;
+  if ($("businessPageEnabled")) $("businessPageEnabled").checked = row.page_enabled === true;
+  if ($("businessWebsiteEnabled")) $("businessWebsiteEnabled").checked = row.website_enabled === true;
 }
 
 function readBusinessPayload() {
@@ -1497,6 +1502,7 @@ function renderBusinessEmployeesList() {
         state.selectedEmployeeId = Number(employee.employee_id || 0);
         fillEmployeeForm(employee);
         renderBusinessWorkspace();
+        window.LiveBusinessWorkspace?.editEmployee();
       };
       item.appendChild(btn);
       box.appendChild(item);
@@ -1580,7 +1586,7 @@ function renderBusinessWorkspace() {
 
   const upgradeCard = $("businessUpgradeCard");
   let selectedBusiness = getSelectedBusiness();
-  if (!selectedBusiness && state.businesses.length > 0) {
+  if (!selectedBusiness && !state.creatingBusiness && state.businesses.length > 0) {
     state.selectedBusinessId = Number(state.businesses[0].business_id || 0);
     selectedBusiness = getSelectedBusiness();
     if (select) select.value = String(state.selectedBusinessId);
@@ -1629,9 +1635,16 @@ function renderBusinessWorkspace() {
   renderBusinessModules();
   renderBusinessEmployeesList();
 
-  if (!state.businesses.length && $("businessStatus")) {
-    $("businessStatus").textContent = hasBusinessWorkspaceAccess() ? t("business_no_workspace") : "";
+  if ($("businessStatus")) {
+    if (state.businessesError) $("businessStatus").textContent = state.businessesError;
+    else if (!state.businesses.length && state.businessesLoaded && !state.creatingBusiness) $("businessStatus").textContent = hasBusinessWorkspaceAccess() ? t("business_no_workspace") : "";
+    else if (selectedBusiness && $("businessStatus").textContent === t("business_no_workspace")) $("businessStatus").textContent = "";
   }
+  window.LiveBusinessWorkspace?.render({businesses:state.businesses, business:selectedBusiness, employees:state.businessEmployees,
+    loaded:state.businessesLoaded, error:state.businessesError, employeesLoaded:state.employeesLoaded, employeesError:state.employeesError,
+    creating:state.creatingBusiness, access:hasAppAccess()&&hasBusinessWorkspaceAccess(), mode:state.appMode, signedIn:!!state.userId,
+    plan:$("businessModePlan")?.textContent||"", selectedEmployee:state.selectedEmployeeId,
+    financesLoaded:state.transactionsLoaded, accountCount:state.accounts.length});
 }
 
 function renderAppMode() {
@@ -1654,6 +1667,7 @@ function renderAppMode() {
   if (state.userId && isBusiness) {
     renderBusinessWorkspace();
   }
+  window.LiveBusinessWorkspace?.mode(isBusiness && !!state.userId);
 }
 
 function setAppMode(mode, persist = true) {
@@ -1665,25 +1679,27 @@ function setAppMode(mode, persist = true) {
 }
 
 async function refreshBusinessEmployeesForSelection() {
-  if (!state.userId || !state.selectedBusinessId || !hasAppAccess() || !hasBusinessWorkspaceAccess()) {
-    state.businessEmployees = [];
-    state.selectedEmployeeId = 0;
-    renderBusinessWorkspace();
-    return;
+  const businessId = state.selectedBusinessId;
+  state.employeesError = "";
+  state.employeesLoaded = false;
+  if (!state.userId || !businessId || !hasAppAccess() || !hasBusinessWorkspaceAccess()) {
+    state.businessEmployees = []; state.selectedEmployeeId = 0;
+    renderBusinessWorkspace(); return;
   }
+  renderBusinessWorkspace();
   try {
-    const payload = await api(`/businesses/${state.selectedBusinessId}/employees?user_id=${state.userId}`);
+    const payload = await api(`/businesses/${businessId}/employees?user_id=${state.userId}`);
+    if (state.selectedBusinessId !== businessId) return;
     state.businessEmployees = Array.isArray(payload.items) ? payload.items : [];
-    if (!state.businessEmployees.some((item) => Number(item.employee_id) === Number(state.selectedEmployeeId))) {
-      state.selectedEmployeeId = 0;
-    }
-    renderBusinessWorkspace();
+    state.employeesLoaded = true;
+    if (!state.businessEmployees.some(item => Number(item.employee_id) === Number(state.selectedEmployeeId))) state.selectedEmployeeId = 0;
   } catch (e) {
-    state.businessEmployees = [];
-    state.selectedEmployeeId = 0;
-    setStatus("businessEmployeeStatusMsg", errMessage(e));
-    renderBusinessWorkspace();
+    if (state.selectedBusinessId !== businessId) return;
+    state.businessEmployees = []; state.selectedEmployeeId = 0;
+    state.employeesError = "Staff could not be loaded. " + errMessage(e);
+    setStatus("businessEmployeeStatusMsg", state.employeesError);
   }
+  renderBusinessWorkspace();
 }
 
 function categoryNames() {
@@ -2463,6 +2479,9 @@ async function refreshAll() {
     state.linkedBankAccounts = [];
     state.businesses = [];
     state.businessEmployees = [];
+    state.businessesLoaded = false; state.businessesError = "";
+    state.employeesLoaded = false; state.employeesError = "";
+    state.creatingBusiness = false;
     state.selectedBusinessId = 0;
     state.selectedEmployeeId = 0;
     renderAccountsTable();
@@ -2485,13 +2504,10 @@ async function refreshAll() {
   ];
   const shouldFetchBank = hasBankSyncAccess();
   const shouldFetchBusiness = hasBusinessWorkspaceAccess();
-  if (shouldFetchBank) {
-    financeRequests.push(api(`/bank/connections?user_id=${state.userId}`));
-    financeRequests.push(api(`/bank/accounts?user_id=${state.userId}`));
-  }
-  if (shouldFetchBusiness) {
-    financeRequests.push(api(`/businesses?user_id=${state.userId}`));
-  }
+  // Keep response positions stable when optional services are unavailable.
+  financeRequests.push(shouldFetchBank ? api(`/bank/connections?user_id=${state.userId}`) : Promise.resolve([]));
+  financeRequests.push(shouldFetchBank ? api(`/bank/accounts?user_id=${state.userId}`) : Promise.resolve([]));
+  financeRequests.push(shouldFetchBusiness ? api(`/businesses?user_id=${state.userId}`) : Promise.resolve({items:[]}));
 
   const results = await Promise.allSettled(financeRequests);
 
@@ -2507,9 +2523,9 @@ async function refreshAll() {
   state.linkedBankAccounts = shouldFetchBank && bankAccountsRes && bankAccountsRes.status === "fulfilled"
     ? (bankAccountsRes.value || [])
     : [];
-  state.businesses = shouldFetchBusiness && businessesRes && businessesRes.status === "fulfilled"
-    ? ((businessesRes.value || {}).items || [])
-    : [];
+  state.businessesLoaded = !!(shouldFetchBusiness && businessesRes.status === "fulfilled");
+  state.businessesError = shouldFetchBusiness && businessesRes.status === "rejected" ? "Businesses could not be loaded. " + errMessage(businessesRes.reason) : "";
+  state.businesses = state.businessesLoaded ? ((businessesRes.value || {}).items || []) : shouldFetchBusiness ? state.businesses : [];
   if (!state.businesses.some((item) => Number(item.business_id) === Number(state.selectedBusinessId))) {
     state.selectedBusinessId = state.businesses[0] ? Number(state.businesses[0].business_id || 0) : 0;
   }
@@ -2523,6 +2539,8 @@ async function refreshAll() {
     ]);
     const employeePayload = employeesResult[0];
     state.businessEmployees = employeePayload.status === "fulfilled" ? ((employeePayload.value || {}).items || []) : [];
+    state.employeesLoaded = employeePayload.status === "fulfilled";
+    state.employeesError = employeePayload.status === "rejected" ? "Staff could not be loaded. " + errMessage(employeePayload.reason) : "";
     if (!state.businessEmployees.some((item) => Number(item.employee_id) === Number(state.selectedEmployeeId))) {
       state.selectedEmployeeId = 0;
     }
@@ -2734,6 +2752,9 @@ window.addEventListener("load", async () => {
     state.linkedBankAccounts = [];
     state.businesses = [];
     state.businessEmployees = [];
+    state.businessesLoaded = false; state.businessesError = "";
+    state.employeesLoaded = false; state.employeesError = "";
+    state.creatingBusiness = false;
     state.selectedBusinessId = 0;
     state.selectedEmployeeId = 0;
     resetSupportState();
@@ -2743,6 +2764,8 @@ window.addEventListener("load", async () => {
 
   if ($("businessSelect")) {
     $("businessSelect").onchange = async (e) => {
+      state.creatingBusiness = false;
+      state.businessEmployees = [];
       state.selectedBusinessId = Number(e.target.value || 0);
       state.selectedEmployeeId = 0;
       fillBusinessForm(getSelectedBusiness());
@@ -2751,6 +2774,7 @@ window.addEventListener("load", async () => {
   }
   if ($("btnNewBusiness")) {
     $("btnNewBusiness").onclick = () => {
+      state.creatingBusiness = true;
       state.selectedBusinessId = 0;
       state.selectedEmployeeId = 0;
       state.businessEmployees = [];
@@ -2784,12 +2808,14 @@ window.addEventListener("load", async () => {
           });
           setStatus("businessStatus", t("business_saved"));
         } else {
-          await api("/businesses", {
+          const created = await api("/businesses", {
             method: "POST",
             body: JSON.stringify(payload),
           });
+          state.selectedBusinessId = Number(created.business?.business_id || 0);
           setStatus("businessStatus", t("business_created"));
         }
+        state.creatingBusiness = false;
         await refreshAll();
       } catch (e) {
         setStatus("businessStatus", errMessage(e));
