@@ -1,5 +1,5 @@
 const {test,expect}=require('@playwright/test');
-async function setup(page,{businessError=false,staffError=false,empty=false}={}){
+async function setup(page,{businessError=false,staffError=false,empty=false,operations=false}={}){
  const requests=[],profile={user_id:1,name:'Business owner',email:'owner@example.test',plan_code:'premium_plus',subscription_status:'active',access_active:true,is_lifetime:false,feature_flags:{business_profile:true,employee_management:true,bank_sync:false}};
  const businesses=[{business_id:21,business_name:'21CT',business_type:'education',industry:'Education',is_owner:true,email:'owner@example.test',page_enabled:false,website_enabled:false},{business_id:22,business_name:'Second store',business_type:'retail',is_owner:true}];
  if(empty)businesses.splice(0);
@@ -9,6 +9,8 @@ async function setup(page,{businessError=false,staffError=false,empty=false}={})
  await page.route('https://api.keeperbma.com/**',async route=>{
   const request=route.request(),path=new URL(request.url()).pathname,method=request.method();requests.push({path,method,body:request.postDataJSON()});let body={ok:true};
   if(['/auth/session','/profile','/billing/subscription'].includes(path))body=profile;
+  if(path==='/operations/capabilities')body={available:operations,api_version:1};
+  if(path==='/businesses/21/operations/status')body={configured:true,staff_count:3,device_count:2};
   if(path==='/businesses'){
    if(businessError)return route.fulfill({status:503,json:{detail:'Try again later'}});
    if(method==='POST'){const b={...request.postDataJSON(),business_id:23,is_owner:true};businesses.push(b);staff[23]=[];body={business:b};}else body={items:businesses};
@@ -52,4 +54,12 @@ test('business creation validates the name, supports Enter, and cancel does not 
 
 test('empty account starts with one clear setup action and two basic fields',async({page})=>{
  const fixture=await setup(page,{empty:true});await page.goto('/index.html');await page.getByRole('button',{name:'Create my business',exact:true}).click();await expect(page.getByLabel('Business name',{exact:true})).toBeVisible();await expect(page.getByLabel('Business type',{exact:true})).toBeVisible();await expect(page.locator('#businessEmail')).toBeHidden();await expect(page.locator('#businessIndustry')).toBeHidden();await expect(page.locator('#supportLauncher')).toBeHidden();await page.locator('#businessWorkspace').screenshot({path:'output/simple-create-business.png'});await page.getByLabel('Business name',{exact:true}).fill('My first shop');await page.getByLabel('Business type',{exact:true}).selectOption('retail');await page.getByRole('button',{name:'Create business',exact:true}).click();await expect(page.locator('#liveOverviewGreeting')).toHaveText('My first shop');expect(fixture.businesses).toHaveLength(1);await expect(page.locator('#liveFirstBusiness')).toBeHidden();
+});
+
+test('real device controls appear only when supported by the server',async({page})=>{
+ await setup(page,{operations:true});await page.goto('/index.html');const link=nav(page).getByRole('link',{name:'Devices & staff access',exact:true});await expect(link).toBeVisible();await expect(link).toHaveAttribute('href','./operations-admin.html?business_id=21');await nav(page).getByRole('button',{name:'Staff',exact:true}).click();await expect(page.getByRole('link',{name:'Open staff & device controls →',exact:true})).toBeVisible();await expect(page.locator('#btnNewEmployee')).toBeHidden();
+});
+
+test('owner sign-out clears the signed-in view in another account tab',async({page,context})=>{
+ await setup(page);await page.goto('/index.html');await expect(page.locator('#liveOverviewGreeting')).toHaveText('21CT');const second=await context.newPage();await setup(second);await second.goto('/index.html');await expect(second.locator('#appScreen')).toBeVisible();await page.evaluate(()=>localStorage.setItem('keeperbma_logout_at',String(Date.now())));await expect(second.locator('#appScreen')).toBeHidden();await expect(second.locator('#landingScreen')).toBeVisible();await second.close();
 });

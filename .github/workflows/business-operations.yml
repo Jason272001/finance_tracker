@@ -1,0 +1,48 @@
+name: Business device operations
+on:
+  push:
+    branches: [master, 'codex/**']
+    paths: ['backend/business_operations*', 'backend/main.py', 'frontends/web/business-*', 'business-device.html', 'operations-admin.html', 'tests/test_business_operations.py', 'tests/operations_browser_server.py', 'tests/browser-operations/**', 'playwright.operations.config.cjs', '.github/workflows/business-operations.yml']
+  pull_request:
+    paths: ['backend/business_operations*', 'frontends/web/business-*', 'tests/browser-operations/**', 'tests/test_business_operations.py']
+permissions:
+  contents: read
+concurrency:
+  group: business-operations-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  postgres-and-devices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: keeper_ops_test
+          POSTGRES_PASSWORD: disposable_test_password
+          POSTGRES_DB: keeper_ops_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      KEEPERBMA_TEST_POSTGRES_URL: postgresql+psycopg2://keeper_ops_test:disposable_test_password@127.0.0.1:5432/keeper_ops_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install production-compatible API dependencies
+        run: pip install pandas==2.3.3 SQLAlchemy==2.0.48 psycopg2-binary==2.9.11 fastapi==0.116.1 uvicorn==0.35.0 httpx==0.28.1
+      - run: python -m unittest discover -s tests -p test_business_operations.py -v
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium webkit
+      - run: node node_modules/@playwright/test/cli.js test --config playwright.operations.config.cjs
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: operations-failure-traces
+          path: test-results/
+          retention-days: 7

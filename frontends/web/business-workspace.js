@@ -112,6 +112,7 @@
         // Publishing services are not live; do not imply enabling a checkbox publishes a site.
         $('businessPageEnabled').disabled=true;$('businessWebsiteEnabled').disabled=true;
         view();this.mode(snapshot.mode==='business'&&snapshot.signedIn);
+        window.dispatchEvent(new CustomEvent('keeper-business-context',{detail:snapshot}));
       }
     };
     view();window.renderBusinessWorkspace?.();

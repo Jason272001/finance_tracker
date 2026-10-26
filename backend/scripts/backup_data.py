@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 from sqlalchemy import create_engine, inspect, text
+from backend.business_operations import metadata as operations_metadata
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -24,6 +25,7 @@ PGPASSWORD = os.getenv("PGPASSWORD", "")
 APP_TABLES = ["users", "transactions", "accounts", "daily_balances", "categories", "admin_1957", "coupons",
               "businesses", "business_employees", "bank_connections", "linked_bank_accounts", "imported_bank_transactions",
               "stripe_processed_events", "billing_checkout_attempts", "billing_cancellations"]
+APP_TABLES += [table.name for table in operations_metadata.sorted_tables]
 
 
 def get_engine():

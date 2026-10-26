@@ -1642,7 +1642,7 @@ function renderBusinessWorkspace() {
   }
   window.LiveBusinessWorkspace?.render({businesses:state.businesses, business:selectedBusiness, employees:state.businessEmployees,
     loaded:state.businessesLoaded, error:state.businessesError, employeesLoaded:state.employeesLoaded, employeesError:state.employeesError,
-    creating:state.creatingBusiness, access:hasAppAccess()&&hasBusinessWorkspaceAccess(), mode:state.appMode, signedIn:!!state.userId,
+    creating:state.creatingBusiness, access:hasAppAccess()&&hasBusinessWorkspaceAccess(), mode:state.appMode, signedIn:!!state.userId, userId:state.userId,
     plan:$("businessModePlan")?.textContent||"", selectedEmployee:state.selectedEmployeeId,
     financesLoaded:state.transactionsLoaded, accountCount:state.accounts.length});
 }
@@ -2739,6 +2739,7 @@ window.addEventListener("load", async () => {
     } catch (_) {}
     state.authToken = "";
     appStorage.removeItem("keeperbma_token");
+    if (!document.documentElement.dataset.demo) localStorage.setItem("keeperbma_logout_at", String(Date.now()));
     state.userId = 0;
     state.userName = "";
     state.accounts = [];
@@ -3184,3 +3185,15 @@ window.addEventListener("load", async () => {
 
 
 
+
+// Clear account access in other tabs when a shared-device owner signs out.
+window.addEventListener("storage", event => {
+  if (document.documentElement.dataset.demo || event.key !== "keeperbma_logout_at") return;
+  state.authToken = ""; state.userId = 0; state.userName = "";
+  state.accounts = []; state.categories = []; state.tx = []; state.daily = []; state.filteredTx = [];
+  state.bankConnections = []; state.linkedBankAccounts = []; state.businesses = []; state.businessEmployees = [];
+  state.profile = {}; state.subscription = {}; state.transactionsLoaded = false; state.creatingBusiness = false;
+  state.businessesLoaded = false; state.employeesLoaded = false; state.businessesError = ""; state.employeesError = "";
+  state.selectedBusinessId = 0; state.selectedEmployeeId = 0;
+  showLanding();
+});

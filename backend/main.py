@@ -37,6 +37,7 @@ from backend.plaid_service import (
 )
 from backend.plaid_store import PlaidStore
 from backend.support_ai import build_support_reply
+from backend.business_operations_api import create_operations_router, OperationsBodyLimit
 from core import (
     Account,
     Admin1957,
@@ -57,6 +58,7 @@ from core import (
 
 
 app = FastAPI(title="KeeperBMA Backend", version="1.1.0")
+app.add_middleware(OperationsBodyLimit)
 MoneyAmount = Annotated[float, AfterValidator(money_value)]
 TOKEN_SECRET = str(os.getenv("API_TOKEN_SECRET", "")).strip()
 ADMIN_BOOTSTRAP_SECRET = str(os.getenv("ADMIN_BOOTSTRAP_SECRET", "")).strip()
@@ -3872,3 +3874,39 @@ def list_daily_balances(request: Request, user_id: int, authorization: Optional[
 
 
 
+
+# Device operations are separately gated; ordinary account routes stay unchanged.
+def _operations_owner_guard(request, authorization, business_id, user_id):
+    _require_business_feature_access(request, authorization, user_id, feature_key="business_profile")
+    business, _ = _resolve_business_access(user_id, business_id)
+    if int(business.get("owner_user_id", 0)) != user_id:
+        raise HTTPException(403, "Only the business account owner can authorize devices and owner controls.")
+    if request.url.path.endswith("/setup"):
+        business = {**business, "operations_initial_staff": _records_from_frame(BusinessEmployee().by_business(business_id))}
+    return business
+
+
+def _operations_subscription_guard(owner_id, business_id):
+    business = Business().get(business_id) or {}
+    if int(business.get("owner_user_id", 0)) != owner_id:
+        raise HTTPException(403, "Business ownership changed. Reauthorize this device.")
+    profile = User().get_user_by_id(owner_id) or {}
+    subscription = _build_subscription_payload(profile)
+    flags = subscription.get("feature_flags") or {}
+    if not subscription.get("access_active") or not (flags.get("business_profile") or flags.get("business_tools")):
+        raise HTTPException(402, "Active business workspace access is required.")
+    return str(business.get("created_at", ""))
+
+
+def _operations_engine():
+    import core
+    if not core.DB_IS_SQL:
+        return None
+    engine = core._get_engine()
+    if engine.dialect.name != "postgresql":
+        raise HTTPException(503, "Business device operations requires persistent PostgreSQL.")
+    return engine
+
+
+app.include_router(create_operations_router(_operations_engine, _operations_owner_guard,
+    _operations_subscription_guard, allowed_origins=CORS_ALLOW_ORIGINS, owner_cookie=SESSION_COOKIE_NAME))
