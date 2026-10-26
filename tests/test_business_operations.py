@@ -213,6 +213,23 @@ class OperationsTests(OperationsFixture, unittest.TestCase):
         with self.assertRaises(OperationsError):
             self.ops.admin(1, "staff", {"id": self.owner_id, "branch": self.branch, "name": "Owner", "code": "90000", "role": "owner", "active": False}, device_token=d, staff_token=s)
 
+    def test_owner_six_digit_pin_works_and_failures_are_limited_across_devices(self):
+        self.owner("staff", id=self.owner_id, branch=self.branch, name="Owner", code="90000", role="owner", credential="807362")
+        one, two = self.device("office"), self.device("cashier")
+        session = self.ops.authenticate(one, "90000", "807362")
+        self.assertEqual(self.ops.context(one, session)["staff"]["role"], "owner")
+        for bad in ["1234", "abcdef", "12345", "1234567"]:
+            with self.assertRaises(OperationsError):
+                self.ops.validate_credential("90000", bad, "owner")
+        for i in range(5):
+            with self.assertRaises(OperationsError):
+                self.ops.authenticate(one if i % 2 else two, "90000", "000000")
+        with self.assertRaises(OperationsError) as failure:
+            self.ops.authenticate(two, "90000", "807362", "management")
+        self.assertEqual(failure.exception.status, 429)
+        self.tick += 301
+        self.assertTrue(self.ops.authenticate(two, "90000", "807362", "management"))
+
     def test_sales_report_uses_selected_business_date_and_rejects_invalid_dates(self):
         from datetime import datetime, timedelta
         from zoneinfo import ZoneInfo
