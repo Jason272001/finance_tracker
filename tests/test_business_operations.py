@@ -10,7 +10,7 @@ from sqlalchemy import create_engine, select, text, update
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-from backend.business_operations import Operations, OperationsError, products, sessions, audit, businesses
+from backend.business_operations import Operations, OperationsError, products, sessions, audit, businesses, staff as operations_staff, roles, role_assignments
 from backend.business_operations_api import create_operations_router, OperationsBodyLimit
 
 
@@ -35,6 +35,9 @@ class OperationsFixture:
         self.ids = {}
         for code, name, role, credential in [("10001", "Manager", "manager", "manager-test-password"), ("10002", "Jason", "cashier", "654321"), ("10003", "Kay", "cashier", "123456"), ("10004", "Cook", "kitchen", "456789"), ("10005", "Team member", "staff", "567890")]:
             self.ids[code] = self.owner("staff", branch=self.branch, name=name, code=code, role=role, credential=credential)["id"]
+            # Deterministic legacy IDs exist only in this isolated test fixture.
+            with self.engine.begin() as connection:
+                connection.execute(update(operations_staff).where(operations_staff.c.id == self.ids[code]).values(code=code))
         self.addCleanup(self.cleanup_operations)
 
     def cleanup_operations(self):
@@ -229,6 +232,86 @@ class OperationsTests(OperationsFixture, unittest.TestCase):
         self.assertEqual(failure.exception.status, 429)
         self.tick += 301
         self.assertTrue(self.ops.authenticate(two, "90000", "807362", "management"))
+
+    def test_ids_are_allocated_on_server_collision_checked_and_immutable(self):
+        from unittest.mock import patch
+        with patch("backend.business_operations.secrets.randbelow", side_effect=[23456, 23456, 34567]):
+            one = self.owner("staff", branch=self.branch, name="First", code="10002", role="staff", credential="246810")
+            two = self.owner("staff", branch=self.branch, name="Second", code="10002", role="staff", credential="246810")
+        self.assertEqual((one["code"], two["code"]), ("123456", "134567"))
+        with self.assertRaises(OperationsError):
+            self.owner("staff", id=one["id"], branch=self.branch, name="First", code="654321", role="staff")
+        def create(index):
+            return self.owner("staff", branch=self.branch, name=f"Concurrent {index}", role="staff", credential="246810")["code"]
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            codes = list(pool.map(create, range(3)))
+        self.assertEqual(len(codes), len(set(codes)))
+        self.assertTrue(all(len(code) == 6 for code in codes))
+
+    def test_custom_role_limits_office_data_actions_and_allows_attendance(self):
+        role = self.owner("role", name="Scheduler", permissions=["office", "schedules", "timesheets"])["id"]
+        member = self.owner("staff", branch=self.branch, name="Alex", role_id=role, credential="scheduler-test-password")
+        clock, office, till = self.device("clock"), self.device("office"), self.device("cashier")
+        self.ops.authenticate(clock, member["code"], "scheduler-test-password", "in")
+        self.tick += 60
+        self.ops.authenticate(clock, member["code"], "scheduler-test-password", "out")
+        session = self.ops.authenticate(office, member["code"], "scheduler-test-password")
+        snapshot = self.ops.admin(1, "snapshot", {}, device_token=office, staff_token=session)
+        self.assertIn("timesheets", snapshot["permissions"])
+        self.assertEqual(snapshot["products"], [])
+        self.assertEqual(snapshot["orders"], [])
+        self.assertEqual(snapshot["report"]["total_cents"], 0)
+        self.assertEqual(snapshot["devices"], [])
+        self.assertEqual(snapshot["timesheets"][0]["staff"], member["id"])
+        for action, values in [("product", {}), ("void_order", {}), ("staff", {}), ("role", {"name": "Forged", "permissions": []})]:
+            with self.assertRaises(OperationsError) as error:
+                self.ops.admin(1, action, values, device_token=office, staff_token=session)
+            self.assertEqual(error.exception.status, 403)
+        with self.assertRaises(OperationsError):
+            self.ops.authenticate(till, member["code"], "scheduler-test-password")
+        with self.assertRaises(OperationsError):
+            self.ops.authenticate(till, member["code"], "scheduler-test-password", "management")
+        self.owner("role", id=role, name="Scheduler", permissions=["office"])
+        with self.assertRaises(OperationsError):
+            self.ops.admin(1, "snapshot", {}, device_token=office, staff_token=session)
+        new_session = self.ops.authenticate(office, member["code"], "scheduler-test-password")
+        limited = self.ops.admin(1, "snapshot", {}, device_token=office, staff_token=new_session)
+        self.assertEqual(limited["timesheets"], [])
+
+    def test_roles_cannot_grant_owner_access_or_escape_business_and_branch_scope(self):
+        for values in [{"name": "Owner", "permissions": []}, {"name": "Bad", "permissions": ["billing_owner"]}]:
+            with self.assertRaises(OperationsError):
+                self.owner("role", **values)
+        role = self.owner("role", name="Stock assistant", permissions=["office", "products"])["id"]
+        with self.assertRaises(OperationsError):
+            self.owner("role", name="STOCK ASSISTANT", permissions=[])
+        member = self.owner("staff", branch=self.branch, name="Stock", role_id=role, credential="stock-test-password")
+        other_branch = self.owner("branch", name="Other store")["id"]
+        product = self.owner("product", branch=other_branch, name="Private stock", sku="OTHER", price_cents=100, stock=3)["id"]
+        office = self.device("office")
+        session = self.ops.authenticate(office, member["code"], "stock-test-password")
+        snapshot = self.ops.admin(1, "snapshot", {}, device_token=office, staff_token=session)
+        self.assertNotIn(product, [p["id"] for p in snapshot["products"]])
+        with self.assertRaises(OperationsError):
+            self.ops.admin(1, "product", {"id": product, "branch": self.branch, "name": "Stolen", "sku": "OTHER", "price_cents": 100, "stock": 3}, device_token=office, staff_token=session)
+        manager_device = self.device("office")
+        manager = self.ops.authenticate(manager_device, "10001", "manager-test-password")
+        with self.assertRaises(OperationsError):
+            self.ops.admin(1, "staff", {"branch": self.branch, "name": "Privileged", "role_id": role, "credential": "another-test-password"}, device_token=manager_device, staff_token=manager)
+        self.ops.setup(2, 20, "Other business", "90000", "other-owner-password")
+        with self.assertRaises(OperationsError):
+            self.ops.admin(2, "staff", {"branch": other_branch, "name": "Cross tenant", "role_id": role, "credential": "another-test-password"}, account_owner=20)
+
+    def test_existing_staff_gain_default_permission_roles_without_changing_ids(self):
+        role_assignments.drop(self.engine)
+        roles.drop(self.engine)
+        replacement = Operations(self.engine, now=lambda: self.tick)
+        device = replacement.pair(replacement.enroll(1, self.branch, "Existing till", "cashier", "account:10")["code"], "test")
+        session = replacement.authenticate(device, "10002", "654321")
+        result = replacement.context(device, session)
+        self.assertEqual(result["staff"]["code"], "10002")
+        self.assertEqual(result["staff"]["role_name"], "Sales team")
+        self.assertEqual(result["staff"]["permissions"], ["checkout"])
 
     def test_sales_report_uses_selected_business_date_and_rejects_invalid_dates(self):
         from datetime import datetime, timedelta

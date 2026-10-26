@@ -78,6 +78,29 @@ staff = Table("ops_staff", metadata, Column("id", String(32), primary_key=True),
     Column("hourly_cents", Integer, nullable=False, default=0),
     Column("legacy_employee_id", Integer),
     UniqueConstraint("business", "code", name="ops_staff_business_code"))
+PERMISSION_LABELS = {
+    "checkout": "Use POS checkout", "kitchen": "Use kitchen tickets",
+    "office": "Open back office", "approve": "Approve management access",
+    "reports": "View sales reports", "products": "Manage products and stock",
+    "schedules": "Manage schedules", "staff": "Manage team members",
+    "timesheets": "View and correct timesheets", "void_sales": "Void cash sales",
+    "audit": "View activity log", "all_branches": "Work across all branches",
+}
+DEFAULT_ROLES = {
+    "manager": ("Manager", set(PERMISSION_LABELS)),
+    "cashier": ("Sales team", {"checkout"}),
+    "kitchen": ("Kitchen team", {"kitchen"}),
+    "staff": ("Team member", set()),
+}
+roles = Table("ops_roles", metadata, Column("id", String(32), primary_key=True),
+    Column("business", Integer, nullable=False, index=True), Column("name", String(80), nullable=False),
+    Column("name_key", String(80), nullable=False), Column("builtin", String(16)),
+    Column("permissions", Text, nullable=False),
+    UniqueConstraint("business", "name_key", name="ops_role_business_name"),
+    UniqueConstraint("business", "builtin", name="ops_role_business_builtin"))
+role_assignments = Table("ops_staff_roles", metadata, Column("staff", String(32), primary_key=True),
+    Column("business", Integer, nullable=False, index=True), Column("role_id", String(32), nullable=False))
+
 devices = Table("ops_devices", metadata, Column("id", String(32), primary_key=True),
     Column("business", Integer, nullable=False, index=True), Column("branch", String(32), nullable=False),
     Column("name", String(80), nullable=False), Column("mode", String(16), nullable=False),
@@ -157,6 +180,8 @@ class Operations:
                 elif c.dialect.name != "sqlite":
                     raise OperationsError("Operations requires PostgreSQL in production.", 503)
                 metadata.create_all(c)
+                for config in rows(c, businesses, businesses.c.id > 0):
+                    self._ensure_roles(c, config["id"])
             self._initialized = True
 
     @contextmanager
@@ -181,6 +206,39 @@ class Operations:
         c.execute(audit.insert().values(id=identity(), business=business, created=int(self.now()),
             actor=actor, device=device, event=event, reference=reference))
 
+    def _ensure_roles(self, c, business):
+        for key, (name, permissions) in DEFAULT_ROLES.items():
+            if not row(c, roles, (roles.c.business == business) & (roles.c.builtin == key)):
+                c.execute(roles.insert().values(id=identity(), business=business, name=name, name_key=name.casefold(), builtin=key, permissions=json.dumps(sorted(permissions))))
+
+    def _role_for(self, c, person):
+        assignment = row(c, role_assignments, role_assignments.c.staff == person["id"])
+        if assignment:
+            selected = row(c, roles, (roles.c.business == person["business"]) & (roles.c.id == assignment["role_id"]))
+            if not selected:
+                raise OperationsError("Staff role is unavailable. Ask the owner to review access.", 403)
+            return selected
+        return row(c, roles, (roles.c.business == person["business"]) & (roles.c.builtin == person["role"]))
+
+    def permissions(self, c, person):
+        if person["role"] == "owner":
+            return set(PERMISSION_LABELS)
+        selected = self._role_for(c, person)
+        return set(json.loads(selected["permissions"])) if selected else set()
+
+    def staff_details(self, c, person):
+        selected = self._role_for(c, person) if person["role"] != "owner" else None
+        return {**self.public_staff(person), "role_id": selected["id"] if selected else "owner",
+                "role_name": selected["name"] if selected else "Owner" if person["role"] == "owner" else "Unassigned",
+                "permissions": sorted(self.permissions(c, person))}
+
+    def _new_staff_code(self, c, business):
+        for _ in range(100):
+            code = str(100000 + secrets.randbelow(900000))
+            if not row(c, staff, (staff.c.business == business) & (staff.c.code == code)):
+                return code
+        raise OperationsError("Could not allocate a staff ID. Try again.", 409)
+
     def setup(self, business, owner, name, code, credential, tz="America/Los_Angeles", initial_staff=None, source_reference=""):
         self.validate_credential(code, credential, "owner")
         try:
@@ -196,6 +254,7 @@ class Operations:
             sid = identity()
             c.execute(staff.insert().values(id=sid, business=business, branch=branch, name="Business owner",
                 code=code, role="owner", credential=password_hash(credential), active=True, epoch=1, hourly_cents=0))
+            self._ensure_roles(c, business)
             used_codes = {code}
             for index, old in enumerate(initial_staff or []):
                 proposed = str(10001 + index)
@@ -254,6 +313,12 @@ class Operations:
         person = row(c, staff, staff.c.id == s["staff"])
         if not person or person["business"] != device["business"] or not person["active"] or person["epoch"] != s["epoch"]:
             raise OperationsError("Staff access has changed. Sign in again.", 401)
+        permissions = self.permissions(c, person)
+        required = "approve" if kind == "management" else {"cashier": "checkout", "kitchen": "kitchen", "office": "office"}.get(device["mode"])
+        if required and required not in permissions:
+            raise OperationsError("This role no longer has access to this device function.", 403)
+        if person["branch"] != device["branch"] and "all_branches" not in permissions:
+            raise OperationsError("Staff access is assigned to another branch.", 403)
         return person, s
 
     @staticmethod
@@ -266,9 +331,7 @@ class Operations:
         elif device["mode"] == "office":
             p, s = self._session(c, device, staff_token)
         else:
-            raise OperationsError("Fresh manager or owner approval is required.", 403)
-        if p["role"] not in {"owner", "manager"}:
-            raise OperationsError("Manager or owner permission is required.", 403)
+            raise OperationsError("Fresh management approval is required.", 403)
         return p, s
 
     def context(self, device_token, staff_token="", management_token=""):
@@ -279,12 +342,12 @@ class Operations:
             actor, management = None, None
             try:
                 p, s = self._session(c, d, staff_token)
-                actor = {**self.public_staff(p), "expires": s["expires"], "idle_until": s["seen"] + (1800 if d["mode"] == "kitchen" else 300)}
+                actor = {**self.staff_details(c, p), "expires": s["expires"], "idle_until": s["seen"] + (1800 if d["mode"] == "kitchen" else 300)}
             except OperationsError:
                 pass
             try:
                 p, s = self._session(c, d, management_token, "management")
-                management = {"name": p["name"], "role": p["role"], "idle_until": s["seen"] + 120, "expires": s["expires"]}
+                management = {"name": p["name"], "role": p["role"], "permissions": sorted(self.permissions(c, p)), "idle_until": s["seen"] + 120, "expires": s["expires"]}
             except OperationsError:
                 pass
             return {"business": {"id": b["id"], "name": b["name"], "timezone": b["timezone"], "tax_bps": b["tax_bps"]},
@@ -335,11 +398,13 @@ class Operations:
                 error = OperationsError("Too many sign-in attempts. Try again in five minutes.", 429)
             elif not person or not person["active"] or not password_matches(credential, person["credential"]):
                 error = OperationsError("Staff ID or credential is incorrect.", 401)
-            elif person["branch"] != d["branch"] and person["role"] not in {"manager", "owner"}:
+            elif person["branch"] != d["branch"] and "all_branches" not in self.permissions(c, person):
                 error = OperationsError("This staff member is assigned to another branch.", 403)
-            elif action == "management" and person["role"] not in {"owner", "manager"}:
-                error = OperationsError("Manager or owner approval is required.", 403)
-            elif action == "login" and (d["mode"] == "clock" or person["role"] not in ({"cashier", "manager", "owner"} if d["mode"] == "cashier" else {"kitchen", "manager", "owner"} if d["mode"] == "kitchen" else {"manager", "owner"})):
+            elif action in {"in", "out"} and d["mode"] != "clock":
+                error = OperationsError("Use the time-clock device for attendance.", 403)
+            elif action == "management" and "approve" not in self.permissions(c, person):
+                error = OperationsError("Your role cannot approve management access.", 403)
+            elif action == "login" and (d["mode"] == "clock" or {"cashier": "checkout", "kitchen": "kitchen", "office": "office"}.get(d["mode"]) not in self.permissions(c, person)):
                 error = OperationsError("This role cannot sign into this device mode.", 403)
             else:
                 if action == "login" and current_token:
@@ -400,27 +465,72 @@ class Operations:
                 if config["owner"] != account_owner:
                     raise OperationsError("Only the business owner can perform this action.", 403)
                 actor, role, did = "account:" + str(account_owner), "owner", ""
+                granted, scoped_branch = set(PERMISSION_LABELS), None
             else:
                 d = self._device(c, device_token)
                 if d["business"] != business:
                     raise OperationsError("Business scope mismatch.", 403)
                 p, session = self._manager(c, d, staff_token, management_token)
                 actor, role, did = p["id"], p["role"], d["id"]
+                granted = self.permissions(c, p)
+                scoped_branch = None if "all_branches" in granted else d["branch"]
                 if action != "snapshot":
                     c.execute(update(sessions).where(sessions.c.token == session["token"]).values(seen=int(self.now())))
             if action == "snapshot":
-                return self._admin_snapshot(c, business, role, values.get("date"))
-            if action == "branch":
+                return self._admin_snapshot(c, business, role, values.get("date"), granted, scoped_branch)
+            needed = {"staff": "staff", "product": "products", "schedule": "schedules", "cancel_schedule": "schedules", "close_shift": "timesheets", "void_order": "void_sales", "cancel_checkout": "void_sales"}.get(action)
+            if needed and needed not in granted:
+                raise OperationsError("Your role does not have permission for this action.", 403)
+            if action == "role":
+                if role != "owner":
+                    raise OperationsError("Only the owner can create or change permission roles.", 403)
+                existing_role = row(c, roles, (roles.c.business == business) & (roles.c.id == values.get("id", "")))
+                if values.get("id") and not existing_role:
+                    raise OperationsError("Choose a role from this business.", 403)
+                name = clean(values.get("name"), 80)
+                if name.casefold() == "owner":
+                    raise OperationsError("Owner access is reserved for the original business owner.", 403)
+                permissions = values.get("permissions", [])
+                if not isinstance(permissions, list) or any(not isinstance(key, str) or key not in PERMISSION_LABELS for key in permissions):
+                    raise OperationsError("Choose valid business permissions.")
+                permissions = set(permissions)
+                if permissions - {"checkout", "kitchen", "all_branches"} and "office" not in permissions:
+                    raise OperationsError("Enable back-office access for management permissions.")
+                duplicate = row(c, roles, (roles.c.business == business) & (roles.c.name_key == name.casefold()))
+                if duplicate and (not existing_role or duplicate["id"] != existing_role["id"]):
+                    raise OperationsError("A role with this name already exists.", 409)
+                rid = existing_role["id"] if existing_role else identity()
+                record = dict(id=rid, business=business, name=name, name_key=name.casefold(), builtin=existing_role["builtin"] if existing_role else None, permissions=json.dumps(sorted(permissions)))
+                c.execute(update(roles).where(roles.c.id == rid).values(**record) if existing_role else roles.insert().values(**record))
+                assigned = [a["staff"] for a in rows(c, role_assignments, (role_assignments.c.business == business) & (role_assignments.c.role_id == rid))]
+                affected = (staff.c.business == business) & ((staff.c.id.in_(assigned)) | (staff.c.role == existing_role["builtin"] if existing_role and existing_role["builtin"] else text("false"))) & (staff.c.role != "owner")
+                c.execute(update(staff).where(affected).values(epoch=staff.c.epoch + 1))
+                result = {"id": rid}
+            elif action == "branch":
                 if role != "owner":
                     raise OperationsError("Only the owner can create business branches.", 403)
                 branch = identity()
                 c.execute(branches.insert().values(id=branch, business=business, name=clean(values.get("name"), 80)))
                 result = {"id": branch}
             elif action == "staff":
-                desired_role = values.get("role", "staff")
-                if not isinstance(desired_role, str) or desired_role not in {"manager", "cashier", "kitchen", "staff", "owner"}:
+                if not isinstance(values.get("role_id", ""), str):
+                    raise OperationsError("Choose a valid business role.")
+                selected_role = row(c, roles, (roles.c.business == business) & (roles.c.id == values.get("role_id", ""))) if values.get("role_id") not in {None, "", "owner"} else None
+                if values.get("role_id") not in {None, "", "owner"} and not selected_role:
+                    raise OperationsError("Choose a role from this business.", 403)
+                desired_role = (selected_role["builtin"] or "custom") if selected_role else "owner" if values.get("role_id") == "owner" else values.get("role", "staff")
+                if not isinstance(desired_role, str) or desired_role not in {"manager", "cashier", "kitchen", "staff", "owner", "custom"}:
                     raise OperationsError("Choose a valid staff role.")
                 existing = row(c, staff, (staff.c.business == business) & (staff.c.id == values.get("id", "")))
+                if values.get("id") and not existing:
+                    raise OperationsError("Choose a staff member from this business.", 403)
+                if desired_role == "custom" and not selected_role:
+                    raise OperationsError("Choose a custom role from this business.")
+                desired_permissions = set(json.loads(selected_role["permissions"])) if selected_role else set(PERMISSION_LABELS) if desired_role == "owner" else self.permissions(c, {"id": "", "business": business, "role": desired_role})
+                if scoped_branch and ((existing and existing["branch"] != scoped_branch) or values.get("branch") != scoped_branch):
+                    raise OperationsError("This staff member belongs to another branch.", 403)
+                if role != "owner" and (desired_permissions - granted or desired_permissions & {"office", "approve", "staff"} or existing and (self.permissions(c, existing) & {"office", "approve", "staff"} or self.permissions(c, existing) - granted)):
+                    raise OperationsError("Only the owner can assign or edit privileged staff access.", 403)
                 if role != "owner" and (desired_role in {"owner", "manager"} or existing and existing["role"] in {"owner", "manager"}):
                     raise OperationsError("Only the owner can manage owner or manager credentials.", 403)
                 if desired_role == "owner" and (not existing or existing["role"] != "owner"):
@@ -431,12 +541,15 @@ class Operations:
                     raise OperationsError("Clock out this staff member before deactivating access.", 409)
                 branch = values.get("branch") or (existing or {}).get("branch")
                 self._branch(c, business, branch)
-                code = str(values.get("code", ""))
+                code = existing["code"] if existing else self._new_staff_code(c, business)
+                if existing and values.get("code") not in (None, "", existing["code"]):
+                    raise OperationsError("Staff IDs are permanent and cannot be changed.")
                 credential = values.get("credential", "")
                 if existing and not existing["credential"] and not credential:
                     raise OperationsError("Set a credential before activating an imported staff member.")
-                self.validate_credential(code, credential or ("x" * 12 if existing else ""), desired_role)
-                if existing and desired_role in {"manager", "owner"} and desired_role != existing["role"] and not credential:
+                credential_role = "owner" if desired_role == "owner" else "manager" if desired_permissions & {"office", "approve"} else "staff"
+                self.validate_credential(code, credential or ("x" * 12 if existing else ""), credential_role)
+                if existing and desired_permissions & {"office", "approve"} and not desired_permissions.issubset(self.permissions(c, existing)) and not credential:
                     raise OperationsError("Set a new manager password when promoting staff.")
                 duplicate = row(c, staff, (staff.c.business == business) & (staff.c.code == code))
                 if duplicate and (not existing or duplicate["id"] != existing["id"]):
@@ -452,12 +565,19 @@ class Operations:
                     c.execute(update(staff).where(staff.c.id == sid).values(**record))
                 else:
                     c.execute(staff.insert().values(**record))
-                result = {"id": sid}
+                c.execute(delete(role_assignments).where(role_assignments.c.staff == sid))
+                if selected_role:
+                    c.execute(role_assignments.insert().values(staff=sid, business=business, role_id=selected_role["id"]))
+                result = {"id": sid, "code": code}
             elif action == "product":
                 branch = values.get("branch")
                 self._branch(c, business, branch)
+                if scoped_branch and branch != scoped_branch:
+                    raise OperationsError("This product belongs to another branch.", 403)
                 sku = clean(values.get("sku"), 60)
                 existing = row(c, products, (products.c.business == business) & (products.c.id == values.get("id", "")))
+                if existing and scoped_branch and existing["branch"] != scoped_branch:
+                    raise OperationsError("This product belongs to another branch.", 403)
                 duplicate = row(c, products, (products.c.business == business) & (products.c.branch == branch) & (products.c.sku == sku))
                 if duplicate and (not existing or duplicate["id"] != existing["id"]):
                     raise OperationsError("That product code already exists in this branch.", 409)
@@ -472,7 +592,7 @@ class Operations:
                 result = {"id": pid}
             elif action == "schedule":
                 person = row(c, staff, (staff.c.business == business) & (staff.c.id == values.get("staff")))
-                if not person or not person["active"]:
+                if not person or not person["active"] or scoped_branch and person["branch"] != scoped_branch:
                     raise OperationsError("Choose an active staff member.")
                 start, end = whole(values.get("start"), 1, 4102444800), whole(values.get("end"), 1, 4102444800)
                 if not 0 < end - start <= 24 * 3600:
@@ -483,11 +603,14 @@ class Operations:
                 c.execute(schedules.insert().values(id=sid, business=business, branch=person["branch"], staff=person["id"], name=person["name"], start=start, end=end))
                 result = {"id": sid}
             elif action == "cancel_schedule":
+                target = row(c, schedules, (schedules.c.business == business) & (schedules.c.id == values.get("id")))
+                if target and scoped_branch and target["branch"] != scoped_branch:
+                    raise OperationsError("This shift belongs to another branch.", 403)
                 c.execute(delete(schedules).where((schedules.c.business == business) & (schedules.c.id == values.get("id"))))
                 result = {"ok": True}
             elif action == "close_shift":
                 shift = row(c, punches, (punches.c.business == business) & (punches.c.id == values.get("id")))
-                if not shift or shift["end"] is not None:
+                if not shift or shift["end"] is not None or scoped_branch and shift["branch"] != scoped_branch:
                     raise OperationsError("Choose an open clock interval.", 409)
                 end = whole(values.get("end"), 1, 4102444800)
                 if end <= shift["start"] or end > self.now():
@@ -507,7 +630,7 @@ class Operations:
                 result = {"ok": True}
             elif action == "void_order":
                 order = row(c, orders, (orders.c.business == business) & (orders.c.id == values.get("id")))
-                if not order or order["status"] != "paid":
+                if not order or order["status"] != "paid" or scoped_branch and order["branch"] != scoped_branch:
                     raise OperationsError("Choose a paid order that has not been voided.", 409)
                 for line in json.loads(order["items"]):
                     c.execute(update(products).where(products.c.id == line["id"]).values(stock=products.c.stock + line["quantity"]))
@@ -516,9 +639,13 @@ class Operations:
             elif action == "cancel_checkout":
                 rid = clean(values.get("request_id"), 64)
                 previous = row(c, orders, (orders.c.business == business) & (orders.c.request_id == rid))
+                if previous and scoped_branch and previous["branch"] != scoped_branch:
+                    raise OperationsError("This checkout belongs to another branch.", 403)
                 if previous:
                     result = {"recorded": True, "order": self.public_order(previous)}
                 else:
+                    if scoped_branch:
+                        raise OperationsError("The owner must review an unrecorded checkout reference.", 403)
                     if not row(c, cancelled_checkouts, (cancelled_checkouts.c.business == business) & (cancelled_checkouts.c.request_id == rid)):
                         c.execute(cancelled_checkouts.insert().values(business=business, request_id=rid, created=int(self.now()), actor=actor))
                     result = {"recorded": False, "cancelled": True}
@@ -527,7 +654,8 @@ class Operations:
             self.log(c, business, actor, did, "management." + action, result.get("id", values.get("id", "")))
             return result
 
-    def _admin_snapshot(self, c, business, role, chosen_day=None):
+    def _admin_snapshot(self, c, business, role, chosen_day=None, granted=None, scoped_branch=None):
+        granted = set(PERMISSION_LABELS) if granted is None else granted
         config = row(c, businesses, businesses.c.id == business)
         if chosen_day:
             if not isinstance(chosen_day, str) or not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", chosen_day):
@@ -545,8 +673,9 @@ class Operations:
         end = int(datetime.combine(day + timedelta(days=1), datetime.min.time(), tzinfo=ZoneInfo(config["timezone"])).timestamp())
         today = rows(c, orders, (orders.c.business == business) & (orders.c.created >= start) & (orders.c.created < end))
         paid = [r for r in today if r["status"] == "paid"]
-        return {"role": role, "business": config, "branches": rows(c, branches, branches.c.business == business),
-                "staff": [self.public_staff(p) for p in rows(c, staff, staff.c.business == business)],
+        result = {"role": role, "permissions": sorted(granted), "permission_labels": PERMISSION_LABELS, "business": config, "branches": rows(c, branches, branches.c.business == business),
+                "staff": [self.staff_details(c, p) for p in rows(c, staff, staff.c.business == business)],
+                "roles": [{**r, "permissions": json.loads(r["permissions"])} for r in rows(c, roles, roles.c.business == business)],
                 "products": rows(c, products, products.c.business == business),
                 "devices": [{**{k: v for k, v in d.items() if k != "token"}, "paired": bool(d["token"])} for d in rows(c, devices, devices.c.business == business)],
                 "server_time": int(self.now()),
@@ -556,6 +685,30 @@ class Operations:
                 "report": {"date": str(day), "timezone": config["timezone"], "paid_orders": len(paid), "subtotal_cents": sum(o["subtotal"] for o in paid), "tax_cents": sum(o["tax"] for o in paid), "total_cents": sum(o["total"] for o in paid), "void_orders": len(today) - len(paid)},
                 "audit": rows(c, audit, (audit.c.business == business) & (audit.c.created >= self.now() - 7 * 86400))[-200:]}
 
+        if scoped_branch:
+            for key in ["branches", "staff", "products", "schedules", "timesheets", "orders"]:
+                result[key] = [r for r in result[key] if (r.get("branch") if key != "branches" else r["id"]) == scoped_branch]
+            branch_devices = {device["id"] for device in result["devices"] if device["branch"] == scoped_branch}
+            result["audit"] = [event for event in result["audit"] if event["device"] in branch_devices]
+            paid = [o for o in result["orders"] if o["status"] == "paid"]
+            result["report"].update(paid_orders=len(paid), subtotal_cents=sum(o["subtotal"] for o in paid), tax_cents=sum(o["tax"] for o in paid), total_cents=sum(o["total"] for o in paid), void_orders=len(result["orders"]) - len(paid))
+        access = {"products": "products", "schedules": "schedules", "timesheets": "timesheets", "audit": "audit"}
+        for key, permission in access.items():
+            if permission not in granted:
+                result[key] = []
+        if not granted & {"reports", "void_sales"}:
+            result["orders"] = []
+        if "reports" not in granted:
+            result["report"].update(paid_orders=0, subtotal_cents=0, tax_cents=0, total_cents=0, void_orders=0)
+        if not granted & {"staff", "schedules", "timesheets"} and role != "owner":
+            result["staff"] = []
+        elif not granted & {"staff", "timesheets"}:
+            for person in result["staff"]:
+                person.pop("hourly_cents", None)
+        if role != "owner":
+            result["devices"] = []
+        return result
+
     @staticmethod
     def public_order(o):
         return {**{k: v for k, v in o.items() if k not in {"request_hash", "request_id"}}, "items": json.loads(o["items"])}
@@ -563,8 +716,8 @@ class Operations:
     def catalog(self, device_token, staff_token):
         with self.read() as c:
             d = self._device(c, device_token)
-            self._session(c, d, staff_token)
-            if d["mode"] != "cashier":
+            person, _ = self._session(c, d, staff_token)
+            if d["mode"] != "cashier" or "checkout" not in self.permissions(c, person):
                 raise OperationsError("Checkout is available only on cashier devices.", 403)
             return rows(c, products, (products.c.business == d["business"]) & (products.c.branch == d["branch"]) & products.c.active.is_(True))
 
@@ -573,7 +726,7 @@ class Operations:
         with self.tx(bid) as c:
             d = self._device(c, device_token)
             person, session = self._session(c, d, staff_token)
-            if d["mode"] != "cashier" or person["role"] not in {"cashier", "manager", "owner"}:
+            if d["mode"] != "cashier" or "checkout" not in self.permissions(c, person):
                 raise OperationsError("Cashier sign-in is required.", 403)
             if values.get("payment") != "cash":
                 raise OperationsError("Card processing is not connected. Only actual cash payments can be recorded.")
@@ -632,7 +785,7 @@ class Operations:
         with self.tx(bid) as c:
             d = self._device(c, device_token)
             p, session = self._session(c, d, staff_token)
-            if d["mode"] != "kitchen" or p["role"] not in {"kitchen", "manager", "owner"}:
+            if d["mode"] != "kitchen" or "kitchen" not in self.permissions(c, p):
                 raise OperationsError("Kitchen device sign-in is required.", 403)
             if ticket_id:
                 o = row(c, orders, (orders.c.id == ticket_id) & (orders.c.business == bid) & (orders.c.branch == d["branch"]))

@@ -27,4 +27,6 @@ class BackupTests(unittest.TestCase):
             self.assertIn('ops_staff.csv', names)
             self.assertIn('ops_devices.csv', names)
             self.assertIn('ops_orders.csv', names)
+            self.assertIn('ops_roles.csv', names)
+            self.assertIn('ops_staff_roles.csv', names)
             self.assertIn('evt_test', (Path(destination) / 'postgres' / 'stripe_processed_events.csv').read_text())
