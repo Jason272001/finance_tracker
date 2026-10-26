@@ -12,19 +12,19 @@ The business account owns the subscription and authorizes devices. Staff do not 
 
 Shared stations must be signed out of the business account. The application checks both account cookies and the presence of the legacy account-token key before allowing restricted use. Pairing uses separate HttpOnly, Secure, SameSite=Strict cookies, scoped to `/operations`. Use the custom KeeperBMA domain; cross-site GitHub Pages hosting is not supported for station cookies.
 
-## Roles and station modes
+## Roles and permissions
 
-| Role | Allowed work |
-| --- | --- |
-| Original owner | Owner account controls, device authorization/revocation, branch/tax configuration, manager credentials, reports and other operations |
-| Manager | Office work, schedules, ordinary staff credentials, products, sales review, cash-sale voids, timesheets and activity log |
-| Cashier | Checkout on an authorized cashier station; cannot use management APIs or replace another active cashier without sign-out |
-| Kitchen | Current-branch preparation tickets and sequential status updates; responses exclude prices and financial reports |
-| Time-clock staff | Authenticated clock-in/out on a clock station; each punch creates no lasting staff session |
+The owner creates named roles under **Roles & permissions** and enables only the required work tools. Permissions cover checkout, kitchen tickets, office access, management approval, products, reports, schedules, team management, timesheets, cash voids, activity and access across branches. Owner account/device authorization, branch and tax settings and permission-role editing remain owner-only.
 
-Cashier stations require an individual operator before checkout. Leaving checkout for management requires fresh manager/owner credentials and a separate short-lived approval. Locking management returns to checkout or the public clock form. Office stations require manager/owner sign-in. Owner settings remain protected even from managers.
+Existing staff keep their IDs, credentials and effective access. Legacy roles appear as editable starter roles: Manager, Sales team, Kitchen team and Team member. Cashier and time clock are device functions, not mandatory job roles. Every active staff member can clock in/out on an authorized clock device for their branch; roles may allow work across branches. A punch clears credentials and creates no persistent staff session.
 
-Staff sessions expire after eight hours overall, with five-minute inactivity limits for cashier/office stations and 30 minutes for kitchen stations. Temporary management approvals last at most five minutes and expire after two idle minutes. Polling does not extend activity; actual user interaction or authorized changes do. Every privileged action is also checked on the server. The page's full-screen button does not lock the operating system: use the device's managed kiosk controls if staff must also be prevented from opening other apps/browser pages.
+New staff IDs are generated on the server, unique within the business across all branches, and never editable or reused for another person. A business database constraint and serialized allocation prevent simultaneous requests or generated collisions from duplicating IDs. Existing five-digit IDs continue to work; new staff IDs have six digits. Paired devices scope authentication to the correct business, so IDs are not a global identity across unrelated businesses.
+
+Only the owner creates or edits permission roles and privileged staff credentials. A delegated team manager cannot grant permissions they lack, modify owner/privileged staff, or change staff outside their allowed branches. Restricted data is removed from API responses, not merely hidden in the interface. Role edits invalidate affected sessions; permissions are checked again on requests. Office roles use passwords of at least 12 characters when credentials are created; the owner can use a six-digit PIN. Granting new permissions to an existing role keeps existing credentials, so review its members before expanding access.
+
+Cashier stations require an individual operator before checkout. Leaving a restricted station requires a role with management-approval permission. The approval opens only that person's permitted sections. Locking management returns to checkout or the public clock form. Office stations require office permission. Existing sessions expire after eight hours overall, with five-minute inactivity limits for cashier/office stations and 30 minutes for kitchen stations. Management approvals last at most five minutes and expire after two idle minutes. Polling does not extend activity.
+
+The full-screen button does not lock the operating system. Use the device's managed kiosk controls if staff must also be prevented from opening other apps or browser pages.
 
 ## Data integrity
 

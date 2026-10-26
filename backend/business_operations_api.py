@@ -166,7 +166,7 @@ def create_operations_router(engine_getter, owner_guard, subscription_guard, *, 
             available = bool(enabled()) and engine_getter() is not None
         except Exception:
             available = False
-        return {"available": available, "api_version": 1}
+        return {"available": available, "api_version": 1, "custom_staff_roles": True, "automatic_staff_ids": True}
 
     @router.get("/operations/ready")
     def ready(request: Request, response: Response):

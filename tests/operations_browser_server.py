@@ -13,9 +13,9 @@ if os.environ.get("KEEPERBMA_OPERATIONS_BROWSER_TEST") != "1":
 
 from fastapi import FastAPI, Request, Header, HTTPException, Response
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, update
 import uvicorn
-from backend.business_operations import Operations, metadata
+from backend.business_operations import Operations, metadata, staff as operations_staff
 from backend.business_operations_api import create_operations_router, OperationsBodyLimit
 
 temporary = tempfile.TemporaryDirectory(prefix="keeper_ops_browser_")
@@ -57,7 +57,9 @@ def seed():
     config = ops.setup(1, 10, "Integration restaurant", "90000", "owner-test-password")
     branch = config["branch"]
     for code, name, role, credential in [("10001", "Manager", "manager", "manager-test-password"), ("10002", "Jason", "cashier", "654321"), ("10003", "Kay", "cashier", "123456"), ("10004", "Cook", "kitchen", "456789"), ("10005", "Team member", "staff", "567890")]:
-        ops.admin(1, "staff", {"branch": branch, "name": name, "code": code, "role": role, "credential": credential}, account_owner=10)
+        created = ops.admin(1, "staff", {"branch": branch, "name": name, "code": code, "role": role, "credential": credential}, account_owner=10)
+        with engine.begin() as connection:
+            connection.execute(update(operations_staff).where(operations_staff.c.id == created["id"]).values(code=code))
     ops.admin(1, "product", {"branch": branch, "name": "Cheeseburger", "sku": "BURGER", "category": "Burgers", "price_cents": 650, "stock": 20}, account_owner=10)
     codes = {}
     for name, mode in [("Cashier 1", "cashier"), ("Cashier 2", "cashier"), ("Kitchen", "kitchen"), ("Time clock", "clock"), ("Office", "office")]:
