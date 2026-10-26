@@ -66,7 +66,17 @@
     tabs.addEventListener('keydown',e=>{const current=tabButtons.indexOf(e.target);if(current<0)return;let next;if(e.key==='ArrowRight')next=(current+1)%tabButtons.length;else if(e.key==='ArrowLeft')next=(current+tabButtons.length-1)%tabButtons.length;else if(e.key==='Home')next=0;else if(e.key==='End')next=tabButtons.length-1;else return;e.preventDefault();showDirectory(next);tabButtons[next].focus();});
     showDirectory(0);
     select(location.hash==='#demoPos'?'pos':'overview',location.hash==='#demoPos'?'checkout':'overview');
-    if (['#demoPos','#demoBusinessHub'].includes(location.hash)) {
+    const query=new URLSearchParams(location.search),requested=query.get('workspace'),tool=query.get('tool');
+    if(requested){
+      document.getElementById('btnModeBusiness')?.click();
+      if(requested==='pos'||requested==='restaurant'){
+        select('pos',pos.querySelector('[data-pos-tab="'+(tool||'checkout').replace(/[^a-z]/g,'')+'"]')?tool||'checkout':'checkout');
+        if(requested==='restaurant')pos.querySelector('[data-industry="restaurant"]')?.click();
+      }else if(['team','finance','marketing'].includes(requested)){
+        const key=tool?.replace(/[^a-z]/g,'');if(key&&hub.querySelector('[data-hub-tab="'+key+'"]'))openHub(key);
+      }
+    }
+    if (!requested&&['#demoPos','#demoBusinessHub'].includes(location.hash)) {
       window.addEventListener('load',()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{
         if (!workspace.classList.contains('hidden')) workspace.scrollIntoView({behavior:'auto',block:'start'});
       })),{once:true});
