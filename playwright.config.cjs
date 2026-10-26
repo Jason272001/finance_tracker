@@ -12,7 +12,7 @@ module.exports = defineConfig({
     { name: 'webkit', use: { browserName: 'webkit' } },
   ],
   webServer: {
-    command: `${process.platform === 'win32' ? 'python' : 'python3'} -m http.server 8766 --bind 127.0.0.1`,
+    command: `${process.platform === 'win32' ? 'python' : 'python3'} scripts/serve_static.py --port 8766`,
     port: 8766,
     reuseExistingServer: !process.env.CI,
   },
