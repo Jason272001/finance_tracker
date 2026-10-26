@@ -59,7 +59,7 @@ def render(source, settings=False):
     scripts = '<script defer src="./assets/vendor/chart.umd.js"></script><script defer src="./assets/vendor/jspdf.umd.min.js"></script>'
     if not settings:
         scripts += '<script defer src="./frontends/web/creator-tools.js?v=1"></script><script defer src="./frontends/web/product-guide.js?v=5"></script><script defer src="./frontends/web/demo-assistant.js?v=1"></script>'
-    scripts += f'<script defer src="./frontends/web/{"settings" if settings else "web"}.js?v=demo5"></script>'
+    scripts += f'<script defer src="./frontends/web/{"settings" if settings else "web"}.js?v=demo6"></script>'
     if not settings:
         scripts += '<script defer src="./frontends/web/pos-demo-model.js?v=5"></script><script defer src="./frontends/web/demo-pos.js?v=5"></script>'
         scripts += '<script defer src="./frontends/web/demo-branches-model.js?v=1"></script><script defer src="./frontends/web/demo-business.js?v=5"></script>'

@@ -2786,7 +2786,8 @@ window.addEventListener("load", async () => {
     };
   }
   if ($("btnSaveBusiness")) {
-    $("btnSaveBusiness").onclick = async () => {
+    $("btnSaveBusiness").onclick = async (event) => {
+      if (window.LiveBusinessWorkspace) event?.preventDefault();
       if (!hasAppAccess()) {
         setStatus("businessStatus", accessReason());
         return;
@@ -2795,11 +2796,17 @@ window.addEventListener("load", async () => {
         setStatus("businessStatus", t("business_locked"));
         return;
       }
+      if (window.LiveBusinessWorkspace && !$("liveBusinessForm").reportValidity()) return;
       const payload = readBusinessPayload();
       if (!payload.business_name) {
         setStatus("businessStatus", t("business_name_required"));
         return;
       }
+      const saveButton = $("btnSaveBusiness");
+      if (saveButton.dataset.saving === "true") return;
+      saveButton.dataset.saving = "true";
+      saveButton.disabled = true;
+      if (window.LiveBusinessWorkspace) saveButton.textContent = state.selectedBusinessId > 0 ? "Saving…" : "Creating…";
       try {
         if (state.selectedBusinessId > 0) {
           await api(`/businesses/${state.selectedBusinessId}`, {
@@ -2819,6 +2826,10 @@ window.addEventListener("load", async () => {
         await refreshAll();
       } catch (e) {
         setStatus("businessStatus", errMessage(e));
+      } finally {
+        delete saveButton.dataset.saving;
+        saveButton.disabled = !hasAppAccess() || !hasBusinessWorkspaceAccess() || !!(getSelectedBusiness() && !getSelectedBusiness().is_owner);
+        if (window.LiveBusinessWorkspace) saveButton.textContent = state.creatingBusiness ? "Create business" : "Save changes";
       }
     };
   }
