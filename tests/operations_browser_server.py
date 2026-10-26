@@ -54,9 +54,9 @@ def owner(request, authorization, business, user):
 def seed():
     metadata.drop_all(engine)
     ops = Operations(engine)
-    config = ops.setup(1, 10, "Integration restaurant", "90000", "owner-test-password")
+    config = ops.setup(1, 10, "Integration restaurant", "90000", "908172")
     branch = config["branch"]
-    for code, name, role, credential in [("10001", "Manager", "manager", "manager-test-password"), ("10002", "Jason", "cashier", "654321"), ("10003", "Kay", "cashier", "123456"), ("10004", "Cook", "kitchen", "456789"), ("10005", "Team member", "staff", "567890")]:
+    for code, name, role, credential in [("10001", "Manager", "manager", "7351"), ("10002", "Jason", "cashier", "654321"), ("10003", "Kay", "cashier", "123456"), ("10004", "Cook", "kitchen", "456789"), ("10005", "Team member", "staff", "567890")]:
         created = ops.admin(1, "staff", {"branch": branch, "name": name, "code": code, "role": role, "credential": credential}, account_owner=10)
         with engine.begin() as connection:
             connection.execute(update(operations_staff).where(operations_staff.c.id == created["id"]).values(code=code))

@@ -14,7 +14,7 @@ class BackupTests(unittest.TestCase):
     setUp = StorageCases.setUp
 
     def test_backup_covers_core_and_subscription_ledger(self):
-        Operations(self.engine).setup(1, self.uid, "Backup test business", "90000", "backup-test-password")
+        Operations(self.engine).setup(1, self.uid, "Backup test business", "90000", "456789")
         with self.engine.begin() as connection:
             connection.execute(text('CREATE TABLE stripe_processed_events (event_id TEXT PRIMARY KEY)'))
             connection.execute(text("INSERT INTO stripe_processed_events VALUES ('evt_test')"))
