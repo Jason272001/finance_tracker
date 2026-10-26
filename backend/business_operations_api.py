@@ -51,7 +51,7 @@ class Body(BaseModel):
 
 class Setup(Body):
     staff_code: str = Field(pattern=r"^[0-9]{5,6}$")
-    credential: str = Field(min_length=6, max_length=128)
+    credential: str = Field(pattern=r"^[0-9]{4,6}$", min_length=4, max_length=6)
     timezone: str = Field(default="America/Los_Angeles", max_length=80)
 
 
@@ -67,7 +67,7 @@ class Pair(Body):
 
 class Login(Body):
     code: str = Field(pattern=r"^[0-9]{5,6}$")
-    credential: str = Field(min_length=6, max_length=128)
+    credential: str = Field(pattern=r"^[0-9]{4,6}$", min_length=4, max_length=6)
 
 
 class Punch(Login):

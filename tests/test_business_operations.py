@@ -29,11 +29,11 @@ class OperationsFixture:
             self.engine = create_engine("sqlite:///" + str(Path(self.temp.name) / "operations.db").replace("\\", "/"), connect_args={"timeout": 30})
         self.tick = 1800000000
         self.ops = Operations(self.engine, now=lambda: self.tick)
-        configured = self.ops.setup(1, 10, "Test shop", "90000", "owner-test-password")
+        configured = self.ops.setup(1, 10, "Test shop", "90000", "908172")
         self.branch = configured["branch"]
         self.owner_id = configured["owner_staff_id"]
         self.ids = {}
-        for code, name, role, credential in [("10001", "Manager", "manager", "manager-test-password"), ("10002", "Jason", "cashier", "654321"), ("10003", "Kay", "cashier", "123456"), ("10004", "Cook", "kitchen", "456789"), ("10005", "Team member", "staff", "567890")]:
+        for code, name, role, credential in [("10001", "Manager", "manager", "7351"), ("10002", "Jason", "cashier", "654321"), ("10003", "Kay", "cashier", "123456"), ("10004", "Cook", "kitchen", "456789"), ("10005", "Team member", "staff", "567890")]:
             self.ids[code] = self.owner("staff", branch=self.branch, name=name, code=code, role=role, credential=credential)["id"]
             # Deterministic legacy IDs exist only in this isolated test fixture.
             with self.engine.begin() as connection:
@@ -95,16 +95,16 @@ class OperationsTests(OperationsFixture, unittest.TestCase):
         self.assertEqual(failure.exception.status, 403)
         with self.assertRaises(OperationsError):
             self.ops.authenticate(d, "10002", "654321", "management")
-        grant = self.ops.authenticate(d, "10001", "manager-test-password", "management")
+        grant = self.ops.authenticate(d, "10001", "7351", "management")
         snapshot = self.ops.admin(1, "snapshot", {}, device_token=d, staff_token=s, management_token=grant)
         self.assertEqual(snapshot["role"], "manager")
         self.assertNotIn("credential", json.dumps(snapshot))
         with self.assertRaises(OperationsError):
-            self.ops.admin(1, "staff", {"branch": self.branch, "name": "Hidden owner", "code": "99999", "role": "owner", "credential": "another-password"}, device_token=d, management_token=grant)
+            self.ops.admin(1, "staff", {"branch": self.branch, "name": "Hidden owner", "code": "99999", "role": "owner", "credential": "345678"}, device_token=d, management_token=grant)
 
     def test_manager_polling_does_not_extend_an_idle_management_session(self):
         d = self.device("clock")
-        grant = self.ops.authenticate(d, "10001", "manager-test-password", "management")
+        grant = self.ops.authenticate(d, "10001", "7351", "management")
         self.tick += 119
         self.ops.admin(1, "snapshot", {}, device_token=d, management_token=grant)
         self.tick += 2
@@ -197,10 +197,10 @@ class OperationsTests(OperationsFixture, unittest.TestCase):
 
     def test_credential_changes_and_device_revocation_take_effect_on_existing_sessions(self):
         d, s = self.cashier()
-        self.owner("staff", id=self.ids["10002"], branch=self.branch, name="Jason", code="10002", role="cashier", credential="new-pin-123")
+        self.owner("staff", id=self.ids["10002"], branch=self.branch, name="Jason", code="10002", role="cashier", credential="2468")
         with self.assertRaises(OperationsError):
             self.ops.catalog(d, s)
-        new_s = self.ops.authenticate(d, "10002", "new-pin-123")
+        new_s = self.ops.authenticate(d, "10002", "2468")
         did = self.ops.context(d, new_s)["device"]["id"]
         self.owner("revoke_device", id=did)
         with self.assertRaises(OperationsError):
@@ -208,7 +208,7 @@ class OperationsTests(OperationsFixture, unittest.TestCase):
 
     def test_manager_can_schedule_staff_but_cannot_change_owner_or_overlap_shifts(self):
         d = self.device("office")
-        s = self.ops.authenticate(d, "10001", "manager-test-password")
+        s = self.ops.authenticate(d, "10001", "7351")
         values = {"staff": self.ids["10002"], "start": self.tick + 3600, "end": self.tick + 7200}
         self.ops.admin(1, "schedule", values, device_token=d, staff_token=s)
         with self.assertRaises(OperationsError):
@@ -221,7 +221,7 @@ class OperationsTests(OperationsFixture, unittest.TestCase):
         one, two = self.device("office"), self.device("cashier")
         session = self.ops.authenticate(one, "90000", "807362")
         self.assertEqual(self.ops.context(one, session)["staff"]["role"], "owner")
-        for bad in ["1234", "abcdef", "12345", "1234567"]:
+        for bad in ["123", "abcdef", "12 34", "1234567"]:
             with self.assertRaises(OperationsError):
                 self.ops.validate_credential("90000", bad, "owner")
         for i in range(5):
@@ -232,6 +232,18 @@ class OperationsTests(OperationsFixture, unittest.TestCase):
         self.assertEqual(failure.exception.status, 429)
         self.tick += 301
         self.assertTrue(self.ops.authenticate(two, "90000", "807362", "management"))
+
+    def test_all_roles_use_numeric_pins_and_leading_zeroes_are_preserved(self):
+        for role in ["owner", "manager", "cashier", "kitchen", "staff"]:
+            for pin in ["0042", "01234", "012345"]:
+                self.ops.validate_credential("123456", pin, role)
+            for invalid in ["123", "1234567", "abcd", "abcdefghijkl", "12 34"]:
+                with self.assertRaises(OperationsError):
+                    self.ops.validate_credential("123456", invalid, role)
+        self.owner("staff", id=self.ids["10001"], branch=self.branch, name="Manager", role="manager", credential="01234")
+        device = self.device("office")
+        session = self.ops.authenticate(device, "10001", "01234")
+        self.assertEqual(self.ops.context(device, session)["staff"]["role"], "manager")
 
     def test_ids_are_allocated_on_server_collision_checked_and_immutable(self):
         from unittest.mock import patch
@@ -250,12 +262,12 @@ class OperationsTests(OperationsFixture, unittest.TestCase):
 
     def test_custom_role_limits_office_data_actions_and_allows_attendance(self):
         role = self.owner("role", name="Scheduler", permissions=["office", "schedules", "timesheets"])["id"]
-        member = self.owner("staff", branch=self.branch, name="Alex", role_id=role, credential="scheduler-test-password")
+        member = self.owner("staff", branch=self.branch, name="Alex", role_id=role, credential="5432")
         clock, office, till = self.device("clock"), self.device("office"), self.device("cashier")
-        self.ops.authenticate(clock, member["code"], "scheduler-test-password", "in")
+        self.ops.authenticate(clock, member["code"], "5432", "in")
         self.tick += 60
-        self.ops.authenticate(clock, member["code"], "scheduler-test-password", "out")
-        session = self.ops.authenticate(office, member["code"], "scheduler-test-password")
+        self.ops.authenticate(clock, member["code"], "5432", "out")
+        session = self.ops.authenticate(office, member["code"], "5432")
         snapshot = self.ops.admin(1, "snapshot", {}, device_token=office, staff_token=session)
         self.assertIn("timesheets", snapshot["permissions"])
         self.assertEqual(snapshot["products"], [])
@@ -268,13 +280,13 @@ class OperationsTests(OperationsFixture, unittest.TestCase):
                 self.ops.admin(1, action, values, device_token=office, staff_token=session)
             self.assertEqual(error.exception.status, 403)
         with self.assertRaises(OperationsError):
-            self.ops.authenticate(till, member["code"], "scheduler-test-password")
+            self.ops.authenticate(till, member["code"], "5432")
         with self.assertRaises(OperationsError):
-            self.ops.authenticate(till, member["code"], "scheduler-test-password", "management")
+            self.ops.authenticate(till, member["code"], "5432", "management")
         self.owner("role", id=role, name="Scheduler", permissions=["office"])
         with self.assertRaises(OperationsError):
             self.ops.admin(1, "snapshot", {}, device_token=office, staff_token=session)
-        new_session = self.ops.authenticate(office, member["code"], "scheduler-test-password")
+        new_session = self.ops.authenticate(office, member["code"], "5432")
         limited = self.ops.admin(1, "snapshot", {}, device_token=office, staff_token=new_session)
         self.assertEqual(limited["timesheets"], [])
 
@@ -285,22 +297,22 @@ class OperationsTests(OperationsFixture, unittest.TestCase):
         role = self.owner("role", name="Stock assistant", permissions=["office", "products"])["id"]
         with self.assertRaises(OperationsError):
             self.owner("role", name="STOCK ASSISTANT", permissions=[])
-        member = self.owner("staff", branch=self.branch, name="Stock", role_id=role, credential="stock-test-password")
+        member = self.owner("staff", branch=self.branch, name="Stock", role_id=role, credential="8642")
         other_branch = self.owner("branch", name="Other store")["id"]
         product = self.owner("product", branch=other_branch, name="Private stock", sku="OTHER", price_cents=100, stock=3)["id"]
         office = self.device("office")
-        session = self.ops.authenticate(office, member["code"], "stock-test-password")
+        session = self.ops.authenticate(office, member["code"], "8642")
         snapshot = self.ops.admin(1, "snapshot", {}, device_token=office, staff_token=session)
         self.assertNotIn(product, [p["id"] for p in snapshot["products"]])
         with self.assertRaises(OperationsError):
             self.ops.admin(1, "product", {"id": product, "branch": self.branch, "name": "Stolen", "sku": "OTHER", "price_cents": 100, "stock": 3}, device_token=office, staff_token=session)
         manager_device = self.device("office")
-        manager = self.ops.authenticate(manager_device, "10001", "manager-test-password")
+        manager = self.ops.authenticate(manager_device, "10001", "7351")
         with self.assertRaises(OperationsError):
-            self.ops.admin(1, "staff", {"branch": self.branch, "name": "Privileged", "role_id": role, "credential": "another-test-password"}, device_token=manager_device, staff_token=manager)
-        self.ops.setup(2, 20, "Other business", "90000", "other-owner-password")
+            self.ops.admin(1, "staff", {"branch": self.branch, "name": "Privileged", "role_id": role, "credential": "876543"}, device_token=manager_device, staff_token=manager)
+        self.ops.setup(2, 20, "Other business", "90000", "987654")
         with self.assertRaises(OperationsError):
-            self.ops.admin(2, "staff", {"branch": other_branch, "name": "Cross tenant", "role_id": role, "credential": "another-test-password"}, account_owner=20)
+            self.ops.admin(2, "staff", {"branch": other_branch, "name": "Cross tenant", "role_id": role, "credential": "876543"}, account_owner=20)
 
     def test_existing_staff_gain_default_permission_roles_without_changing_ids(self):
         role_assignments.drop(self.engine)
@@ -325,7 +337,7 @@ class OperationsTests(OperationsFixture, unittest.TestCase):
             with self.assertRaises(OperationsError):
                 self.owner("snapshot", date=value)
         office = self.device("office")
-        manager = self.ops.authenticate(office, "10001", "manager-test-password")
+        manager = self.ops.authenticate(office, "10001", "7351")
         with self.assertRaises(OperationsError):
             self.ops.admin(1, "branch", {"name": "Unauthorized branch"}, device_token=office, staff_token=manager)
 
@@ -374,7 +386,7 @@ class OperationsTests(OperationsFixture, unittest.TestCase):
         self.assertEqual(self.owner("snapshot")["products"][0]["stock"], 10)
 
     def test_imported_staff_have_no_default_device_credential(self):
-        config = self.ops.setup(2, 20, "Imported shop", "90000", "another-owner-password", initial_staff=[{"employee_id": 77, "employee_name": "Existing cashier", "role_code": "sales"}])
+        config = self.ops.setup(2, 20, "Imported shop", "90000", "987654", initial_staff=[{"employee_id": 77, "employee_name": "Existing cashier", "role_code": "sales"}])
         imported = self.ops.admin(2, "snapshot", {}, account_owner=20)["staff"]
         person = next(p for p in imported if p["role"] != "owner")
         self.assertFalse(person["active"])
@@ -387,12 +399,12 @@ class OperationsTests(OperationsFixture, unittest.TestCase):
 
     def test_cross_business_sessions_and_product_ids_do_not_grant_access(self):
         d, s = self.cashier()
-        config = self.ops.setup(2, 20, "Other company", "90000", "another-owner-password")
+        config = self.ops.setup(2, 20, "Other company", "90000", "987654")
         pairing = self.ops.enroll(2, config["branch"], "Other till", "cashier", "account:20")
         other = self.ops.pair(pairing["code"], "test")
         with self.assertRaises(OperationsError):
             self.ops.catalog(other, s)
-        grant = self.ops.authenticate(d, "90000", "owner-test-password", "management")
+        grant = self.ops.authenticate(d, "90000", "908172", "management")
         with self.assertRaises(OperationsError):
             self.ops.admin(2, "snapshot", {}, device_token=d, management_token=grant)
 

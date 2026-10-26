@@ -38,7 +38,7 @@
     }
     clearManagement();
     if(context.device.mode==='clock'){$('stationClock').hidden=false;return;}
-    if(!context.staff){$('stationLogin').hidden=false;$('stationRoleHint').textContent=context.device.mode==='office'?'Sign in with a role that has back-office access.':'Use your own staff ID and credential. Sign out before another person takes over.';return;}
+    if(!context.staff){$('stationLogin').hidden=false;$('stationRoleHint').textContent=context.device.mode==='office'?'Sign in with a role that has back-office access.':'Use your own staff ID and PIN. Sign out before another person takes over.';return;}
     if(context.device.mode==='cashier'){
       $('stationCheckout').hidden=false;$('stationCashier').textContent='Cashier: '+context.staff.name+' · ID '+context.staff.code;
       if(!catalog.length)loadCatalog();else renderCatalog();renderCart();

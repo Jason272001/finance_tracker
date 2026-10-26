@@ -273,11 +273,8 @@ class Operations:
     def validate_credential(code, credential, role):
         if not re.fullmatch(r"[0-9]{5,6}", str(code)):
             raise OperationsError("Staff IDs must contain 5 or 6 digits.")
-        if role == "owner" and isinstance(credential, str) and re.fullmatch(r"[0-9]{6}", credential):
-            return
-        minimum = 12 if role in {"owner", "manager"} else 6
-        if not isinstance(credential, str) or not minimum <= len(credential) <= 128:
-            raise OperationsError("Use a six-digit owner PIN or a password of at least 12 characters." if role == "owner" else f"Use at least {minimum} characters for this role's credential.")
+        if not isinstance(credential, str) or not re.fullmatch(r"[0-9]{4,6}", credential):
+            raise OperationsError("Use a numeric PIN containing 4 to 6 digits.")
 
     def _branch(self, c, business, branch):
         if not row(c, branches, (branches.c.business == business) & (branches.c.id == branch)):
@@ -396,8 +393,8 @@ class Operations:
             person = row(c, staff, (staff.c.business == business) & (staff.c.code == str(code)))
             if not allowed:
                 error = OperationsError("Too many sign-in attempts. Try again in five minutes.", 429)
-            elif not person or not person["active"] or not password_matches(credential, person["credential"]):
-                error = OperationsError("Staff ID or credential is incorrect.", 401)
+            elif not person or not person["active"] or not re.fullmatch(r"[0-9]{4,6}", str(credential)) or not password_matches(credential, person["credential"]):
+                error = OperationsError("Staff ID or PIN is incorrect.", 401)
             elif person["branch"] != d["branch"] and "all_branches" not in self.permissions(c, person):
                 error = OperationsError("This staff member is assigned to another branch.", 403)
             elif action in {"in", "out"} and d["mode"] != "clock":
@@ -546,11 +543,9 @@ class Operations:
                     raise OperationsError("Staff IDs are permanent and cannot be changed.")
                 credential = values.get("credential", "")
                 if existing and not existing["credential"] and not credential:
-                    raise OperationsError("Set a credential before activating an imported staff member.")
-                credential_role = "owner" if desired_role == "owner" else "manager" if desired_permissions & {"office", "approve"} else "staff"
-                self.validate_credential(code, credential or ("x" * 12 if existing else ""), credential_role)
-                if existing and desired_permissions & {"office", "approve"} and not desired_permissions.issubset(self.permissions(c, existing)) and not credential:
-                    raise OperationsError("Set a new manager password when promoting staff.")
+                    raise OperationsError("Set a PIN before activating an imported staff member.")
+                if credential or not existing:
+                    self.validate_credential(code, credential, desired_role)
                 duplicate = row(c, staff, (staff.c.business == business) & (staff.c.code == code))
                 if duplicate and (not existing or duplicate["id"] != existing["id"]):
                     raise OperationsError("That staff ID is already used.", 409)
