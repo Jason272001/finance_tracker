@@ -17,7 +17,7 @@
   async function refresh(){
     if(disposed)return;
     if(hasOwnerBearer()){ownerSession();return;}
-    try{const next=await api('/operations/device');online=true;const changed=!context||JSON.stringify([context.device.id,context.staff?.id,!!context.management,context.business.tax_bps])!==JSON.stringify([next.device.id,next.staff?.id,!!next.management,next.business.tax_bps]);context=next;if(changed)render();else if(context.device.mode==='cashier'&&context.staff)$('stationPay').disabled=busy||(!cart.length&&!pending)||!!pending&&pending.staff!==context.staff.id||cart.some(l=>l.unavailable);}
+    try{const next=await api('/operations/device');online=true;const changed=!context||JSON.stringify([context.device.id,context.staff?.id,context.management?.permissions,context.staff?.permissions,context.business.tax_bps])!==JSON.stringify([next.device.id,next.staff?.id,next.management?.permissions,next.staff?.permissions,next.business.tax_bps]);if(changed&&context&&JSON.stringify([context.management?.permissions,context.staff?.permissions])!==JSON.stringify([next.management?.permissions,next.staff?.permissions]))clearManagement();context=next;if(changed)render();else if(context.device.mode==='cashier'&&context.staff)$('stationPay').disabled=busy||(!cart.length&&!pending)||!!pending&&pending.staff!==context.staff.id||cart.some(l=>l.unavailable);}
     catch(e){online=false;if(e.status===409){ownerSession();return;}if(e.status===401){context=null;hide();clearManagement();$('stationPair').hidden=false;say('Enter the one-time code from your business owner.');return;}if([402,403].includes(e.status)){context=null;hide();clearManagement();say(e.message,true);return;}if(context)locked(e);else{hide();$('stationPair').hidden=false;say(e.message,true);}}
   }
   function render(){
@@ -38,7 +38,7 @@
     }
     clearManagement();
     if(context.device.mode==='clock'){$('stationClock').hidden=false;return;}
-    if(!context.staff){$('stationLogin').hidden=false;$('stationRoleHint').textContent=context.device.mode==='office'?'Manager or owner sign-in is required.':'Use your own staff ID and credential. Sign out before another person takes over.';return;}
+    if(!context.staff){$('stationLogin').hidden=false;$('stationRoleHint').textContent=context.device.mode==='office'?'Sign in with a role that has back-office access.':'Use your own staff ID and credential. Sign out before another person takes over.';return;}
     if(context.device.mode==='cashier'){
       $('stationCheckout').hidden=false;$('stationCashier').textContent='Cashier: '+context.staff.name+' · ID '+context.staff.code;
       if(!catalog.length)loadCatalog();else renderCatalog();renderCart();
