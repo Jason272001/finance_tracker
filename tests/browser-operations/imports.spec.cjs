@@ -29,3 +29,18 @@ test('restaurant extras use server prices and inactivity clears the cashier scre
   await page.clock.fastForward(301000);await expect(page.locator('#stationLogin')).toBeVisible();await expect(page.locator('#stationCheckout')).toBeHidden();await expect(page.locator('#stationStatus')).toContainText('five minutes');
  }finally{await context.close();}
 });
+test('every numbered CSV selects its matching option and branches have a visible management tab',async({browser,request})=>{
+ const fs=require('node:fs'),manifest=JSON.parse(fs.readFileSync(path.resolve('assets/business-test-data-100/manifest.json'),'utf8'));
+ const expected=['branches','roles','staff','staff_access_reference','devices','category','brand','supplier','location','products','restaurant_products','extras','purchases','stock_movements','stock_counts','schedules','timesheets','sales','restaurant_sales','payroll_reference','login_events'];
+ const {context,page}=await owner(browser);try{
+  await expect(page.locator('#bulkKind option')).toHaveCount(21);await expect(page.locator('#bulkKind option').first()).toHaveText('Branches / stores');
+  for(const [index,item] of manifest.entries()){
+   await page.locator('#bulkFile').setInputFiles(path.resolve('assets/business-test-data-100',item.file));await expect(page.locator('#bulkKind')).toHaveValue(expected[index]);await expect(page.locator('#bulkPreview')).toContainText('100 rows ready');await expect(page.locator('#bulkImport')).toBeDisabled();
+   if(item.kind==='reference_only'){await expect(page.locator('#bulkValidate')).toBeDisabled();await expect(page.locator('#bulkStatus')).toContainText('cannot be imported');}else await expect(page.locator('#bulkValidate')).toBeEnabled();
+  }
+  const admin=()=>request.get('/businesses/1/operations/admin?user_id=10',{headers:{Authorization:'Bearer browser-test-owner'}}).then(r=>r.json());const before=(await admin()).branches.length;
+  await page.locator('#bulkFile').setInputFiles(path.resolve('assets/business-test-data-100/01_branches_100.csv'));await expect(page.locator('#bulkBranchLabel')).toBeHidden();await page.locator('#bulkValidate').click();await expect(page.locator('#bulkStatus')).toContainText('Validated 100');expect((await admin()).branches.length).toBe(before);await page.locator('#bulkImport').click();await expect.poll(async()=>(await admin()).branches.length).toBe(100);
+  await page.getByRole('button',{name:'Branches',exact:true}).click();await expect(page.locator('[data-ops-panel="branches"]')).toContainText('Sample branch 100');await expect(page.locator('#opsBranchForm')).toBeVisible();await page.locator('[data-ops-panel="branches"]').getByRole('button',{name:'Upload CSV / Excel',exact:true}).click();await expect(page.locator('#bulkKind')).toHaveValue('branches');
+  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);await page.screenshot({path:'output/branch-csv-matching.png',fullPage:true});
+ }finally{await context.close();}
+});
