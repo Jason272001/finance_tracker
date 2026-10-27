@@ -1,0 +1,128 @@
+[
+  {
+    "file": "01_branches_100.csv",
+    "kind": "branches",
+    "rows": 100,
+    "notes": ""
+  },
+  {
+    "file": "02_roles_permissions_100.csv",
+    "kind": "roles",
+    "rows": 100,
+    "notes": "100 custom job roles. No role grants owner access. Cashier and time-clock are device modes, not job roles."
+  },
+  {
+    "file": "03_staff_100.csv",
+    "kind": "staff",
+    "rows": 100,
+    "notes": "Each staff record receives a unique server-generated ID. PINs are four digits and test-only. No user accounts or emails are created."
+  },
+  {
+    "file": "04_staff_access_100.csv",
+    "kind": "reference_only",
+    "rows": 100,
+    "notes": "Access snapshot for review only. Apply actual access by importing roles and staff. There is no separate staff-access upload table."
+  },
+  {
+    "file": "05_devices_100.csv",
+    "kind": "devices",
+    "rows": 100,
+    "notes": "Codes are intentionally blank; the server generates pairing codes."
+  },
+  {
+    "file": "06_categories_100.csv",
+    "kind": "category",
+    "rows": 100,
+    "notes": ""
+  },
+  {
+    "file": "07_brands_100.csv",
+    "kind": "brand",
+    "rows": 100,
+    "notes": ""
+  },
+  {
+    "file": "08_suppliers_100.csv",
+    "kind": "supplier",
+    "rows": 100,
+    "notes": ""
+  },
+  {
+    "file": "09_storage_locations_100.csv",
+    "kind": "location",
+    "rows": 100,
+    "notes": ""
+  },
+  {
+    "file": "10_retail_products_100.csv",
+    "kind": "products",
+    "rows": 100,
+    "notes": "Opening quantity 50 each. Import into Main branch. Existing SKUs preserve current stock."
+  },
+  {
+    "file": "11_restaurant_products_100.csv",
+    "kind": "products",
+    "rows": 100,
+    "notes": "100 menu items across 10 fictional restaurant types; opening quantity 75 each."
+  },
+  {
+    "file": "12_restaurant_extras_100.csv",
+    "kind": "extras",
+    "rows": 100,
+    "notes": ""
+  },
+  {
+    "file": "13_supplier_purchases_100.csv",
+    "kind": "purchases",
+    "rows": 100,
+    "notes": "100 received invoices; adds 5 to each retail SKU once. Does not record supplier payment."
+  },
+  {
+    "file": "14_inventory_adjustments_100.csv",
+    "kind": "stock_movements",
+    "rows": 100,
+    "notes": ""
+  },
+  {
+    "file": "15_inventory_counts_100.csv",
+    "kind": "stock_counts",
+    "rows": 100,
+    "notes": ""
+  },
+  {
+    "file": "16_staff_schedules_100.csv",
+    "kind": "schedules",
+    "rows": 100,
+    "notes": "Monday October 26, 2026, 9 AM to 2 PM America/Los_Angeles."
+  },
+  {
+    "file": "17_timesheets_100.csv",
+    "kind": "timesheets",
+    "rows": 100,
+    "notes": "100 closed historical 5-hour intervals; not payroll payments."
+  },
+  {
+    "file": "18_retail_sales_100.csv",
+    "kind": "sales",
+    "rows": 100,
+    "notes": "Reference history only. No real sale/payment or inventory deduction is created."
+  },
+  {
+    "file": "19_restaurant_sales_100.csv",
+    "kind": "sales",
+    "rows": 100,
+    "notes": "Reference history only. No real sale/payment or inventory deduction is created."
+  },
+  {
+    "file": "20_payroll_100.csv",
+    "kind": "reference_only",
+    "rows": 100,
+    "notes": "Gross-pay calculation reference: 5 hours × hourly rate. Withholding and net pay deliberately blank. Current app has no payroll-file importer; does not run payroll or pay wages."
+  },
+  {
+    "file": "21_login_history_100.csv",
+    "kind": "login_events",
+    "rows": 100,
+    "notes": "Reference history only; does not authenticate staff."
+  }
+]
