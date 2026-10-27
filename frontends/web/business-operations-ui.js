@@ -25,7 +25,7 @@
     return Math.floor(guess/1000);
   }
   function mount(host,{load,act,enroll,deviceURL}){
-    let snapshot=null,current='report',disposed=false,selectedDay='',snapshotAt=performance.now();
+    let snapshot=null,current=location.hash.slice(1)||'report',disposed=false,selectedDay='',snapshotAt=performance.now();
     const status=document.createElement('p');status.className='ops-status';status.setAttribute('role','status');
     const body=document.createElement('div');host.replaceChildren(status,body);
     const setStatus=(text,error=false)=>{status.textContent=text;status.classList.toggle('station-error',error);};
@@ -69,7 +69,7 @@
     function syncDeviceCodes(){if(disposed||!snapshot)return;for(const d of snapshot.devices){const row=body.querySelector('[data-ops-device-row="'+d.id+'"]');if(!row)continue;const valid=d.active&&d.pairing_code&&!d.code_used&&d.code_expires>serverNow();row.querySelector('[data-ops-copy-device]').disabled=!valid;row.querySelector('[data-ops-device-status]').textContent=!d.active?'Access revoked':d.expires<=serverNow()?'Authorization expired':d.paired?'Connected':valid?'Ready to connect':d.pairing_code?'Code expired':'Awaiting connection';row.querySelector('[data-ops-code-status]').textContent=!d.pairing_code?'Generate a new code':d.code_used?'Used — generate a new code to reconnect':valid?'Expires at '+new Date(d.code_expires*1000).toLocaleTimeString():'Expired — generate a new code';}}
     const codeTimer=setInterval(syncDeviceCodes,1000);
     body.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
-      if(b.dataset.opsTab){current=b.dataset.opsTab;view();return;}
+      if(b.dataset.opsTab){current=b.dataset.opsTab;history.replaceState(null,'',location.pathname+location.search+'#'+encodeURIComponent(current));view();return;}
       if(b.hasAttribute('data-ops-refresh')){run(refresh);return;}
       if(b.dataset.opsEditStaff){const p=snapshot.staff.find(p=>p.id===b.dataset.opsEditStaff),form=body.querySelector('#opsStaffForm');for(const key of ['id','name','code','branch'])form.elements[key].value=p[key];form.elements.role.value=p.role_id;form.elements.hourly.value=(p.hourly_cents/100).toFixed(2);form.elements.active.checked=p.active;form.elements.credential.value='';form.elements.credential.required=false;form.elements.credential.minLength=4;body.querySelector('#opsStaffEditor').open=true;form.elements.name.focus();}
       if(b.hasAttribute('data-ops-clear-staff')){const f=body.querySelector('#opsStaffForm');f.reset();f.elements.id.value='';f.elements.credential.required=true;f.elements.credential.minLength=4;}
