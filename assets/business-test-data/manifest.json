@@ -1,0 +1,135 @@
+[
+  {
+    "file": "stores.csv",
+    "kind": "branches",
+    "rows": 3,
+    "worksheet": "stores",
+    "notes": ""
+  },
+  {
+    "file": "role_permissions.csv",
+    "kind": "roles",
+    "rows": 5,
+    "worksheet": "role_permissions",
+    "notes": ""
+  },
+  {
+    "file": "staff.csv",
+    "kind": "staff",
+    "rows": 10,
+    "worksheet": "staff",
+    "notes": "Fictional operational staff. Import creates actual staff access only after owner validation and confirmation. Sample PINs are for testing only. IDs are generated."
+  },
+  {
+    "file": "devices.csv",
+    "kind": "devices",
+    "rows": 5,
+    "worksheet": "devices",
+    "notes": "Leave device_code blank. The application generates real one-time codes."
+  },
+  {
+    "file": "categories_100.csv",
+    "kind": "category",
+    "rows": 100,
+    "worksheet": "categories_100",
+    "notes": ""
+  },
+  {
+    "file": "brands.csv",
+    "kind": "brand",
+    "rows": 20,
+    "worksheet": "brands",
+    "notes": ""
+  },
+  {
+    "file": "suppliers.csv",
+    "kind": "supplier",
+    "rows": 20,
+    "worksheet": "suppliers",
+    "notes": ""
+  },
+  {
+    "file": "storage_locations.csv",
+    "kind": "location",
+    "rows": 4,
+    "worksheet": "storage_locations",
+    "notes": ""
+  },
+  {
+    "file": "products_100.csv",
+    "kind": "products",
+    "rows": 100,
+    "worksheet": "products_100",
+    "notes": "100 retail SKUs. New SKUs open at 50 units. Re-import preserves live on-hand stock."
+  },
+  {
+    "file": "restaurant_products_100.csv",
+    "kind": "products",
+    "rows": 100,
+    "worksheet": "restaurant_products_100",
+    "notes": "100 menu items across 10 fictional restaurant types. Prices are invented test values."
+  },
+  {
+    "file": "restaurant_extras.csv",
+    "kind": "extras",
+    "rows": 100,
+    "worksheet": "restaurant_extras",
+    "notes": "100 optional priced/free choices. Import menu products first."
+  },
+  {
+    "file": "supplier_purchases.csv",
+    "kind": "purchases",
+    "rows": 50,
+    "worksheet": "supplier_purchases",
+    "notes": "10 fictional supplier invoices, 50 received lines. Each invoice can be received once. No supplier payment is recorded."
+  },
+  {
+    "file": "stock_movements.csv",
+    "kind": "stock_movements",
+    "rows": 20,
+    "worksheet": "stock_movements",
+    "notes": ""
+  },
+  {
+    "file": "inventory_counts.csv",
+    "kind": "stock_counts",
+    "rows": 100,
+    "worksheet": "inventory_counts",
+    "notes": ""
+  },
+  {
+    "file": "schedules.csv",
+    "kind": "schedules",
+    "rows": 10,
+    "worksheet": "schedules",
+    "notes": "Monday 9 AM–2 PM Los Angeles time. Import staff first."
+  },
+  {
+    "file": "timesheets.csv",
+    "kind": "timesheets",
+    "rows": 20,
+    "worksheet": "timesheets",
+    "notes": "Closed historical test intervals with explicit UTC timestamps. Not processed payroll."
+  },
+  {
+    "file": "sales.csv",
+    "kind": "sales",
+    "rows": 100,
+    "worksheet": "sales",
+    "notes": "Reference history only. These rows do not charge customers, create real payments or change live sales totals / stock."
+  },
+  {
+    "file": "login_events.csv",
+    "kind": "login_events",
+    "rows": 40,
+    "worksheet": "login_events",
+    "notes": "Imported reference history only. Cannot create actual verified authentication events or log anyone in."
+  },
+  {
+    "file": "restaurant_stores.csv",
+    "kind": "branches",
+    "rows": 10,
+    "worksheet": "restaurant_stores",
+    "notes": "Optional fictional branch names for restaurant-type comparisons. Catalog imports target the branch selected in the app."
+  }
+]

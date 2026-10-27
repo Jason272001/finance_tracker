@@ -4,7 +4,7 @@ Separate device and operator credentials ensure a paired till never receives the
 business account's bearer token. All mutations serialize per business on Postgres;
 SQLite is supported for local integration tests only.
 """
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import hashlib
@@ -187,6 +187,8 @@ class Operations:
                 metadata.create_all(c)
                 for config in rows(c, businesses, businesses.c.id > 0):
                     self._ensure_roles(c, config["id"])
+                for existing_product in rows(c, products, products.c.stock >= 0):
+                    inventory.ensure_balance(c, existing_product)
             self._initialized = True
 
     @contextmanager
@@ -313,7 +315,7 @@ class Operations:
 
     def _session(self, c, device, token, kind="staff"):
         s = row(c, sessions, sessions.c.token == digest(token)) if token else None
-        idle = 120 if kind == "management" else 1800 if device["mode"] == "kitchen" else 300
+        idle = 120 if kind == "management" else 300
         if not s or s["device"] != device["id"] or s["kind"] != kind or s["expires"] <= self.now() or self.now() - s["seen"] >= idle:
             raise OperationsError("Staff sign-in expired or is required.", 401)
         person = row(c, staff, staff.c.id == s["staff"])
@@ -348,7 +350,7 @@ class Operations:
             actor, management = None, None
             try:
                 p, s = self._session(c, d, staff_token)
-                actor = {**self.staff_details(c, p), "expires": s["expires"], "idle_until": s["seen"] + (1800 if d["mode"] == "kitchen" else 300)}
+                actor = {**self.staff_details(c, p), "expires": s["expires"], "idle_until": s["seen"] + 300}
             except OperationsError:
                 pass
             try:
@@ -453,7 +455,7 @@ class Operations:
                         kind = "management" if action == "management" else "staff"
                         secret, now = secrets.token_urlsafe(32), int(self.now())
                         c.execute(delete(sessions).where((sessions.c.device == d["id"]) & (sessions.c.kind == kind)))
-                        c.execute(sessions.insert().values(token=digest(secret), device=d["id"], staff=person["id"], kind=kind, epoch=person["epoch"], created=now, seen=now, expires=now + (300 if kind == "management" else 8 * 3600)))
+                        c.execute(sessions.insert().values(token=digest(secret), device=d["id"], staff=person["id"], kind=kind, epoch=person["epoch"], created=now, seen=now, expires=now + 300 if kind == "management" else d["expires"]))
                         result = secret
                     else:
                         error = OperationsError("Unknown staff action.")
@@ -477,8 +479,8 @@ class Operations:
                         c.execute(delete(sessions).where(sessions.c.token == s["token"]))
                         self.log(c, bid, s["staff"], d["id"], "staff.lock" if management_only else "staff.logout")
 
-    def admin(self, business, action, values, *, account_owner=None, device_token="", staff_token="", management_token=""):
-        with self.tx(business) as c:
+    def admin(self, business, action, values, *, account_owner=None, device_token="", staff_token="", management_token="", _connection=None):
+        with (self.tx(business) if _connection is None else nullcontext(_connection)) as c:
             config = row(c, businesses, businesses.c.id == business)
             if not config:
                 raise OperationsError("Configure business operations first.", 409)
@@ -502,7 +504,23 @@ class Operations:
             needed = {"staff": "staff", "product": "products", "schedule": "schedules", "cancel_schedule": "schedules", "close_shift": "timesheets", "void_order": "void_sales", "cancel_checkout": "void_sales", "enroll_device": "devices", "renew_device": "devices", "delete_device": "devices", "revoke_device": "devices"}.get(action)
             if needed and needed not in granted:
                 raise OperationsError("Your role does not have permission for this action.", 403)
-            if action == "enroll_device":
+            if action in {"import_preview", "import_rows"}:
+                savepoint = c.begin_nested()
+                try:
+                    result = imports.apply(c, business, values.get("kind"), values.get("rows"), values.get("branch"), scoped_branch, granted, role == "owner", actor, self.now(), lambda nested, payload: self.admin(business, nested, payload, account_owner=account_owner, device_token=device_token, staff_token=staff_token, management_token=management_token, _connection=c))
+                    if action == "import_preview":
+                        savepoint.rollback()
+                    else:
+                        savepoint.commit()
+                except Exception:
+                    if savepoint.is_active:
+                        savepoint.rollback()
+                    raise
+            elif action.startswith("inventory_"):
+                if "products" not in granted:
+                    raise OperationsError("Inventory management permission is required.", 403)
+                result = inventory.handle(c, business, action, values, scoped_branch, actor, self.now())
+            elif action == "enroll_device":
                 if scoped_branch and values.get("branch") != scoped_branch:
                     raise OperationsError("Choose a device branch you can manage.", 403)
                 result = self._enroll_device(c, business, values.get("branch"), values.get("name"), values.get("mode"))
@@ -624,10 +642,13 @@ class Operations:
                 active = values.get("active", existing["active"] if existing else True)
                 if not isinstance(active, bool):
                     raise OperationsError("Product active status must be true or false.")
+                if existing and existing["branch"] != branch:
+                    raise OperationsError("Create a separate branch product instead of moving its stock history.")
                 record = dict(id=pid, business=business, branch=branch, name=clean(values.get("name")), sku=sku,
                     category=clean(values.get("category", "Products"), 80), price_cents=whole(values.get("price_cents"), 1),
                     stock=whole(values.get("stock"), 0, 1000000), active=active)
                 c.execute(update(products).where(products.c.id == pid).values(**record) if existing else products.insert().values(**record))
+                inventory.save_product(c, record, values, existing["stock"] if existing else 0, actor, self.now())
                 result = {"id": pid}
             elif action == "schedule":
                 person = row(c, staff, (staff.c.business == business) & (staff.c.id == values.get("staff")))
@@ -666,6 +687,7 @@ class Operations:
                 order = row(c, orders, (orders.c.business == business) & (orders.c.id == values.get("id")))
                 if not order or order["status"] != "paid" or scoped_branch and order["branch"] != scoped_branch:
                     raise OperationsError("Choose a paid order that has not been voided.", 409)
+                inventory.restore_sale(c, order, actor, self.now())
                 for line in json.loads(order["items"]):
                     c.execute(update(products).where(products.c.id == line["id"]).values(stock=products.c.stock + line["quantity"]))
                 c.execute(update(orders).where(orders.c.id == order["id"]).values(status="void", ticket="cancelled"))
@@ -744,6 +766,9 @@ class Operations:
         else:
             saved_codes = {r["device"]: r for r in rows(c, device_codes, device_codes.c.business == business)}
             result["devices"] = [{**d, "pairing_code": saved_codes.get(d["id"], {}).get("code"), "code_expires": saved_codes.get(d["id"], {}).get("expires", 0), "code_used": saved_codes.get(d["id"], {}).get("used", False)} for d in result["devices"] if not saved_codes.get(d["id"], {}).get("deleted") and (not scoped_branch or d["branch"] == scoped_branch)]
+        result["inventory"] = inventory.snapshot(c, business, scoped_branch) if "products" in granted else {}
+        imported = rows(c, imports.history, (imports.history.c.business == business) & ((imports.history.c.branch == scoped_branch) if scoped_branch else text("true")))
+        result["imported_history"] = [{**r, "data": json.loads(r["data"])} for r in imported if (r["kind"] == "sales" and "reports" in granted) or (r["kind"] == "login_events" and "audit" in granted)]
         return result
 
     @staticmethod
@@ -756,7 +781,7 @@ class Operations:
             person, _ = self._session(c, d, staff_token)
             if d["mode"] != "cashier" or "checkout" not in self.permissions(c, person):
                 raise OperationsError("Checkout is available only on cashier devices.", 403)
-            return rows(c, products, (products.c.business == d["business"]) & (products.c.branch == d["branch"]) & products.c.active.is_(True))
+            return inventory.catalog(c, rows(c, products, (products.c.business == d["business"]) & (products.c.branch == d["branch"]) & products.c.active.is_(True)))
 
     def checkout(self, device_token, staff_token, values):
         bid = self.device_business(device_token)["business"]["id"]
@@ -781,7 +806,7 @@ class Operations:
                 raise OperationsError("Choose between 1 and 100 order lines.")
             lines, requested = [], {}
             for item in incoming:
-                if set(item) - {"id", "quantity", "note"}:
+                if set(item) - {"id", "quantity", "note", "modifiers"}:
                     raise OperationsError("Product prices must come from the server catalog.")
                 p = row(c, products, (products.c.id == item.get("id")) & (products.c.business == bid) & (products.c.branch == d["branch"]) & products.c.active.is_(True))
                 if not p:
@@ -793,7 +818,17 @@ class Operations:
                 note = str(item.get("note", "")).strip()
                 if len(note) > 200:
                     raise OperationsError("Order notes must be at most 200 characters.")
-                lines.append({"id": p["id"], "sku": p["sku"], "name": p["name"], "quantity": qty, "price_cents": p["price_cents"], "note": note})
+                selected = item.get("modifiers", [])
+                if not isinstance(selected, list) or len(selected) > 10 or any(not isinstance(key, str) for key in selected) or len(set(selected)) != len(selected):
+                    raise OperationsError("Choose up to ten different extras.")
+                additions = []
+                for key in selected:
+                    extra = row(c, inventory.extras, (inventory.extras.c.id == key) & (inventory.extras.c.product == p["id"]) & inventory.extras.c.active.is_(True))
+                    if not extra:
+                        raise OperationsError("A selected extra is unavailable. Review the order.", 409)
+                    additions.append({"id": extra["id"], "name": extra["name"], "price_cents": extra["price_cents"]})
+                preparation = note + (("; " if note else "") + "Extras: " + ", ".join(e["name"] for e in additions) if additions else "")
+                lines.append({"id": p["id"], "sku": p["sku"], "name": p["name"], "quantity": qty, "price_cents": p["price_cents"] + sum(e["price_cents"] for e in additions), "modifiers": additions, "note": preparation})
             subtotal = sum(l["quantity"] * l["price_cents"] for l in lines)
             config = row(c, businesses, businesses.c.id == bid)
             tax = (subtotal * config["tax_bps"] + 5000) // 10000
@@ -811,6 +846,7 @@ class Operations:
                 created=int(self.now()), items=json.dumps(lines), subtotal=subtotal, tax=tax, total=total, received=received, kind=values["kind"], fulfillment=values["fulfillment"], note=note,
                 ticket="queued" if values["kind"] == "restaurant" else "none", status="paid")
             for pid, qty in requested.items():
+                inventory.consume(c, row(c, products, products.c.id == pid), qty, person["id"], self.now(), order["id"])
                 c.execute(update(products).where(products.c.id == pid).values(stock=products.c.stock - qty))
             c.execute(orders.insert().values(**order))
             c.execute(update(sessions).where(sessions.c.token == session["token"]).values(seen=int(self.now())))
@@ -865,3 +901,7 @@ class Operations:
                 _, s = self._session(c, d, staff_token)
             c.execute(update(sessions).where(sessions.c.token == s["token"]).values(seen=int(self.now())))
             return {"ok": True}
+
+# Register additive inventory tables after the shared operations definitions exist.
+from backend import business_inventory as inventory
+from backend import business_imports as imports

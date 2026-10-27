@@ -1,0 +1,17 @@
+# Business CSV / Excel uploads and inventory
+
+The owner console and permitted back-office staff have a CSV / Excel upload tab. Files are parsed locally with a vendored SheetJS reader; no external spreadsheet service receives the file. Supported extensions: CSV, XLSX, XLS. Each file is limited to 1 MB, 100 data rows per selected worksheet, and a bounded API payload. Split larger files into batches.
+
+Choose a table and branch, select a file/worksheet, review the first ten rows, validate the complete batch, then import. Validation runs the same authorized domain actions inside a rolled-back savepoint. Import is atomic: any invalid row rolls back the entire batch. The server independently enforces role and branch permissions. Changing a file, table, worksheet or branch invalidates validation. Templates use the expected headers; timestamps require UTC offsets. Formatted leading zeros in PIN/ID/barcode cells are retained.
+
+Supported tables: products/menu items, categories, brands, suppliers, storage locations, optional restaurant extras/refills, received supplier purchases, stock adjustments, physical stock counts, staff, roles, branches, devices, schedules, closed historical timesheets, sales reference history, and login reference history. Roles and branches require the owner. Other tables require their corresponding management permission. Staff imports generate immutable unique IDs and accept only 4–6 digit numeric PINs; no user accounts are created. Device imports generate connection codes on the server rather than accepting uploaded credentials.
+
+Use external_ref for repeatable updates to staff, roles, branches, devices, schedules and historical timesheets. Identical records are skipped. Stock adjustments/counts are immutable by reference: use a new reference for a correction. Catalog masters match names, products match branch + SKU. Re-importing an existing SKU updates details and prices while preserving its live stock. Receiving the same supplier invoice twice is rejected.
+
+Inventory & buying contains suppliers, received purchases, brands/categories, storage balances, same-branch transfers, stock movements, and menu extras. Received goods increase stock; checkout decreases stock; voids restore the original storage locations. Supplier receiving is not a supplier payment or full general-ledger accounting. Restaurant extras are optional priced/free choices, not ingredient recipes or recipe-level stock consumption.
+
+Imported sales/login files are clearly labelled reference history. They do not create real card/cash payments, alter live sales totals, or authorize sign-ins. Imported timesheets must be closed, nonoverlapping historical intervals and retain import attribution; importing them does not pay wages.
+
+The public business-test-data.html page provides 19 fictional CSV files, a combined workbook and a ZIP. Import in the documented order into a dedicated test business. These files contain test-only PINs and invented prices; never use these credentials for actual staff.
+
+All staff station modes expire after five minutes without user interaction, with a visible countdown. Polling never extends a session. Active interaction keeps staff access within the paired-device authorization lifetime. Temporary manager approval retains its tighter two-minute idle/five-minute maximum window. Time-clock punches clear credentials immediately and do not leave a staff session open.

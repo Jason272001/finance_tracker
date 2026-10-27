@@ -3,7 +3,7 @@
   const {esc,money,cents,request,mount}=OpsUI,$=id=>document.getElementById(id);
   const local=['localhost','127.0.0.1'].includes(location.hostname),base=local?location.origin:'https://api.keeperbma.com';
   const api=(path,data)=>request(base,path,data===undefined?{}:{method:'POST',body:JSON.stringify(data)});
-  let context=null,catalog=[],cart=[],managerUI=null,online=true,lastActor='',busy=false,disposed=false,lastActivity=0,pending=null;
+  let context=null,catalog=[],cart=[],managerUI=null,online=true,lastActor='',busy=false,disposed=false,lastActivity=0,pending=null,extraProduct=null,lastTouch=0,lastSentTouch=0,activityTimer=null,expiring=false,sessionRevision=0;
   const pendingKey='keeperbma_pending_cash_sale';
   try{pending=JSON.parse(sessionStorage.getItem(pendingKey)||'null');}catch(_){sessionStorage.removeItem(pendingKey);}
   function say(text,error=false){$('stationStatus').textContent=text;$('stationStatus').classList.toggle('station-error',error);}
@@ -15,9 +15,10 @@
   function managementActive(){return !!context&&(!!context.management||context.device.mode==='office'&&!!context.staff);}
   function locked(error){clearManagement();hide();cart=[];if(context){context.staff=null;context.management=null;render();}say(error?.message||'Sign in again to continue.',true);}
   async function refresh(){
-    if(disposed)return;
+    if(disposed||expiring)return;
     if(hasOwnerBearer()){ownerSession();return;}
-    try{const next=await api('/operations/device');online=true;const changed=!context||JSON.stringify([context.device.id,context.staff?.id,context.management?.permissions,context.staff?.permissions,context.business.tax_bps])!==JSON.stringify([next.device.id,next.staff?.id,next.management?.permissions,next.staff?.permissions,next.business.tax_bps]);if(changed&&context&&JSON.stringify([context.management?.permissions,context.staff?.permissions])!==JSON.stringify([next.management?.permissions,next.staff?.permissions]))clearManagement();context=next;if(changed)render();else if(context.device.mode==='cashier'&&context.staff)$('stationPay').disabled=busy||(!cart.length&&!pending)||!!pending&&pending.staff!==context.staff.id||cart.some(l=>l.unavailable);}
+    const revision=sessionRevision;
+    try{const next=await api('/operations/device');if(expiring||revision!==sessionRevision)return;online=true;const changed=!context||JSON.stringify([context.device.id,context.staff?.id,context.management?.permissions,context.staff?.permissions,context.business.tax_bps])!==JSON.stringify([next.device.id,next.staff?.id,next.management?.permissions,next.staff?.permissions,next.business.tax_bps]);if(changed&&context&&JSON.stringify([context.management?.permissions,context.staff?.permissions])!==JSON.stringify([next.management?.permissions,next.staff?.permissions]))clearManagement();context=next;if(changed){lastTouch=Date.now()-Math.max(0,300-(Math.min(context.staff?.idle_until||context.server_time,context.staff?.expires||context.server_time)-context.server_time))*1000;lastSentTouch=lastTouch;render();}else if(context.device.mode==='cashier'&&context.staff)$('stationPay').disabled=busy||(!cart.length&&!pending)||!!pending&&pending.staff!==context.staff.id||cart.some(l=>l.unavailable);}
     catch(e){online=false;if(e.status===409){ownerSession();return;}if(e.status===401){context=null;hide();clearManagement();$('stationPair').hidden=false;say('Enter the one-time code from your business owner.');return;}if([402,403].includes(e.status)){context=null;hide();clearManagement();say(e.message,true);return;}if(context)locked(e);else{hide();$('stationPair').hidden=false;say(e.message,true);}}
   }
   function render(){
@@ -44,14 +45,14 @@
       if(!catalog.length)loadCatalog();else renderCatalog();renderCart();
     }else if(context.device.mode==='kitchen'){$('stationKitchen').hidden=false;loadKitchen();}
   }
-  async function loadCatalog(){try{const next=(await api('/operations/catalog')).items;let changed=false;if(!pending)for(const line of cart){const product=next.find(p=>p.id===line.id);const price=product?.price_cents??line.price_cents;if(price!==line.price_cents||line.unavailable!==!product)changed=true;line.price_cents=price;line.unavailable=!product;}catalog=next;online=true;renderCatalog();if(changed||!cart.length)renderCart();}catch(e){if([401,402,403].includes(e.status))locked(e);else{online=false;say(e.message,true);renderCart();}}}
+  async function loadCatalog(){try{const next=(await api('/operations/catalog')).items;let changed=false;if(!pending)for(const line of cart){const product=next.find(p=>p.id===line.id);const selections=(line.modifiers||[]).map(id=>product?.extras?.find(e=>e.id===id));const price=product?product.price_cents+selections.reduce((n,e)=>n+(e?.price_cents||0),0):line.price_cents;const unavailable=!product||selections.some(e=>!e);if(price!==line.price_cents||line.unavailable!==unavailable)changed=true;line.price_cents=price;line.unavailable=unavailable;}catalog=next;online=true;renderCatalog();if(changed||!cart.length)renderCart();}catch(e){if([401,402,403].includes(e.status))locked(e);else{online=false;say(e.message,true);renderCart();}}}
   function renderCatalog(){
     const query=$('stationSearch').value.trim().toLowerCase();
     $('stationProducts').innerHTML=catalog.filter(p=>(p.name+' '+p.category+' '+p.sku).toLowerCase().includes(query)).map(p=>'<button type="button" class="station-product" data-station-product="'+esc(p.id)+'" '+(p.stock<1?'disabled':'')+'><span class="station-product-icon" aria-hidden="true">'+esc(p.name.slice(0,1).toUpperCase())+'</span><strong>'+esc(p.name)+'</strong><span>'+money(p.price_cents)+'</span><small>'+esc(p.category)+' · '+p.stock+' in stock</small></button>').join('')||'<p>No products. Ask a manager to add products for this branch.</p>';
   }
   function total(){const subtotal=cart.reduce((sum,l)=>sum+l.quantity*l.price_cents,0);return subtotal+Math.floor((subtotal*context.business.tax_bps+5000)/10000);}
   function renderCart(){
-    $('stationCart').innerHTML=cart.length?cart.map((l,i)=>'<div class="station-cart-row"><div><strong>'+esc(l.name)+'</strong><p>'+l.quantity+' × '+money(l.price_cents)+'</p><label>Item notes<input data-station-note="'+i+'" maxlength="200" value="'+esc(l.note||'')+'" '+(pending?'disabled':'')+'></label></div><button type="button" data-station-remove="'+i+'" '+(pending?'disabled':'')+'>Remove</button></div>').join(''):'<p>Add products to begin.</p>';
+    $('stationCart').innerHTML=cart.length?cart.map((l,i)=>'<div class="station-cart-row"><div><strong>'+esc(l.name)+'</strong>'+(l.extra_names?.length?'<p>'+esc(l.extra_names.join(', '))+'</p>':'')+'<p>'+l.quantity+' × '+money(l.price_cents)+'</p><label>Item notes<input data-station-note="'+i+'" maxlength="200" value="'+esc(l.note||'')+'" '+(pending?'disabled':'')+'></label></div><button type="button" data-station-remove="'+i+'" '+(pending?'disabled':'')+'>Remove</button></div>').join(''):'<p>Add products to begin.</p>';
     $('stationTotal').textContent='Total '+money(context?total():0)+' · includes configured tax';
     $('stationPay').disabled=busy||!online||(!cart.length&&!pending)||!!pending&&pending.staff!==context.staff?.id||cart.some(l=>l.unavailable);
     $('stationPay').textContent=pending?'Retry pending cash sale':'Record cash sale';
@@ -61,7 +62,8 @@
     $('stationClear').disabled=!!pending;$('stationReconcile').hidden=!pending;
     if(pending&&pending.staff!==context.staff?.id){$('stationPay').disabled=true;say('A previous cashier has an unconfirmed sale. Ask a manager to check it before continuing.',true);}
   }
-  function addProduct(id){if(pending)throw Error('Resolve the pending sale before adding products.');if(cart.length>=100)throw Error('A sale supports at most 100 lines.');const p=catalog.find(p=>p.id===id);if(!p)throw Error('This product is unavailable.');const count=cart.filter(l=>l.id===id).reduce((n,l)=>n+l.quantity,0);if(count>=p.stock)throw Error('No more stock is available.');cart.push({id:p.id,name:p.name,price_cents:p.price_cents,quantity:1,note:'',unavailable:false});renderCart();}
+  function addProduct(id,modifiers=null){if(pending)throw Error('Resolve the pending sale before adding products.');if(cart.length>=100)throw Error('A sale supports at most 100 lines.');const p=catalog.find(p=>p.id===id);if(!p)throw Error('This product is unavailable.');const count=cart.filter(l=>l.id===id).reduce((n,l)=>n+l.quantity,0);if(count>=p.stock)throw Error('No more stock is available.');if(modifiers===null&&p.extras?.length){extraProduct=id;$('stationExtrasForm').reset();$('stationExtrasProduct').textContent=p.name;$('stationExtrasOptions').innerHTML=p.extras.map(e=>'<label class="ops-check"><input type="checkbox" name="extra" value="'+esc(e.id)+'">'+esc(e.name)+' · '+money(e.price_cents)+'</label>').join('');$('stationExtras').showModal();return;}const selected=(modifiers||[]).map(id=>p.extras.find(e=>e.id===id));cart.push({id:p.id,name:p.name,price_cents:p.price_cents+selected.reduce((n,e)=>n+e.price_cents,0),quantity:1,note:'',modifiers:modifiers||[],extra_names:selected.map(e=>e.name),unavailable:false});renderCart();}
+
   function showReceipt(order){
     $('stationReceiptBody').innerHTML='<p>'+esc(order.id)+' · '+esc(new Date(order.created*1000).toLocaleString())+'</p><p>Cashier: '+esc(order.cashier_name)+'</p><ul>'+order.items.map(l=>'<li>'+l.quantity+' × '+esc(l.name)+' · '+money(l.price_cents*l.quantity)+(l.note?'<br>'+esc(l.note):'')+'</li>').join('')+'</ul><p>Subtotal '+money(order.subtotal)+' · Tax '+money(order.tax)+'</p><p class="station-total">Total '+money(order.total)+'</p><p>Cash received '+money(order.received)+' · Change '+money(order.received-order.total)+'</p><p>'+esc(order.fulfillment)+(order.kind==='restaurant'?' · Kitchen ticket '+esc(order.ticket):'')+'</p>';
     $('stationReceipt').showModal();
@@ -88,13 +90,15 @@
   form('stationPayForm',async()=>{
     if(!context?.staff)throw Error('Sign in before checkout.');
     if(pending&&pending.staff!==context.staff.id)throw Error('Only the original cashier can retry this sale.');
-    const body=pending?.body||{request_id:crypto.randomUUID(),items:cart.map(l=>({id:l.id,quantity:l.quantity,note:l.note||''})),received_cents:cents($('stationPayForm').elements.received.value),expected_total_cents:total(),payment:'cash',kind:$('stationIndustry').value,fulfillment:$('stationFulfillment').value,note:$('stationOrderNote').value};
+    const body=pending?.body||{request_id:crypto.randomUUID(),items:cart.map(l=>({id:l.id,quantity:l.quantity,note:l.note||'',modifiers:l.modifiers||[]})),received_cents:cents($('stationPayForm').elements.received.value),expected_total_cents:total(),payment:'cash',kind:$('stationIndustry').value,fulfillment:$('stationFulfillment').value,note:$('stationOrderNote').value};
     if(!pending)savePending({staff:context.staff.id,device:context.device.id,body});
     try{const order=await api('/operations/orders',body);savePending(null);cart=[];$('stationPayForm').reset();$('stationOrderNote').value='';showReceipt(order);say('Cash sale recorded.');await loadCatalog();}
     catch(e){if([400,409,422].includes(e.status)){savePending(null);await refresh();await loadCatalog();}if(!e.status)e.message='Confirmation was interrupted. Check the pending sale or retry with the same reference; do not collect cash again.';throw e;}
   });
   form('stationApprovalForm',async()=>{const f=$('stationApprovalForm'),data=Object.fromEntries(new FormData(f));f.reset();try{await api('/operations/management/unlock',data);$('stationApproval').close();await refresh();}catch(e){$('stationApprovalError').textContent=e.message;throw e;}});
-  $('stationScan').onsubmit=e=>{e.preventDefault();try{const f=e.target,p=catalog.find(p=>p.sku===f.elements.sku.value.trim());if(!p)throw Error('No product matches this code.');addProduct(p.id);f.reset();}catch(error){say(error.message,true);}};
+  $('stationExtrasForm').onsubmit=e=>{e.preventDefault();try{const ids=[...e.target.querySelectorAll('[name="extra"]:checked')].map(box=>box.value);addProduct(extraProduct,ids);$('stationExtras').close();}catch(error){say(error.message,true);}};
+  $('stationExtrasCancel').onclick=()=>$('stationExtras').close();
+  $('stationScan').onsubmit=e=>{e.preventDefault();try{const f=e.target,p=catalog.find(p=>p.sku===f.elements.sku.value.trim()||p.barcode===f.elements.sku.value.trim());if(!p)throw Error('No product matches this code.');addProduct(p.id);f.reset();}catch(error){say(error.message,true);}};
   $('stationCheckout').addEventListener('click',e=>{const p=e.target.closest('[data-station-product]'),remove=e.target.closest('[data-station-remove]');try{if(p)addProduct(p.dataset.stationProduct);if(remove&&!pending){cart.splice(Number(remove.dataset.stationRemove),1);renderCart();}}catch(error){say(error.message,true);}});
   $('stationCart').oninput=e=>{if(e.target.hasAttribute('data-station-note')&&!pending)cart[Number(e.target.dataset.stationNote)].note=e.target.value;};
   $('stationSearch').oninput=renderCatalog;$('stationIndustry').onchange=()=>{$('stationFulfillmentLabel').hidden=$('stationIndustry').value!=='restaurant';};
@@ -110,13 +114,13 @@
   $('stationReceiptClose').onclick=()=>$('stationReceipt').close();$('stationReceiptPrint').onclick=()=>window.print();
   $('stationManagement').addEventListener('ops-auth-error',e=>locked(e.detail));
   $('stationTickets').addEventListener('click',async e=>{const b=e.target.closest('[data-ticket]');if(!b)return;b.disabled=true;try{await api('/operations/kitchen/'+b.dataset.ticket,{status:b.dataset.ticketState});await loadKitchen();}catch(error){if([401,402,403].includes(error.status))locked(error);else say(error.message,true);}finally{if(b.isConnected)b.disabled=false;}});
-  for(const event of ['pointerdown','keydown'])document.addEventListener(event,()=>{
-    if(!context||Date.now()-lastActivity<30000||(!context.staff&&!context.management))return;
-    lastActivity=Date.now();api('/operations/activity',{management:managementActive()}).catch(e=>{if([401,402,403].includes(e.status))locked(e);});
-  },{passive:true});
+  async function sendActivity(){if(!context||(!context.staff&&!context.management)||lastTouch<=lastSentTouch)return;const touch=lastTouch;lastSentTouch=touch;try{await api('/operations/activity',{management:managementActive()});}catch(e){if([401,402,403].includes(e.status))locked(e);}}
+  for(const event of ['pointerdown','keydown','input','touchstart'])document.addEventListener(event,()=>{if(!context||(!context.staff&&!context.management))return;lastTouch=Date.now();clearTimeout(activityTimer);activityTimer=setTimeout(sendActivity,500);},{passive:true});
+  setInterval(()=>{if(!context?.staff){$('stationIdle').textContent='';return;}const serverRemaining=Math.min(context.staff.idle_until,context.staff.expires)-context.server_time;const localDeadline=(lastTouch||0)+300000;const remaining=Math.max(0,Math.ceil(lastTouch?(localDeadline-Date.now())/1000:serverRemaining));$('stationIdle').textContent='Staff sign-out after inactivity: '+Math.floor(remaining/60)+':'+String(remaining%60).padStart(2,'0');if(!remaining&&!expiring){expiring=true;sessionRevision++;clearManagement();context.staff=null;context.management=null;cart=[];render();say('Signed out after five minutes without interaction. Enter your ID and PIN again.');api('/operations/staff/logout',{}).catch(()=>{}).finally(()=>{expiring=false;});}},1000);
+  setInterval(sendActivity,10000);
   setInterval(()=>{if(document.visibilityState==='visible'&&!busy){refresh();if(context?.staff&&context.device.mode==='cashier'&&!managementActive()&&!pending)loadCatalog();}},5000);
   setInterval(()=>{if(document.visibilityState==='visible'&&!busy)loadKitchen();},2000);
   window.addEventListener('online',refresh);window.addEventListener('offline',()=>{online=false;say('Connection lost. Checkout is paused.',true);if(context?.device.mode==='cashier')renderCart();if(managementActive())locked(Error('Reconnect and sign in again to manage this device.'));});
-  window.addEventListener('pagehide',()=>{disposed=true;clearManagement();});
+  window.addEventListener('pagehide',()=>{disposed=true;clearTimeout(activityTimer);clearManagement();});
   refresh();
 })();

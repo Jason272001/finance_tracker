@@ -23,6 +23,9 @@ def main():
     for extension in ("*.js", "*.css", "*.html"):
         for asset in (ROOT / "frontends" / "web").glob(extension):
             shutil.copy2(asset, web_output / asset.name)
+    vendor = ROOT / "frontends" / "web" / "vendor"
+    if vendor.exists():
+        shutil.copytree(vendor, web_output / "vendor")
     (OUTPUT / ".nojekyll").touch()
     # Directory-style aliases also work on hosts without rewrite support.
     for page in ("auth", "plans", "payment", "settings", "privacy-policy", "delete-account", "demo"):
