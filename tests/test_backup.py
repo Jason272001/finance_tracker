@@ -30,4 +30,6 @@ class BackupTests(unittest.TestCase):
             self.assertIn('ops_roles.csv', names)
             self.assertIn('ops_staff_roles.csv', names)
             self.assertIn('ops_device_codes.csv', names)
+            for table in ['ops_inventory_masters','ops_product_details','ops_stock_balances','ops_stock_movements','ops_supplier_receipts','ops_product_extras','ops_import_links','ops_imported_history']:
+                self.assertIn(table+'.csv', names)
             self.assertIn('evt_test', (Path(destination) / 'postgres' / 'stripe_processed_events.csv').read_text())

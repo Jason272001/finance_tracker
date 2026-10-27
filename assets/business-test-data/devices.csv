@@ -1,0 +1,6 @@
+﻿"external_ref","name","branch","mode","device_code"
+"DEV001","Test register 1","Main branch","cashier",""
+"DEV002","Test register 2","Main branch","cashier",""
+"DEV003","Test kitchen","Main branch","kitchen",""
+"DEV004","Test time clock","Main branch","clock",""
+"DEV005","Test office","Main branch","office",""

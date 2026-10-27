@@ -2,9 +2,9 @@ name: Business device operations
 on:
   push:
     branches: [master, 'codex/**']
-    paths: ['backend/business_operations*', 'backend/main.py', 'frontends/web/business-*', 'business-device.html', 'operations-admin.html', 'tests/test_business_operations.py', 'tests/operations_browser_server.py', 'tests/browser-operations/**', 'playwright.operations.config.cjs', '.github/workflows/business-operations.yml']
+    paths: ['backend/business_operations*', 'backend/business_inventory.py', 'backend/business_imports.py', 'backend/main.py', 'frontends/web/business-*', 'business-device.html', 'operations-admin.html', 'tests/test_business_operations.py', 'tests/test_business_imports.py', 'tests/operations_browser_server.py', 'tests/browser-operations/**', 'playwright.operations.config.cjs', '.github/workflows/business-operations.yml']
   pull_request:
-    paths: ['backend/business_operations*', 'frontends/web/business-*', 'tests/browser-operations/**', 'tests/test_business_operations.py']
+    paths: ['backend/business_operations*', 'backend/business_inventory.py', 'backend/business_imports.py', 'frontends/web/business-*', 'tests/browser-operations/**', 'tests/test_business_operations.py', 'tests/test_business_imports.py']
 permissions:
   contents: read
 concurrency:
@@ -37,6 +37,7 @@ jobs:
       - name: Install production-compatible API dependencies
         run: pip install pandas==2.3.3 SQLAlchemy==2.0.48 psycopg2-binary==2.9.11 fastapi==0.116.1 uvicorn==0.35.0 httpx==0.28.1
       - run: python -m unittest discover -s tests -p test_business_operations.py -v
+      - run: python -m unittest discover -s tests -p test_business_imports.py -v
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium webkit
       - run: node node_modules/@playwright/test/cli.js test --config playwright.operations.config.cjs

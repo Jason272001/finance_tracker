@@ -1,0 +1,6 @@
+﻿"external_ref","name","checkout","kitchen","office","approve","reports","products","schedules","staff","timesheets","void_sales","audit","all_branches","devices"
+"ROLE001","Server","true","false","false","false","false","false","false","false","false","false","false","false","false"
+"ROLE002","Supervisor","true","false","true","true","true","false","true","false","true","false","false","false","false"
+"ROLE003","Stock manager","false","false","true","false","false","true","false","false","false","false","false","false","false"
+"ROLE004","Kitchen staff","false","true","false","false","false","false","false","false","false","false","false","false","false"
+"ROLE005","Office manager","true","true","true","true","true","true","true","true","true","true","true","true","true"
