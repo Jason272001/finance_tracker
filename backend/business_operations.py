@@ -85,6 +85,7 @@ PERMISSION_LABELS = {
     "schedules": "Manage schedules", "staff": "Manage team members",
     "timesheets": "View and correct timesheets", "void_sales": "Void cash sales",
     "audit": "View activity log", "all_branches": "Work across all branches",
+    "devices": "Manage business devices",
 }
 DEFAULT_ROLES = {
     "manager": ("Manager", set(PERMISSION_LABELS)),
@@ -108,6 +109,10 @@ devices = Table("ops_devices", metadata, Column("id", String(32), primary_key=Tr
     Column("active", Boolean, nullable=False), Column("created", BigInteger, nullable=False))
 pairings = Table("ops_pairings", metadata, Column("token", String(64), primary_key=True),
     Column("device", String(32), nullable=False), Column("expires", BigInteger, nullable=False))
+device_codes = Table("ops_device_codes", metadata, Column("device", String(32), primary_key=True),
+    Column("business", Integer, nullable=False, index=True), Column("code", String(16)),
+    Column("expires", BigInteger, nullable=False), Column("used", Boolean, nullable=False, default=False),
+    Column("deleted", Boolean, nullable=False, default=False))
 sessions = Table("ops_sessions", metadata, Column("token", String(64), primary_key=True),
     Column("device", String(32), nullable=False, index=True), Column("staff", String(32), nullable=False),
     Column("kind", String(16), nullable=False), Column("epoch", Integer, nullable=False),
@@ -208,8 +213,12 @@ class Operations:
 
     def _ensure_roles(self, c, business):
         for key, (name, permissions) in DEFAULT_ROLES.items():
-            if not row(c, roles, (roles.c.business == business) & (roles.c.builtin == key)):
+            existing = row(c, roles, (roles.c.business == business) & (roles.c.builtin == key))
+            if not existing:
                 c.execute(roles.insert().values(id=identity(), business=business, name=name, name_key=name.casefold(), builtin=key, permissions=json.dumps(sorted(permissions))))
+            elif key == "manager" and set(json.loads(existing["permissions"])) == set(PERMISSION_LABELS) - {"devices"}:
+                c.execute(update(roles).where(roles.c.id == existing["id"]).values(permissions=json.dumps(sorted(permissions))))
+                c.execute(update(staff).where((staff.c.business == business) & (staff.c.role == "manager")).values(epoch=staff.c.epoch + 1))
 
     def _role_for(self, c, person):
         assignment = row(c, role_assignments, role_assignments.c.staff == person["id"])
@@ -350,37 +359,52 @@ class Operations:
             return {"business": {"id": b["id"], "name": b["name"], "timezone": b["timezone"], "tax_bps": b["tax_bps"]},
                     "device": {k: d[k] for k in ["id", "name", "mode", "branch"]}, "branch": branch["name"], "staff": actor, "management": management, "server_time": int(self.now())}
 
-    def enroll(self, business, branch, name, mode, actor):
+    def _code_for_device(self, c, device):
+        code, now = secrets.token_hex(8).upper(), int(self.now())
+        if device.get("active") is False:
+            c.execute(update(devices).where(devices.c.id == device["id"]).values(token=None))
+            c.execute(delete(sessions).where(sessions.c.device == device["id"]))
+        c.execute(delete(pairings).where(pairings.c.device == device["id"]))
+        c.execute(pairings.insert().values(token=digest(code), device=device["id"], expires=now + 300))
+        c.execute(delete(device_codes).where(device_codes.c.device == device["id"]))
+        c.execute(device_codes.insert().values(device=device["id"], business=device["business"], code=code, expires=now + 300, used=False, deleted=False))
+        c.execute(update(devices).where(devices.c.id == device["id"]).values(active=True, expires=now + 30 * 86400))
+        return {"id": device["id"], "code": code, "expires": now + 300}
+
+    def _enroll_device(self, c, business, branch, name, mode):
         if mode not in {"cashier", "kitchen", "clock", "office"}:
             raise OperationsError("Choose cashier, kitchen, clock or office.")
+        self._branch(c, business, branch)
+        did, now = identity(), int(self.now())
+        c.execute(devices.insert().values(id=did, business=business, branch=branch, name=clean(name, 80), mode=mode, active=True, created=now, expires=now + 30 * 86400))
+        return self._code_for_device(c, {"id": did, "business": business})
+
+    def enroll(self, business, branch, name, mode, actor):
         with self.tx(business) as c:
-            self._branch(c, business, branch)
-            did, code, now = identity(), secrets.token_hex(8).upper(), int(self.now())
-            c.execute(devices.insert().values(id=did, business=business, branch=branch, name=clean(name, 80),
-                mode=mode, active=True, created=now, expires=now + 30 * 86400))
-            c.execute(pairings.insert().values(token=digest(code), device=did, expires=now + 300))
-            self.log(c, business, actor, "", "device.enrollment_created", did)
-        return {"id": did, "code": code, "expires": now + 300}
+            result = self._enroll_device(c, business, branch, name, mode)
+            self.log(c, business, actor, "", "device.enrollment_created", result["id"])
+            return result
 
     def pair(self, code, address):
-        error, result = None, None
         with self.tx() as c:
-            if not self._rate(c, "pair:" + address, 30):
-                error = OperationsError("Too many pairing attempts. Try again in five minutes.", 429)
-            else:
-                pairing = row(c, pairings, pairings.c.token == digest(str(code).strip().upper()))
-                d = row(c, devices, devices.c.id == pairing["device"]) if pairing else None
-                if not pairing or pairing["expires"] <= self.now() or not d or not d["active"]:
-                    error = OperationsError("Pairing code is invalid or expired.", 401)
-                else:
-                    secret = secrets.token_urlsafe(32)
-                    c.execute(update(devices).where(devices.c.id == d["id"]).values(token=digest(secret)))
-                    c.execute(delete(pairings).where(pairings.c.token == pairing["token"]))
-                    self.log(c, d["business"], "owner-enrollment", d["id"], "device.paired")
-                    result = secret
-        if error:
-            raise error
-        return result
+            allowed = self._rate(c, "pair:" + address, 30)
+        if not allowed:
+            raise OperationsError("Too many pairing attempts. Try again in five minutes.", 429)
+        with self.read() as c:
+            saved = row(c, pairings, pairings.c.token == digest(str(code).strip().upper()))
+            target = row(c, devices, devices.c.id == saved["device"]) if saved else None
+        with self.tx(target["business"] if target else 0) as c:
+            pairing = row(c, pairings, pairings.c.token == digest(str(code).strip().upper()))
+            d = row(c, devices, devices.c.id == pairing["device"]) if pairing else None
+            if not pairing or pairing["expires"] <= self.now() or not d or not d["active"]:
+                raise OperationsError("Pairing code is invalid or expired.", 401)
+            secret = secrets.token_urlsafe(32)
+            c.execute(update(devices).where(devices.c.id == d["id"]).values(token=digest(secret)))
+            c.execute(delete(pairings).where(pairings.c.token == pairing["token"]))
+            c.execute(delete(sessions).where(sessions.c.device == d["id"]))
+            c.execute(update(device_codes).where(device_codes.c.device == d["id"]).values(used=True))
+            self.log(c, d["business"], "owner-enrollment", d["id"], "device.paired")
+            return secret
 
     def authenticate(self, device_token, code, credential, action="login", current_token=""):
         business = self.device_business(device_token)["business"]["id"]
@@ -475,10 +499,30 @@ class Operations:
                     c.execute(update(sessions).where(sessions.c.token == session["token"]).values(seen=int(self.now())))
             if action == "snapshot":
                 return self._admin_snapshot(c, business, role, values.get("date"), granted, scoped_branch)
-            needed = {"staff": "staff", "product": "products", "schedule": "schedules", "cancel_schedule": "schedules", "close_shift": "timesheets", "void_order": "void_sales", "cancel_checkout": "void_sales"}.get(action)
+            needed = {"staff": "staff", "product": "products", "schedule": "schedules", "cancel_schedule": "schedules", "close_shift": "timesheets", "void_order": "void_sales", "cancel_checkout": "void_sales", "enroll_device": "devices", "renew_device": "devices", "delete_device": "devices", "revoke_device": "devices"}.get(action)
             if needed and needed not in granted:
                 raise OperationsError("Your role does not have permission for this action.", 403)
-            if action == "role":
+            if action == "enroll_device":
+                if scoped_branch and values.get("branch") != scoped_branch:
+                    raise OperationsError("Choose a device branch you can manage.", 403)
+                result = self._enroll_device(c, business, values.get("branch"), values.get("name"), values.get("mode"))
+            elif action in {"renew_device", "delete_device", "revoke_device"}:
+                target = row(c, devices, (devices.c.business == business) & (devices.c.id == values.get("id")))
+                saved = row(c, device_codes, device_codes.c.device == target["id"]) if target else None
+                if not target or saved and saved["deleted"] or scoped_branch and target["branch"] != scoped_branch:
+                    raise OperationsError("Choose a device you can manage.", 403)
+                if action == "renew_device":
+                    result = self._code_for_device(c, target)
+                else:
+                    c.execute(update(devices).where(devices.c.id == target["id"]).values(active=False, token=None))
+                    c.execute(delete(pairings).where(pairings.c.device == target["id"]))
+                    c.execute(delete(sessions).where(sessions.c.device == target["id"]))
+                    if saved:
+                        c.execute(update(device_codes).where(device_codes.c.device == target["id"]).values(deleted=action == "delete_device", used=True))
+                    else:
+                        c.execute(device_codes.insert().values(device=target["id"], business=business, code=None, expires=0, used=True, deleted=action == "delete_device"))
+                    result = {"id": target["id"], "ok": True}
+            elif action == "role":
                 if role != "owner":
                     raise OperationsError("Only the owner can create or change permission roles.", 403)
                 existing_role = row(c, roles, (roles.c.business == business) & (roles.c.id == values.get("id", "")))
@@ -613,11 +657,6 @@ class Operations:
                 reason = clean(values.get("reason"), 200)
                 c.execute(update(punches).where(punches.c.id == shift["id"]).values(end=end, closed_by=actor, adjustment_note=reason))
                 result = {"id": shift["id"]}
-            elif action == "revoke_device":
-                if role != "owner":
-                    raise OperationsError("Only the owner can revoke devices.", 403)
-                c.execute(update(devices).where((devices.c.business == business) & (devices.c.id == values.get("id"))).values(active=False))
-                result = {"ok": True}
             elif action == "config":
                 if role != "owner":
                     raise OperationsError("Only the owner can change tax settings.", 403)
@@ -700,8 +739,11 @@ class Operations:
         elif not granted & {"staff", "timesheets"}:
             for person in result["staff"]:
                 person.pop("hourly_cents", None)
-        if role != "owner":
+        if "devices" not in granted:
             result["devices"] = []
+        else:
+            saved_codes = {r["device"]: r for r in rows(c, device_codes, device_codes.c.business == business)}
+            result["devices"] = [{**d, "pairing_code": saved_codes.get(d["id"], {}).get("code"), "code_expires": saved_codes.get(d["id"], {}).get("expires", 0), "code_used": saved_codes.get(d["id"], {}).get("used", False)} for d in result["devices"] if not saved_codes.get(d["id"], {}).get("deleted") and (not scoped_branch or d["branch"] == scoped_branch)]
         return result
 
     @staticmethod
