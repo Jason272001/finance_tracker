@@ -10,7 +10,7 @@ from sqlalchemy import create_engine, select, text, update
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-from backend.business_operations import Operations, OperationsError, products, sessions, audit, businesses, staff as operations_staff, roles, role_assignments
+from backend.business_operations import Operations, OperationsError, products, sessions, audit, businesses, staff as operations_staff, roles, role_assignments, devices
 from backend.business_operations_api import create_operations_router, OperationsBodyLimit
 
 
@@ -232,6 +232,72 @@ class OperationsTests(OperationsFixture, unittest.TestCase):
         self.assertEqual(failure.exception.status, 429)
         self.tick += 301
         self.assertTrue(self.ops.authenticate(two, "90000", "807362", "management"))
+
+    def test_device_code_survives_reload_and_can_be_renewed_without_new_device(self):
+        created = self.ops.enroll(1, self.branch, "Saved register", "cashier", "account:10")
+        restarted = Operations(self.engine, now=lambda: self.tick)
+        device = next(d for d in restarted.admin(1, "snapshot", {}, account_owner=10)["devices"] if d["id"] == created["id"])
+        self.assertEqual(device["pairing_code"], created["code"])
+        self.tick += 301
+        expired = next(d for d in self.owner("snapshot")["devices"] if d["id"] == created["id"])
+        self.assertLess(expired["code_expires"], self.tick)
+        renewed = self.owner("renew_device", id=created["id"])
+        self.assertNotEqual(renewed["code"], created["code"])
+        self.assertEqual(renewed["id"], created["id"])
+        with self.assertRaises(OperationsError):
+            self.ops.pair(created["code"], "test")
+        self.ops.pair(renewed["code"], "test")
+        self.assertEqual(len(self.owner("snapshot")["devices"]), 1)
+        self.assertTrue(self.owner("snapshot")["devices"][0]["code_used"])
+
+    def test_new_connection_replaces_old_station_and_deletion_keeps_sale_history(self):
+        old, session = self.cashier()
+        sale = self.ops.checkout(old, session, self.sale(self.product()))
+        did = self.ops.context(old, session)["device"]["id"]
+        renewed = self.owner("renew_device", id=did)
+        self.assertTrue(self.ops.context(old, session)["staff"])
+        replacement = self.ops.pair(renewed["code"], "test")
+        with self.assertRaises(OperationsError):
+            self.ops.context(old, session)
+        self.assertIsNone(self.ops.context(replacement)["staff"])
+        self.owner("delete_device", id=did)
+        self.assertEqual(self.owner("snapshot")["devices"], [])
+        self.assertEqual(self.owner("snapshot")["orders"][0]["id"], sale["id"])
+        with self.assertRaises(OperationsError):
+            self.ops.context(replacement)
+        with self.assertRaises(OperationsError):
+            self.owner("renew_device", id=did)
+        legacy, legacy_session = self.cashier()
+        legacy_id = self.ops.context(legacy, legacy_session)["device"]["id"]
+        with self.engine.begin() as connection:
+            connection.execute(update(devices).where(devices.c.id == legacy_id).values(active=False))
+        self.owner("renew_device", id=legacy_id)
+        with self.assertRaises(OperationsError):
+            self.ops.context(legacy, legacy_session)
+
+    def test_device_codes_are_restricted_to_device_permission_and_branch(self):
+        office = self.device("office")
+        manager = self.ops.authenticate(office, "10001", "7351")
+        created = self.ops.admin(1, "enroll_device", {"branch": self.branch, "name": "Manager station", "mode": "clock"}, device_token=office, staff_token=manager)
+        saved = self.ops.admin(1, "snapshot", {}, device_token=office, staff_token=manager)
+        self.assertIn(created["code"], [d["pairing_code"] for d in saved["devices"]])
+        role = self.owner("role", name="Reports only", permissions=["office", "reports"])["id"]
+        member = self.owner("staff", branch=self.branch, name="Reader", role_id=role, credential="1234")
+        reader_device = self.device("office")
+        reader = self.ops.authenticate(reader_device, member["code"], "1234")
+        data = self.ops.admin(1, "snapshot", {}, device_token=reader_device, staff_token=reader)
+        self.assertEqual(data["devices"], [])
+        self.assertNotIn(created["code"], json.dumps(data))
+        for action in ["renew_device", "delete_device", "enroll_device"]:
+            with self.assertRaises(OperationsError) as error:
+                self.ops.admin(1, action, {"id": created["id"]}, device_token=reader_device, staff_token=reader)
+            self.assertEqual(error.exception.status, 403)
+        self.owner("role", id=role, name="Devices in this branch", permissions=["office", "devices"])
+        reader = self.ops.authenticate(reader_device, member["code"], "1234")
+        branch = self.owner("branch", name="Second location")["id"]
+        remote = self.ops.enroll(1, branch, "Other branch", "clock", "account:10")
+        with self.assertRaises(OperationsError):
+            self.ops.admin(1, "renew_device", {"id": remote["id"]}, device_token=reader_device, staff_token=reader)
 
     def test_all_roles_use_numeric_pins_and_leading_zeroes_are_preserved(self):
         for role in ["owner", "manager", "cashier", "kitchen", "staff"]:

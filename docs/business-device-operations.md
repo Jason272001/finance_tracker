@@ -14,7 +14,7 @@ Shared stations must be signed out of the business account. The application chec
 
 ## Roles and permissions
 
-The owner creates named roles under **Roles & permissions** and enables only the required work tools. Permissions cover checkout, kitchen tickets, office access, management approval, products, reports, schedules, team management, timesheets, cash voids, activity and access across branches. Owner account/device authorization, branch and tax settings and permission-role editing remain owner-only.
+The owner creates named roles under **Roles & permissions** and enables only the required work tools. Permissions cover checkout, kitchen tickets, office access, management approval, products, reports, schedules, team management, timesheets, cash voids, activity and access across branches. Account ownership, branch and tax settings and permission-role editing remain owner-only. The owner can delegate device management through its own permission.
 
 Existing staff keep their IDs, credentials and effective access. Legacy roles appear as editable starter roles: Manager, Sales team, Kitchen team and Team member. Cashier and time clock are device functions, not mandatory job roles. Every active staff member can clock in/out on an authorized clock device for their branch; roles may allow work across branches. A punch clears credentials and creates no persistent staff session.
 
@@ -49,3 +49,9 @@ Kitchen displays poll shared server records. A paid restaurant order progresses 
 Any account-data deletion process must also cover that owner's `ops_*` data. A full SQL backup is recommended before initial rollout. Future schema changes need a reviewed migration; `create_all` only creates missing tables and does not upgrade existing columns.
 
 Verification: isolated SQLite/PostgreSQL domain and API tests; separate-browser cashier/kitchen/kiosk/office tests; compatibility rehearsal against the production backend's FastAPI version and existing authentication helpers. No production account credentials are used in those tests.
+
+## Saved device codes and reconnection
+
+The Devices table shows device name, branch, mode, status and its saved connection code. Owners and staff with **Manage business devices** permission can see codes, copy an unused unexpired code, generate a new code on the same device record, and delete a device. Branch restrictions apply. New codes expire in five minutes and work once; expired and used codes stay visible with their status. Existing devices created before saved-code support need **Generate new code** once to populate the code column.
+
+Generating a code invalidates previous unused codes without creating another device. A currently connected station keeps working until a replacement uses the new code; that connection replaces its authorization and clears operator/approval sessions. Deleting a device revokes its access and removes it from the device list while retaining historical sales, attendance and audit references. Codes are stored in a separate private database table for authorized retrieval; include this table in confidential backups. Ordinary staff and roles without device permission do not receive codes in API responses. The unchanged full-access starter Manager role gains device management; customized roles keep their existing restrictions.

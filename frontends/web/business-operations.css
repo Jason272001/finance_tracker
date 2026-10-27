@@ -2,3 +2,5 @@
 @media print{body{background:#fff}.station-header,.station-shell,#stationApproval{display:none!important}dialog[open]#stationReceipt{position:static;display:block!important;width:100%;max-width:100%;border:0}#stationReceipt button{display:none}.ops-ticket-print{display:block!important;position:absolute;inset:0;background:#fff;padding:20px}.ops-ticket-print~*{display:none}}
 
 .ops-role-summary{margin:0;padding:4px 0;border:0}.ops-role-summary summary{font-size:12px;color:#52647d}.ops-role-summary ul{margin:10px 0;padding-left:18px;line-height:1.7}
+
+.ops-device-code{font-family:monospace;font-size:14px;letter-spacing:1px;user-select:all;white-space:nowrap}[data-ops-code-status]{display:block;min-width:160px;margin-top:7px;color:#64748b;line-height:1.5}
