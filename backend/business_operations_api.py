@@ -166,7 +166,7 @@ def create_operations_router(engine_getter, owner_guard, subscription_guard, *, 
             available = bool(enabled()) and engine_getter() is not None
         except Exception:
             available = False
-        return {"available": available, "api_version": 1, "custom_staff_roles": True, "automatic_staff_ids": True, "saved_device_codes": True}
+        return {"available": available, "api_version": 1, "custom_staff_roles": True, "automatic_staff_ids": True, "saved_device_codes": True, "supplier_inventory": True, "staff_idle_seconds": 300, "bulk_uploads": True}
 
     @router.get("/operations/ready")
     def ready(request: Request, response: Response):
@@ -250,7 +250,7 @@ def create_operations_router(engine_getter, owner_guard, subscription_guard, *, 
         ops, _ = device_store(request)
         device, staff_token, _ = tokens(request)
         secret = call(ops.authenticate, device, body.code, body.credential, "login", staff_token)
-        cookie(response, request, STAFF_COOKIE, secret, 8 * 3600)
+        cookie(response, request, STAFF_COOKIE, secret, 30 * 86400)
         return {"ok": True}
 
     @router.post("/operations/management/unlock")
