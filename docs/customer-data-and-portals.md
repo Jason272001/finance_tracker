@@ -1,0 +1,15 @@
+# Optional customer data and portal
+
+Customer records are disabled by default. The owner can enable records and, independently, private-invitation customer sign-in. Disabling preserves records and table definitions, hides the data tools and revokes customer sessions/invitations. Existing customer login accounts cannot authenticate while the portal is disabled.
+
+Businesses can create up to 20 logical customer tables, each with up to 20 custom fields. Text, number, date, email, phone, boolean and single-choice fields are supported. Core fields include name, email, phone, external reference, active status and branch. Column keys are suggested from labels; templates contain the configured keys. Definitions and values use PostgreSQL JSONB with SQLite JSON only for local tests. No raw SQL, arbitrary DDL, MongoDB service or new physical database is exposed to a business. The API validates types, required fields, choice lists and finite numeric values. Removing a field preserves stored values; a populated table cannot reuse its historical key with a different type.
+
+The owner controls feature flags and table definitions. Staff need the explicit customer permission and remain limited to their branch unless their role grants all-branch access. Existing production roles do not gain the new permission automatically. Snapshot views show up to 1,000 recently updated permitted records, with the full count displayed. There is no automated retention purge.
+
+CSV and Excel imports use the selected customer table and branch, 100 rows per batch. A unique external_ref updates that record within that table. Preview rolls back and the final batch is atomic. Importing a record never creates a customer login. Phone values are not verified and no messaging is sent.
+
+Only the owner can create a customer sign-in invitation for an active record with an email. The invitation is random, hashed in storage, expires after 30 minutes, and works once. The owner distributes it privately; no email or SMS provider is connected. The recipient chooses a 12–128 character customer password. Staff PINs remain 4–6 digits and are unrelated. Customer passwords use the existing salted PBKDF2 implementation. Changing the customer email revokes login access and requires a fresh invitation. Activation/reissue does not grant business or staff permissions.
+
+Customer sessions use random hashed tokens in HttpOnly, Secure, SameSite Strict cookies scoped to the business portal path. Sessions last at most one day. Failed login/activation attempts are durably rate-limited. Customer and business boundaries are checked on each request; disabling a record or the module revokes sessions. The portal displays only that customer's name/email and custom fields explicitly marked customer-visible. Internal fields are hidden by default. Receipts, spending history, loyalty, public self-registration, automated messages and payroll are not part of this portal release.
+
+Customer JSONB values are serialized as valid JSON in confidential CSV backups, including quotes and nested values. Credential and token tables are also confidential backup contents.

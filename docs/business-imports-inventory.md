@@ -14,8 +14,10 @@ Imported sales/login files are clearly labelled reference history. They do not c
 
 The public business-test-data.html page provides 19 fictional CSV files, a combined workbook and a ZIP. Import in the documented order into a dedicated test business. These files contain test-only PINs and invented prices; never use these credentials for actual staff.
 
-All staff station modes expire after five minutes without user interaction, with a visible countdown. Polling never extends a session. Active interaction keeps staff access within the paired-device authorization lifetime. Temporary manager approval retains its tighter two-minute idle/five-minute maximum window. Time-clock punches clear credentials immediately and do not leave a staff session open.
+All staff station modes expire after 45 minutes without user interaction, with a visible countdown. Polling never extends a session. Active interaction keeps staff access within the paired-device authorization lifetime. Temporary manager approval retains its tighter two-minute idle/five-minute maximum window. Time-clock punches clear credentials immediately and do not leave a staff session open.
 
 ## Matching sample files to the workspace
 
 The owner has a dedicated Branches tab, and Branches / stores is the first upload option. Each of the 21 numbered 100-row CSV filenames selects its matching option automatically when the role has access. Retail products and restaurant menu items have separate labels but reuse the same authorized product importer; retail and restaurant sales history share the reference-history importer. Staff access and payroll files have clearly labelled preview-only options, with validation/import disabled. Access is applied through roles and staff imports; payroll import/deductions/payments remain unimplemented. Unknown filenames retain the user-selected table. Branch creation/import is owner-only.
+
+Customer imports appear only after the owner enables the customer module. Select a customer table and branch; its template includes custom field keys. Validate and save through the same atomic import mechanism. Customer records never automatically create portal accounts. Restaurant ingredient templates use product_sku, name, extra_price and optional active; options are priced by the server.
