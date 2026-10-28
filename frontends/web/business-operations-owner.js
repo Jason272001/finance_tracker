@@ -11,7 +11,7 @@
   function close(message){closed=true;view?.dispose();view=null;$('ownerOpsManagement').hidden=true;$('ownerOpsIdentity').hidden=true;$('ownerOpsCode').textContent='';ownerStaff=null;$('ownerOpsSetup').hidden=true;$('ownerOpsSetupForm').reset();say(message,true);}
   function management(){
     $('ownerOpsSetup').hidden=true;$('ownerOpsManagement').hidden=false;
-    view=mount($('ownerOpsManagement'),{load:async day=>{const data=await api(path('admin')+(day?'&date='+encodeURIComponent(day):''));if(!closed){ownerStaff=data.staff.find(person=>person.role==='owner');$('ownerOpsIdentity').hidden=!ownerStaff;$('ownerOpsCode').textContent=ownerStaff?.code||'';$('ownerOpsBusinessName').textContent=data.business.name;}return data;},act:(action,values)=>api(path('admin'),{action,values}),enroll:values=>api(path('enroll'),values),deviceURL:local?new URL('business-device.html',location.href).href:'https://www.keeperbma.com/business-device.html'});
+    view=mount($('ownerOpsManagement'),{load:async day=>{const data=await api(path('admin')+(day?'&date='+encodeURIComponent(day):''));if(!closed){ownerStaff=data.staff.find(person=>person.role==='owner');$('ownerOpsIdentity').hidden=!ownerStaff;$('ownerOpsCode').textContent=ownerStaff?.code||'';$('ownerOpsBusinessName').textContent=data.business.name;}return data;},act:(action,values)=>api(path('admin'),{action,values}),enroll:values=>api(path('enroll'),values),deviceURL:new URL('select-device.html?business_id='+encodeURIComponent(business),location.href).href});
   }
   async function start(){
     if(!Number.isSafeInteger(business)||business<1){close('Choose a business from your signed-in account first.');return;}

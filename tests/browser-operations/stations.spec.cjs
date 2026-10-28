@@ -4,7 +4,7 @@ let fixture;
 
 test.beforeEach(async({request})=>{fixture=await(await request.post('/__test__/reset')).json();});
 
-async function station(browser,name){const context=await browser.newContext({baseURL:'http://127.0.0.1:8767'}),page=await context.newPage();await page.goto('/business-device.html');await page.locator('#stationPairForm [name="code"]').fill(fixture.codes[name]);await page.locator('#stationPairForm button').click();await expect(page.locator('#stationTitle')).toHaveText(name);return {context,page};}
+async function station(browser,name){const context=await browser.newContext({baseURL:'http://127.0.0.1:8767'}),page=await context.newPage();await page.goto('/business-device.html?selected=1');await page.locator('#stationPairForm [name="code"]').fill(fixture.codes[name]);await page.locator('#stationPairForm button').click();await expect(page.locator('#stationTitle')).toHaveText(name);return {context,page};}
 
 async function login(page,code,credential){await page.locator('#stationLoginForm [name="code"]').fill(code);await page.locator('#stationLoginForm [name="credential"]').fill(credential);await page.locator('#stationLoginForm button').click();}
 
@@ -72,7 +72,7 @@ test('owner console authorizes devices while an office manager cannot grant owne
 
 test('a shared station refuses to retain the owner account session',async({browser})=>{
 
- const context=await browser.newContext({baseURL:'http://127.0.0.1:8767'});await context.addCookies([{name:'keeperbma_session',value:'owner-cookie',domain:'127.0.0.1',path:'/',httpOnly:true}]);const page=await context.newPage();try{await page.goto('/business-device.html');await expect(page.locator('#stationOwnerSession')).toBeVisible();await page.locator('#stationOwnerSignout').click();await expect(page.locator('#stationPair')).toBeVisible();}finally{await context.close();}
+ const context=await browser.newContext({baseURL:'http://127.0.0.1:8767'});await context.addCookies([{name:'keeperbma_session',value:'owner-cookie',domain:'127.0.0.1',path:'/',httpOnly:true}]);const page=await context.newPage();try{await page.goto('/business-device.html?selected=1');await expect(page.locator('#stationOwnerSession')).toBeVisible();await page.locator('#stationOwnerSignout').click();await expect(page.locator('#stationPair')).toBeVisible();}finally{await context.close();}
 
 });
 
@@ -120,5 +120,26 @@ test('manager assigns the same device to a locked clock then back to office',asy
   await expect(page.locator('#stationLogin')).toBeVisible();await expect(page.locator('#stationIdentity')).toContainText('office');
   await login(page,'10002','654321');await expect(page.locator('#stationStatus')).toContainText('role');await expect(page.locator('#stationManagement')).toBeHidden();
   await login(page,'10001','7351');await expect(page.locator('#stationManagement')).toBeVisible();await page.locator('#stationLock').click();await expect(page.locator('#stationLogin')).toBeVisible();
+ }finally{await context.close();}
+});
+
+
+test('Select device never reopens C1 automatically and checks the chosen device code',async({browser})=>{
+ const {context,page}=await station(browser,'Cashier 1');try{
+  await page.goto('/business-device.html');await expect(page).toHaveURL(/select-device\.html/);await expect(page.locator('#selectDevice')).toBeVisible();await expect(page.locator('#selectDevice')).toHaveValue('');
+  const options=await context.request.get('/operations/device/options');expect(options.ok()).toBe(true);const choices=(await options.json()).items;expect(choices).toHaveLength(5);expect(JSON.stringify(choices)).not.toContain('pairing_code');
+  const two=choices.find(d=>d.name==='Cashier 2');await page.locator('#selectDevice').selectOption(two.id);await page.locator('#selectContinue').click();await expect(page.locator('#selectPairTitle')).toHaveText('Connect Cashier 2');await page.locator('#selectCancel').click();await expect(page.locator('#selectDevice')).toHaveValue('');await page.locator('#selectDevice').selectOption(two.id);await page.locator('#selectContinue').click();
+  await page.locator('#selectPairForm [name="code"]').fill(fixture.codes['Time clock']);await page.locator('#selectPairForm').getByRole('button',{name:'Connect selected device',exact:true}).click();await expect(page.locator('#selectStatus')).toContainText('another device');await expect(page).toHaveURL(/select-device\.html/);
+  await page.locator('#selectPairForm [name="code"]').fill(fixture.codes['Cashier 2']);await page.locator('#selectPairForm').getByRole('button',{name:'Connect selected device',exact:true}).click();await expect(page.locator('#stationTitle')).toHaveText('Cashier 2');await expect(page.locator('#stationLogin')).toBeVisible();
+  await page.goto('/select-device.html');await expect(page.locator('#selectDevice')).toHaveValue('');await page.screenshot({path:'output/select-device-verified-'+test.info().project.name+'.png',fullPage:true});
+  await page.locator('#selectDevice').selectOption(two.id);await page.locator('#selectContinue').click();await expect(page.locator('#stationTitle')).toHaveText('Cashier 2');await expect(page.locator('#stationLogin')).toBeVisible();
+ }finally{await context.close();}
+});
+
+
+test('owner chooses a named device before signing out and entering its connection code',async({browser})=>{
+ const context=await browser.newContext({baseURL:'http://127.0.0.1:8767'});await context.addInitScript(()=>{if(!localStorage.getItem('keeperbma_logout_at'))localStorage.setItem('keeperbma_token','browser-test-owner');});const page=await context.newPage();try{
+  await page.goto('/select-device.html?business_id=1');await expect(page.locator('#selectDevice')).toBeVisible();await expect(page.locator('#selectDevice')).toHaveValue('');await page.locator('#selectDevice').selectOption({label:'Time clock \u00b7 Main branch \u00b7 Time clock'});await page.locator('#selectContinue').click();await expect(page.locator('#selectOwnerTarget')).toHaveText('Selected device: Time clock');await expect(page.locator('#selectPair')).toBeHidden();
+  await page.locator('#selectOwnerSignout').click();await expect(page.locator('#selectPairTitle')).toHaveText('Connect Time clock');await page.locator('#selectPairForm [name="code"]').fill(fixture.codes['Time clock']);await page.locator('#selectPairForm').getByRole('button',{name:'Connect selected device',exact:true}).click();await expect(page.locator('#stationClock')).toBeVisible();await expect(page.locator('#stationOwnerSession')).toBeHidden();
  }finally{await context.close();}
 });
