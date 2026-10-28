@@ -4,6 +4,8 @@ Separate device and operator credentials ensure a paired till never receives the
 business account's bearer token. All mutations serialize per business on Postgres;
 SQLite is supported for local integration tests only.
 """
+STAFF_IDLE_SECONDS = 45 * 60
+
 from contextlib import contextmanager, nullcontext
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -86,6 +88,7 @@ PERMISSION_LABELS = {
     "timesheets": "View and correct timesheets", "void_sales": "Void cash sales",
     "audit": "View activity log", "all_branches": "Work across all branches",
     "devices": "Manage business devices",
+    "customers": "Manage customer records",
 }
 DEFAULT_ROLES = {
     "manager": ("Manager", set(PERMISSION_LABELS)),
@@ -189,6 +192,7 @@ class Operations:
                     self._ensure_roles(c, config["id"])
                 for existing_product in rows(c, products, products.c.stock >= 0):
                     inventory.ensure_balance(c, existing_product)
+                    industries.register(c, existing_product, row(c, inventory.details, inventory.details.c.product == existing_product["id"]) or {})
             self._initialized = True
 
     @contextmanager
@@ -250,7 +254,7 @@ class Operations:
                 return code
         raise OperationsError("Could not allocate a staff ID. Try again.", 409)
 
-    def setup(self, business, owner, name, code, credential, tz="America/Los_Angeles", initial_staff=None, source_reference=""):
+    def setup(self, business, owner, name, code, credential, tz="America/Los_Angeles", initial_staff=None, source_reference="", industry=None):
         self.validate_credential(code, credential, "owner")
         try:
             ZoneInfo(tz)
@@ -266,6 +270,8 @@ class Operations:
             c.execute(staff.insert().values(id=sid, business=business, branch=branch, name="Business owner",
                 code=code, role="owner", credential=password_hash(credential), active=True, epoch=1, hourly_cents=0))
             self._ensure_roles(c, business)
+            if industry is not None:
+                industries.set_mode(c,business,industry)
             used_codes = {code}
             for index, old in enumerate(initial_staff or []):
                 proposed = str(10001 + index)
@@ -315,7 +321,7 @@ class Operations:
 
     def _session(self, c, device, token, kind="staff"):
         s = row(c, sessions, sessions.c.token == digest(token)) if token else None
-        idle = 120 if kind == "management" else 300
+        idle = 120 if kind == "management" else STAFF_IDLE_SECONDS
         if not s or s["device"] != device["id"] or s["kind"] != kind or s["expires"] <= self.now() or self.now() - s["seen"] >= idle:
             raise OperationsError("Staff sign-in expired or is required.", 401)
         person = row(c, staff, staff.c.id == s["staff"])
@@ -350,7 +356,7 @@ class Operations:
             actor, management = None, None
             try:
                 p, s = self._session(c, d, staff_token)
-                actor = {**self.staff_details(c, p), "expires": s["expires"], "idle_until": s["seen"] + 300}
+                actor = {**self.staff_details(c, p), "expires": s["expires"], "idle_until": s["seen"] + STAFF_IDLE_SECONDS}
             except OperationsError:
                 pass
             try:
@@ -358,7 +364,7 @@ class Operations:
                 management = {"name": p["name"], "role": p["role"], "permissions": sorted(self.permissions(c, p)), "idle_until": s["seen"] + 120, "expires": s["expires"]}
             except OperationsError:
                 pass
-            return {"business": {"id": b["id"], "name": b["name"], "timezone": b["timezone"], "tax_bps": b["tax_bps"]},
+            return {"business": {"id": b["id"], "name": b["name"], "timezone": b["timezone"], "tax_bps": b["tax_bps"], "industry": industries.mode(c, b["id"]), "staff_idle_seconds": STAFF_IDLE_SECONDS},
                     "device": {k: d[k] for k in ["id", "name", "mode", "branch"]}, "branch": branch["name"], "staff": actor, "management": management, "server_time": int(self.now())}
 
     def _code_for_device(self, c, device):
@@ -507,7 +513,7 @@ class Operations:
             if action in {"import_preview", "import_rows"}:
                 savepoint = c.begin_nested()
                 try:
-                    result = imports.apply(c, business, values.get("kind"), values.get("rows"), values.get("branch"), scoped_branch, granted, role == "owner", actor, self.now(), lambda nested, payload: self.admin(business, nested, payload, account_owner=account_owner, device_token=device_token, staff_token=staff_token, management_token=management_token, _connection=c))
+                    result = imports.apply(c, business, values.get("kind"), values.get("rows"), values.get("branch"), scoped_branch, granted, role == "owner", actor, self.now(), lambda nested, payload: self.admin(business, nested, payload, account_owner=account_owner, device_token=device_token, staff_token=staff_token, management_token=management_token, _connection=c), collection_id=values.get("collection"))
                     if action == "import_preview":
                         savepoint.rollback()
                     else:
@@ -516,6 +522,18 @@ class Operations:
                     if savepoint.is_active:
                         savepoint.rollback()
                     raise
+            elif action.startswith("customer"):
+                if "customers" not in granted:
+                    raise OperationsError("Customer management permission is required.",403)
+                result = customers.handle(c,business,action,values,scoped_branch,role=="owner",self.now())
+            elif action == "business_type":
+                if role != "owner":
+                    raise OperationsError("Only the owner can choose the business type.", 403)
+                result = industries.set_mode(c, business, values.get("industry"))
+            elif action == "restaurant_ingredient":
+                if "products" not in granted:
+                    raise OperationsError("Product management permission is required.", 403)
+                result = industries.save_ingredient(c, business, values, scoped_branch)
             elif action.startswith("inventory_"):
                 if "products" not in granted:
                     raise OperationsError("Inventory management permission is required.", 403)
@@ -766,6 +784,9 @@ class Operations:
         else:
             saved_codes = {r["device"]: r for r in rows(c, device_codes, device_codes.c.business == business)}
             result["devices"] = [{**d, "pairing_code": saved_codes.get(d["id"], {}).get("code"), "code_expires": saved_codes.get(d["id"], {}).get("expires", 0), "code_used": saved_codes.get(d["id"], {}).get("used", False)} for d in result["devices"] if not saved_codes.get(d["id"], {}).get("deleted") and (not scoped_branch or d["branch"] == scoped_branch)]
+        result["customers"] = customers.snapshot(c,business,scoped_branch,"customers" in granted)
+        result["business"]["industry"] = industries.mode(c, business)
+        result["products"] = industries.enrich(c, result["products"])
         result["inventory"] = inventory.snapshot(c, business, scoped_branch) if "products" in granted else {}
         imported = rows(c, imports.history, (imports.history.c.business == business) & ((imports.history.c.branch == scoped_branch) if scoped_branch else text("true")))
         result["imported_history"] = [{**r, "data": json.loads(r["data"])} for r in imported if (r["kind"] == "sales" and "reports" in granted) or (r["kind"] == "login_events" and "audit" in granted)]
@@ -781,7 +802,9 @@ class Operations:
             person, _ = self._session(c, d, staff_token)
             if d["mode"] != "cashier" or "checkout" not in self.permissions(c, person):
                 raise OperationsError("Checkout is available only on cashier devices.", 403)
-            return inventory.catalog(c, rows(c, products, (products.c.business == d["business"]) & (products.c.branch == d["branch"]) & products.c.active.is_(True)))
+            selected = industries.require_mode(c, d["business"])
+            items = industries.enrich(c, inventory.catalog(c, rows(c, products, (products.c.business == d["business"]) & (products.c.branch == d["branch"]) & products.c.active.is_(True))))
+            return [p for p in items if p["industry"] == selected]
 
     def checkout(self, device_token, staff_token, values):
         bid = self.device_business(device_token)["business"]["id"]
@@ -804,13 +827,18 @@ class Operations:
             incoming = values.get("items", [])
             if not isinstance(incoming, list) or not 1 <= len(incoming) <= 100:
                 raise OperationsError("Choose between 1 and 100 order lines.")
+            selected_industry = industries.require_mode(c, bid)
+            if values.get("kind") != selected_industry:
+                raise OperationsError("Checkout must match this business type.", 409)
             lines, requested = [], {}
             for item in incoming:
-                if set(item) - {"id", "quantity", "note", "modifiers"}:
+                if set(item) - {"id", "quantity", "note", "modifiers", "ingredients"}:
                     raise OperationsError("Product prices must come from the server catalog.")
                 p = row(c, products, (products.c.id == item.get("id")) & (products.c.business == bid) & (products.c.branch == d["branch"]) & products.c.active.is_(True))
                 if not p:
                     raise OperationsError("A product is unavailable in this branch.", 409)
+                if industries.product_kind(c, p) != selected_industry:
+                    raise OperationsError("This item belongs to the other business catalog.", 409)
                 qty = whole(item.get("quantity"), 1, 100)
                 requested[p["id"]] = requested.get(p["id"], 0) + qty
                 if requested[p["id"]] > p["stock"]:
@@ -821,7 +849,9 @@ class Operations:
                 selected = item.get("modifiers", [])
                 if not isinstance(selected, list) or len(selected) > 10 or any(not isinstance(key, str) for key in selected) or len(set(selected)) != len(selected):
                     raise OperationsError("Choose up to ten different extras.")
-                additions = []
+                if selected_industry == "retail" and (selected or item.get("ingredients")):
+                    raise OperationsError("Restaurant customization is unavailable in Retail checkout.")
+                additions = industries.selected_ingredients(c, p, item.get("ingredients", []))
                 for key in selected:
                     extra = row(c, inventory.extras, (inventory.extras.c.id == key) & (inventory.extras.c.product == p["id"]) & inventory.extras.c.active.is_(True))
                     if not extra:
@@ -856,6 +886,8 @@ class Operations:
     def kitchen(self, device_token, staff_token, ticket_id=None, status=None):
         bid = self.device_business(device_token)["business"]["id"]
         with self.tx(bid) as c:
+            if industries.require_mode(c, bid) != 'restaurant':
+                raise OperationsError('Kitchen tickets are available only for restaurant businesses.',403)
             d = self._device(c, device_token)
             p, session = self._session(c, d, staff_token)
             if d["mode"] != "kitchen" or "kitchen" not in self.permissions(c, p):
@@ -902,6 +934,23 @@ class Operations:
             c.execute(update(sessions).where(sessions.c.token == s["token"]).values(seen=int(self.now())))
             return {"ok": True}
 
+    def customer_portal(self,business,action,values=None,token='',address=''):
+        error=None;result=None
+        with self.tx(business) as c:
+            try:
+                if action in {'login','activate'}:
+                    allowed=self._rate(c,'customer-ip:'+str(business)+':'+address,60,60)
+                    allowed=self._rate(c,'customer-login:'+str(business)+':'+(str((values or {}).get('email','')).strip().casefold() if action=='login' else str((values or {}).get('invite',''))),5,300) and allowed
+                    if not allowed:raise OperationsError('Too many attempts. Try again in five minutes.',429)
+                result=customers.portal(c,business,action,values or {},token,self.now())
+                customer=result.pop('_customer',None)
+                if customer:self.log(c,business,'customer:'+customer,'','customer.'+action)
+            except OperationsError as failure:error=failure
+        if error:raise error
+        return result
+
 # Register additive inventory tables after the shared operations definitions exist.
 from backend import business_inventory as inventory
 from backend import business_imports as imports
+from backend import business_industries as industries
+from backend import business_customers as customers

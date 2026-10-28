@@ -51,10 +51,12 @@ def owner(request, authorization, business, user):
     return {"business_name": "Integration restaurant"}
 
 
-def seed():
+def seed(industry="restaurant"):
     metadata.drop_all(engine)
     ops = Operations(engine)
     config = ops.setup(1, 10, "Integration restaurant", "90000", "908172")
+    if industry != "unconfigured":
+        ops.admin(1,"business_type",{"industry":industry},account_owner=10)
     branch = config["branch"]
     for code, name, role, credential in [("10001", "Manager", "manager", "7351"), ("10002", "Jason", "cashier", "654321"), ("10003", "Kay", "cashier", "123456"), ("10004", "Cook", "kitchen", "456789"), ("10005", "Team member", "staff", "567890")]:
         created = ops.admin(1, "staff", {"branch": branch, "name": name, "code": code, "role": role, "credential": credential}, account_owner=10)
@@ -73,14 +75,14 @@ app.include_router(create_operations_router(lambda: engine, owner, lambda owner,
 
 
 @app.post("/__test__/reset")
-def reset(empty: bool = False):
+def reset(empty: bool = False, industry: str = "restaurant"):
     global fixture
     if empty:
         metadata.drop_all(engine)
         metadata.create_all(engine)
         fixture = {}
     else:
-        fixture = seed()
+        fixture = seed(industry)
     return fixture
 
 

@@ -120,6 +120,8 @@ def save_product(c, p, values, old_stock, actor, now):
     record.update(description=str(record['description'])[:500], barcode=str(record['barcode'])[:60], cost_cents=whole(record['cost_cents']), reorder_point=whole(record['reorder_point'], 0, 1000000), product=p['id'], business=p['business'])
     c.execute(update(details).where(details.c.product == p['id']).values(**record) if previous else details.insert().values(**record))
     master(c, p['business'], 'category', p['category'])
+    from backend.business_operations import industries
+    industries.register(c, p, values)
 
 
 def restore_sale(c, order, actor, now):
@@ -134,11 +136,17 @@ def restore_sale(c, order, actor, now):
             move(c, p, ensure_balance(c, p), line['quantity'], 'sale_void', order['id'], actor, now)
 
 
-def catalog(c, items):
+def catalog(c,items):
+    if not items:return items
+    ids=[p['id'] for p in items]
+    information={r['product']:r for r in rows(c,details,details.c.product.in_(ids))}
+    options={}
+    for extra in rows(c,extras,extras.c.product.in_(ids)&extras.c.active.is_(True)):
+        options.setdefault(extra['product'],[]).append(extra)
     for p in items:
-        info = row(c, details, details.c.product == p['id']) or {}
-        p.update({k: info.get(k, '') for k in ['description', 'barcode', 'brand']})
-        p['extras'] = rows(c, extras, (extras.c.product == p['id']) & extras.c.active.is_(True))
+        info=information.get(p['id'],{})
+        p.update({key:info.get(key,'') for key in ['description','barcode','brand']})
+        p['extras']=options.get(p['id'],[])
     return items
 
 
@@ -148,6 +156,7 @@ def snapshot(c, business, scope=None):
             'details': [r for r in rows(c, details, details.c.business == business) if not scope or product(c, business, r['product'])['branch'] == scope],
             'balances': rows(c, balances, scoped(balances)), 'movements': sorted(rows(c, movements, scoped(movements)), key=lambda r: r['created'], reverse=True)[:500],
             'receipts': [{**r, 'items': json.loads(r['items'])} for r in rows(c, receipts, scoped(receipts))],
+            'ingredients': ingredient_snapshot(c,business,scope),
             'extras': [r for r in rows(c, extras, extras.c.business == business) if not scope or product(c, business, r['product'])['branch'] == scope]}
 
 
@@ -275,17 +284,29 @@ def import_csv(c, business, values, scope, actor, now):
                 if not p['price_cents']:
                     raise OperationsError('The selling price must be greater than zero.')
                 c.execute(update(products).where(products.c.id == p['id']).values(**p) if existing else products.insert().values(**p))
-                info = dict(description=r.get('description', ''), barcode=r.get('barcode', ''), cost_cents=money(r.get('cost') or 0), reorder_point=int(r.get('reorder_point') or 0))
+                info = dict(industry=r.get('industry',''), description=r.get('description', ''), barcode=r.get('barcode', ''), cost_cents=money(r.get('cost') or 0), reorder_point=int(r.get('reorder_point') or 0))
                 for key in ['brand', 'supplier']:
                     info[key] = master(c, business, key, r[key]) if r.get(key) else ''
                 save_product(c, p, info, existing['stock'] if existing else 0, actor, now)
-            elif kind == 'extras':
+            elif kind in {'extras','restaurant_ingredients'}:
                 p = row(c, products, (products.c.business == business) & (products.c.branch == branch) & (products.c.sku == r.get('product_sku')))
                 if not p:
                     raise OperationsError('Import the referenced product SKU first.')
-                handle(c, business, 'inventory_extra', {'product': p['id'], 'name': r.get('name'), 'price_cents': money(r.get('price') or 0)}, scope, actor, now)
+                if kind=='restaurant_ingredients':
+                    from backend.business_industries import save_ingredient
+                    from backend.business_imports import boolean
+                    ingredient_values={'product':p['id'],'name':r.get('name'),'extra_price_cents':money(r.get('extra_price') or 0)}
+                    if 'active' in r:ingredient_values['active']=boolean(r['active'])
+                    save_ingredient(c,business,ingredient_values,scope)
+                else:
+                    handle(c, business, 'inventory_extra', {'product': p['id'], 'name': r.get('name'), 'price_cents': money(r.get('price') or 0)}, scope, actor, now)
             else:
                 raise OperationsError('Choose a supported catalog import type.')
         except (ValueError, OperationsError) as error:
             raise OperationsError(f'CSV row {index}: {error}') from error
     return {'imported': len(records)}
+
+
+def ingredient_snapshot(c,business,scope):
+    from backend.business_industries import ingredients
+    return [r for r in rows(c,ingredients,ingredients.c.business==business) if not scope or product(c,business,r["product"])["branch"]==scope]

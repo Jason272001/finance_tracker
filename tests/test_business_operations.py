@@ -30,6 +30,7 @@ class OperationsFixture:
         self.tick = 1800000000
         self.ops = Operations(self.engine, now=lambda: self.tick)
         configured = self.ops.setup(1, 10, "Test shop", "90000", "908172")
+        self.ops.admin(1, "business_type", {"industry":"restaurant"}, account_owner=10)
         self.branch = configured["branch"]
         self.owner_id = configured["owner_staff_id"]
         self.ids = {}
