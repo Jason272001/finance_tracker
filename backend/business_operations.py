@@ -538,6 +538,20 @@ class Operations:
                 if "products" not in granted:
                     raise OperationsError("Inventory management permission is required.", 403)
                 result = inventory.handle(c, business, action, values, scoped_branch, actor, self.now())
+            elif action == "assign_device":
+                if "devices" not in granted:
+                    raise OperationsError("Device management permission is required.", 403)
+                target = row(c, devices, (devices.c.business == business) & (devices.c.id == values.get("id")))
+                if not target or not target["active"] or scoped_branch and target["branch"] != scoped_branch:
+                    raise OperationsError("Choose an active device you can manage.", 403)
+                mode = values.get("mode")
+                if mode not in {"cashier", "kitchen", "clock", "office"}:
+                    raise OperationsError("Choose cashier, kitchen, clock or office.")
+                if mode == "kitchen" and industries.mode(c, business) != "restaurant":
+                    raise OperationsError("Kitchen devices require a Restaurant business.")
+                c.execute(update(devices).where(devices.c.id == target["id"]).values(mode=mode))
+                c.execute(delete(sessions).where(sessions.c.device == target["id"]))
+                result = {"id": target["id"], "mode": mode}
             elif action == "enroll_device":
                 if scoped_branch and values.get("branch") != scoped_branch:
                     raise OperationsError("Choose a device branch you can manage.", 403)

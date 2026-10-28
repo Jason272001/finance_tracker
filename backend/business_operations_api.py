@@ -174,7 +174,7 @@ def create_operations_router(engine_getter, owner_guard, subscription_guard, *, 
             available = bool(enabled()) and engine_getter() is not None
         except Exception:
             available = False
-        return {"available": available, "api_version": 1, "custom_staff_roles": True, "automatic_staff_ids": True, "saved_device_codes": True, "supplier_inventory": True, "staff_idle_seconds": STAFF_IDLE_SECONDS, "business_industries": True, "restaurant_ingredients": True, "customer_tables": True, "customer_portal": True, "bulk_uploads": True}
+        return {"available": available, "api_version": 1, "custom_staff_roles": True, "automatic_staff_ids": True, "saved_device_codes": True, "device_assignments": True, "supplier_inventory": True, "staff_idle_seconds": STAFF_IDLE_SECONDS, "business_industries": True, "restaurant_ingredients": True, "customer_tables": True, "customer_portal": True, "bulk_uploads": True}
 
     @router.get("/operations/ready")
     def ready(request: Request, response: Response):
@@ -259,6 +259,7 @@ def create_operations_router(engine_getter, owner_guard, subscription_guard, *, 
         device, staff_token, _ = tokens(request)
         secret = call(ops.authenticate, device, body.code, body.credential, "login", staff_token)
         cookie(response, request, STAFF_COOKIE, secret, 30 * 86400)
+        response.delete_cookie(MANAGER_COOKIE, path=COOKIE_PATH)
         return {"ok": True}
 
     @router.post("/operations/management/unlock")
@@ -326,10 +327,14 @@ def create_operations_router(engine_getter, owner_guard, subscription_guard, *, 
         return call(ops.admin, context["business"]["id"], "snapshot", {"date": date}, device_token=device, staff_token=staff_token, management_token=management_token)
 
     @router.post("/operations/admin")
-    def manager_action(body: Action, request: Request):
+    def manager_action(body: Action, request: Request, response: Response):
         ops, context = device_store(request)
         device, staff_token, management_token = tokens(request)
-        return call(ops.admin, context["business"]["id"], body.action, body.values, device_token=device, staff_token=staff_token, management_token=management_token)
+        result = call(ops.admin, context["business"]["id"], body.action, body.values, device_token=device, staff_token=staff_token, management_token=management_token)
+        if body.action == "assign_device" and body.values.get("id") == context["device"]["id"]:
+            response.delete_cookie(STAFF_COOKIE, path=COOKIE_PATH)
+            response.delete_cookie(MANAGER_COOKIE, path=COOKIE_PATH)
+        return result
 
     @router.post("/operations/activity")
     def activity(body: Activity, request: Request):

@@ -67,6 +67,27 @@ class OperationsFixture:
         return {"request_id": request_id, "items": [{"id": product, "quantity": 1}], "payment": "cash", "received_cents": 1000, "kind": "restaurant", "fulfillment": "takeaway", "note": "No onions", **overrides}
 
 class OperationsTests(OperationsFixture, unittest.TestCase):
+    def test_device_assignment_requires_permission_and_locks_only_target(self):
+        d, operator = self.cashier()
+        other, other_operator = self.cashier(code="10003", credential="123456")
+        did = self.ops.context(d, operator)["device"]["id"]
+        with self.assertRaises(OperationsError):
+            self.ops.admin(1, "assign_device", {"id": did, "mode": "office"}, device_token=d, staff_token=operator)
+        approval = self.ops.authenticate(d, "10001", "7351", action="management")
+        self.ops.admin(1, "assign_device", {"id": did, "mode": "clock"}, device_token=d, management_token=approval)
+        context = self.ops.context(d, operator, approval)
+        self.assertEqual(context["device"]["mode"], "clock")
+        self.assertIsNone(context["staff"])
+        self.assertIsNone(context["management"])
+        self.assertEqual(self.ops.context(other, other_operator)["staff"]["name"], "Kay")
+        with self.assertRaises(OperationsError):
+            self.ops.admin(1, "snapshot", {}, device_token=d, management_token=approval)
+        self.owner("assign_device", id=did, mode="office")
+        manager = self.ops.authenticate(d, "10001", "7351")
+        self.assertEqual(self.ops.context(d, manager)["device"]["mode"], "office")
+        with self.assertRaises(OperationsError):
+            self.owner("assign_device", id=did, mode="invalid")
+
     def test_device_pairing_is_single_use_and_expires(self):
         p = self.ops.enroll(1, self.branch, "Cashier 1", "cashier", "account:10")
         d = self.ops.pair(p["code"], "test")
