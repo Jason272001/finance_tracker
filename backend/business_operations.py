@@ -393,7 +393,14 @@ class Operations:
             self.log(c, business, actor, "", "device.enrollment_created", result["id"])
             return result
 
-    def pair(self, code, address):
+    def device_options(self, business, current=""):
+        with self.read() as c:
+            branch_names = {r["id"]: r["name"] for r in c.execute(select(branches).where(branches.c.business == business)).mappings()}
+            items = [{"id": d["id"], "name": d["name"], "mode": d["mode"], "branch": branch_names.get(d["branch"], ""), "current": d["id"] == current}
+                     for d in c.execute(select(devices).where((devices.c.business == business) & (devices.c.active == True) & (devices.c.expires > self.now())).order_by(devices.c.name)).mappings()]
+            return {"items": items}
+
+    def pair(self, code, address, expected_device=None):
         with self.tx() as c:
             allowed = self._rate(c, "pair:" + address, 30)
         if not allowed:
@@ -406,6 +413,8 @@ class Operations:
             d = row(c, devices, devices.c.id == pairing["device"]) if pairing else None
             if not pairing or pairing["expires"] <= self.now() or not d or not d["active"]:
                 raise OperationsError("Pairing code is invalid or expired.", 401)
+            if expected_device and d["id"] != expected_device:
+                raise OperationsError("This code belongs to another device. Use the code for your selected device.", 409)
             secret = secrets.token_urlsafe(32)
             c.execute(update(devices).where(devices.c.id == d["id"]).values(token=digest(secret)))
             c.execute(delete(pairings).where(pairings.c.token == pairing["token"]))

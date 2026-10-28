@@ -65,6 +65,7 @@ class Enroll(Body):
 
 class Pair(Body):
     code: str = Field(min_length=1, max_length=32)
+    device_id: str | None = Field(default=None, min_length=1, max_length=32)
 
 
 class Login(Body):
@@ -174,7 +175,7 @@ def create_operations_router(engine_getter, owner_guard, subscription_guard, *, 
             available = bool(enabled()) and engine_getter() is not None
         except Exception:
             available = False
-        return {"available": available, "api_version": 1, "custom_staff_roles": True, "automatic_staff_ids": True, "saved_device_codes": True, "device_assignments": True, "supplier_inventory": True, "staff_idle_seconds": STAFF_IDLE_SECONDS, "business_industries": True, "restaurant_ingredients": True, "customer_tables": True, "customer_portal": True, "bulk_uploads": True}
+        return {"available": available, "api_version": 1, "custom_staff_roles": True, "automatic_staff_ids": True, "saved_device_codes": True, "device_assignments": True, "device_selection": True, "supplier_inventory": True, "staff_idle_seconds": STAFF_IDLE_SECONDS, "business_industries": True, "restaurant_ingredients": True, "customer_tables": True, "customer_portal": True, "bulk_uploads": True}
 
     @router.get("/operations/ready")
     def ready(request: Request, response: Response):
@@ -241,7 +242,7 @@ def create_operations_router(engine_getter, owner_guard, subscription_guard, *, 
             reference = subscription_guard(b["owner"], b["id"])
             if b.get("source_reference") and b["source_reference"] != reference:
                 raise HTTPException(403, "Business identity changed. Request fresh owner authorization.")
-        secret = call(ops.pair, body.code, request.client.host if request.client else "unknown")
+        secret = call(ops.pair, body.code, request.client.host if request.client else "unknown", body.device_id)
         cookie(response, request, DEVICE_COOKIE, secret, 30 * 86400)
         response.delete_cookie(STAFF_COOKIE, path=COOKIE_PATH)
         response.delete_cookie(MANAGER_COOKIE, path=COOKIE_PATH)
@@ -252,6 +253,19 @@ def create_operations_router(engine_getter, owner_guard, subscription_guard, *, 
         ops, _ = device_store(request)
         response.headers["Cache-Control"] = "no-store"
         return call(ops.context, *tokens(request))
+
+    @router.get("/operations/device/options")
+    def paired_device_options(request: Request, response: Response):
+        ops, context = device_store(request)
+        response.headers["Cache-Control"] = "no-store"
+        return call(ops.device_options, context["business"]["id"], context["device"]["id"])
+
+    @router.get("/businesses/{business_id}/operations/device-options")
+    def owner_device_options(business_id: int, user_id: int, request: Request, response: Response, authorization: str | None = Header(default=None)):
+        check(request)
+        guard_owner(request, authorization, business_id, user_id)
+        response.headers["Cache-Control"] = "no-store"
+        return call(store(request).device_options, business_id)
 
     @router.post("/operations/staff/login")
     def login(body: Login, request: Request, response: Response):
