@@ -115,7 +115,7 @@ test('manager assigns the same device to a locked clock then back to office',asy
   await page.locator('#stationAssignmentMode').selectOption('clock');await page.getByRole('button',{name:'Save and lock device',exact:true}).click();
   await expect(page.locator('#stationClock')).toBeVisible();await expect(page.locator('#stationManagement')).toBeHidden();await expect(page.locator('#stationAssignment')).toBeHidden();
   expect([401,403]).toContain((await context.request.get('/operations/admin')).status());
-  await page.reload();await expect(page.locator('#stationClock')).toBeVisible();await expect(page.locator('#stationPair')).toBeHidden();await expect(page.locator('#stationStatus')).not.toHaveText('Connecting…');await page.screenshot({path:'output/assigned-time-clock-'+test.info().project.name+'.png',fullPage:true});
+  await page.reload();await expect(page.locator('#stationClock')).toBeVisible();await expect(page.locator('#stationPair')).toBeHidden();await expect(page.locator('#stationStatus')).not.toHaveText('Connectingâ€¦');await page.screenshot({path:'output/assigned-time-clock-'+test.info().project.name+'.png',fullPage:true});
   await unlock(page);await page.locator('#stationAssignmentMode').selectOption('office');await page.getByRole('button',{name:'Save and lock device',exact:true}).click();
   await expect(page.locator('#stationLogin')).toBeVisible();await expect(page.locator('#stationIdentity')).toContainText('office');
   await login(page,'10002','654321');await expect(page.locator('#stationStatus')).toContainText('role');await expect(page.locator('#stationManagement')).toBeHidden();

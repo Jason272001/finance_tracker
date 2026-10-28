@@ -26,7 +26,7 @@
     if(!context)return;
     const actor=context.staff?.id||'';
     if(actor!==lastActor){cart=[];catalog=[];lastActor=actor;$('stationExtras').close();$('stationReceipt').close();$('stationReceiptBody').replaceChildren();}
-    if($('stationStatus').textContent==='Connecting�')say('Device ready. Use your staff ID and PIN to continue.');
+    if($('stationStatus').textContent==='Connecting…')say('Device ready. Use your staff ID and PIN to continue.');
     $('stationTitle').textContent=context.device.name;
     $('stationIdentity').textContent=context.business.name+' · '+context.branch+' · '+context.device.mode;
     $('stationManage').hidden=managementActive();$('stationLogout').hidden=!context.staff||managementActive();$('stationLock').hidden=!managementActive();
