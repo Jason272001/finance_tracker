@@ -6,8 +6,9 @@ from fastapi import APIRouter, Header, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.responses import JSONResponse
 
-from backend.business_operations import Operations, OperationsError, businesses, devices, pairings, row, digest
+from backend.business_operations import Operations, OperationsError, STAFF_IDLE_SECONDS, businesses, devices, pairings, row, digest
 from backend.business_operations import staff as operation_staff
+from backend import business_customers as customer_data
 from sqlalchemy import select, func, text
 
 DEVICE_COOKIE = "keeperbma_device"
@@ -22,7 +23,7 @@ class OperationsBodyLimit:
 
     async def __call__(self, scope, receive, send):
         path = scope.get("path", "")
-        relevant = path.startswith("/operations/") or "/operations/" in path
+        relevant = path.startswith(("/operations/","/customer-portal/")) or "/operations/" in path
         if scope["type"] != "http" or not relevant or scope.get("method") in {"GET", "HEAD", "OPTIONS"}:
             return await self.app(scope, receive, send)
         body = bytearray()
@@ -50,6 +51,7 @@ class Body(BaseModel):
 
 
 class Setup(Body):
+    industry: str | None = Field(default=None, pattern=r"^(retail|restaurant)$")
     staff_code: str = Field(pattern=r"^[0-9]{5,6}$")
     credential: str = Field(pattern=r"^[0-9]{4,6}$", min_length=4, max_length=6)
     timezone: str = Field(default="America/Los_Angeles", max_length=80)
@@ -88,6 +90,12 @@ class Checkout(Body):
     kind: str = Field(pattern=r"^(retail|restaurant)$")
     fulfillment: str = Field(default="takeaway", pattern=r"^(takeaway|dine-in)$")
     note: str = Field(default="", max_length=200)
+
+
+class CustomerCredentials(Body):
+    email: str = Field(default="", max_length=254)
+    password: str = Field(default="", max_length=128)
+    invite: str = Field(default="", max_length=100)
 
 
 class Ticket(Body):
@@ -166,7 +174,7 @@ def create_operations_router(engine_getter, owner_guard, subscription_guard, *, 
             available = bool(enabled()) and engine_getter() is not None
         except Exception:
             available = False
-        return {"available": available, "api_version": 1, "custom_staff_roles": True, "automatic_staff_ids": True, "saved_device_codes": True, "supplier_inventory": True, "staff_idle_seconds": 300, "bulk_uploads": True}
+        return {"available": available, "api_version": 1, "custom_staff_roles": True, "automatic_staff_ids": True, "saved_device_codes": True, "supplier_inventory": True, "staff_idle_seconds": STAFF_IDLE_SECONDS, "business_industries": True, "restaurant_ingredients": True, "customer_tables": True, "customer_portal": True, "bulk_uploads": True}
 
     @router.get("/operations/ready")
     def ready(request: Request, response: Response):
@@ -198,7 +206,7 @@ def create_operations_router(engine_getter, owner_guard, subscription_guard, *, 
     def owner_setup(business_id: int, user_id: int, body: Setup, request: Request, authorization: str | None = Header(default=None)):
         check(request)
         business = guard_owner(request, authorization, business_id, user_id)
-        return call(store(request).setup, business_id, user_id, business["business_name"], body.staff_code, body.credential, body.timezone, business.get("operations_initial_staff", []), business.get("created_at", ""))
+        return call(store(request).setup, business_id, user_id, business["business_name"], body.staff_code, body.credential, body.timezone, business.get("operations_initial_staff", []), business.get("created_at", ""), body.industry)
 
     @router.post("/businesses/{business_id}/operations/enroll")
     def owner_enroll(business_id: int, user_id: int, body: Enroll, request: Request, authorization: str | None = Header(default=None)):
@@ -327,5 +335,39 @@ def create_operations_router(engine_getter, owner_guard, subscription_guard, *, 
     def activity(body: Activity, request: Request):
         ops, _ = device_store(request)
         return call(ops.activity, *tokens(request), body.management)
+
+    def customer_store(request,business_id):
+        ops=store(request)
+        with ops.read() as c:
+            business=row(c,businesses,businesses.c.id==business_id)
+        if not business:raise HTTPException(404,"Business not found.")
+        reference=subscription_guard(business['owner'],business_id)
+        if business.get('source_reference') and business['source_reference']!=reference:
+            raise HTTPException(403,"Business identity changed.")
+        return ops,business
+
+    @router.get('/customer-portal/{business_id}/info')
+    def customer_info(business_id:int,request:Request,response:Response):
+        ops,business=customer_store(request,business_id)
+        with ops.read() as c:call(customer_data.enabled,c,business_id,True)
+        response.headers['Cache-Control']='no-store'
+        return {'business_name':business['name']}
+
+    @router.get('/customer-portal/{business_id}/me')
+    def customer_me(business_id:int,request:Request,response:Response):
+        ops,_=customer_store(request,business_id);response.headers['Cache-Control']='no-store'
+        return call(ops.customer_portal,business_id,'me',token=request.cookies.get('keeperbma_customer',''))
+
+    @router.post('/customer-portal/{business_id}/{action}')
+    def customer_action(business_id:int,action:str,body:CustomerCredentials,request:Request,response:Response):
+        if action not in {'login','activate','logout'}:raise HTTPException(404,'Unknown customer action.')
+        ops,_=customer_store(request,business_id)
+        result=call(ops.customer_portal,business_id,action,body.model_dump(),request.cookies.get('keeperbma_customer',''),request.client.host if request.client else '')
+        if action=='login':
+            response.set_cookie('keeperbma_customer',result.pop('token'),path='/customer-portal/'+str(business_id),max_age=86400,httponly=True,secure=request.url.hostname not in {'localhost','127.0.0.1'},samesite='strict')
+            result={'signed_in':True}
+        elif action in {'logout','activate'}:response.delete_cookie('keeperbma_customer',path='/customer-portal/'+str(business_id))
+        response.headers['Cache-Control']='no-store'
+        return result
 
     return router

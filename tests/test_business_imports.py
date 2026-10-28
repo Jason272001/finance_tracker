@@ -76,16 +76,16 @@ class ImportCases(OperationsFixture, unittest.TestCase):
         self.assertIn('Extra patty',order['items'][0]['note'])
         with self.assertRaises(OperationsError):self.ops.checkout(d,token,self.sale(pid,'unknown-extra',items=[{'id':pid,'quantity':1,'modifiers':['forged']}]))
 
-    def test_every_staff_station_expires_after_five_idle_minutes_but_active_shift_can_continue(self):
+    def test_every_staff_station_expires_after_45_idle_minutes_but_active_shift_can_continue(self):
         kitchen=self.device('kitchen');session=self.ops.authenticate(kitchen,'10004','456789')
-        self.tick+=300
+        self.tick+=2700
         with self.assertRaises(OperationsError):self.ops.kitchen(kitchen,session)
         office=self.device('office');session=self.ops.authenticate(office,'10001','7351')
         for _ in range(110):
             self.tick+=299
             self.ops.activity(office,session,'')
         self.assertTrue(self.ops.context(office,session)['staff'])
-        self.tick+=300
+        self.tick+=2700
         self.assertIsNone(self.ops.context(office,session)['staff'])
 
 @unittest.skipUnless(os.environ.get('KEEPERBMA_TEST_POSTGRES_URL'),'Disposable PostgreSQL URL not configured')

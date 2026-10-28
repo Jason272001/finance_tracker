@@ -79,6 +79,8 @@ def backup_postgres_tables(target, engine=None):
                     if not inspector.has_table(table):
                         continue
                     frame = pd.read_sql_table(table, con=connection)
+                    for column in frame.columns:
+                        frame[column] = frame[column].map(lambda value: json.dumps(value, ensure_ascii=False, allow_nan=False) if isinstance(value, (dict, list)) else value)
                     destination = target_db / f"{table}.csv"
                     frame.to_csv(destination, index=False)
                     out.append(str(destination))

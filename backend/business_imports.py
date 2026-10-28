@@ -18,8 +18,8 @@ history = Table('ops_imported_history', metadata, Column('id', String(32), prima
     Column('kind', String(30), nullable=False), Column('external_ref', String(120), nullable=False),
     Column('data', Text, nullable=False), Column('imported_by', String(80), nullable=False),
     Column('created', BigInteger, nullable=False))
-PERMISSIONS = {'products':'products','category':'products','brand':'products','supplier':'products','location':'products',
-               'extras':'products','purchases':'products','stock_movements':'products','stock_counts':'products','staff':'staff','devices':'devices',
+PERMISSIONS = {'customer_records':'customers','products':'products','category':'products','brand':'products','supplier':'products','location':'products',
+               'restaurant_ingredients':'products','extras':'products','purchases':'products','stock_movements':'products','stock_counts':'products','staff':'staff','devices':'devices',
                'schedules':'schedules','timesheets':'timesheets','sales':'reports','login_events':'audit',
                'roles':None,'branches':None}
 
@@ -44,7 +44,7 @@ def timestamp(value):
         raise OperationsError('Use an ISO timestamp including a UTC offset, for example 2026-10-20T16:00:00Z.')
 
 
-def apply(c, business, kind, incoming, target_branch, scope, granted, owner, actor, now, act):
+def apply(c, business, kind, incoming, target_branch, scope, granted, owner, actor, now, act, collection_id=None):
     if kind not in PERMISSIONS:
         raise OperationsError('Choose a supported import table.')
     required = PERMISSIONS[kind]
@@ -70,7 +70,11 @@ def apply(c, business, kind, incoming, target_branch, scope, granted, owner, act
             raise OperationsError('Import the referenced staff member first, or use an existing staff ID.', 403)
         return found
 
-    if kind in {'products','category','brand','supplier','location','extras','purchases'}:
+    if kind=='customer_records':
+        from backend import business_customers
+        return business_customers.import_rows(c,business,records,collection_id,target_branch,scope,now)
+
+    if kind in {'products','category','brand','supplier','location','extras','purchases','restaurant_ingredients'}:
         normalized_branch = branch_for({})
         output = io.StringIO()
         headers = list(dict.fromkeys(key for r in records for key in r))
