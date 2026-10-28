@@ -88,6 +88,18 @@ class OperationsTests(OperationsFixture, unittest.TestCase):
         with self.assertRaises(OperationsError):
             self.owner("assign_device", id=did, mode="invalid")
 
+    def test_device_selection_lists_names_without_codes_and_binds_pairing(self):
+        first = self.ops.enroll(1, self.branch, "C1", "cashier", "account:10")
+        second = self.ops.enroll(1, self.branch, "C2", "cashier", "account:10")
+        options = self.ops.device_options(1, first["id"])["items"]
+        self.assertEqual({d["name"] for d in options}, {"C1", "C2"})
+        self.assertTrue(next(d for d in options if d["id"] == first["id"])["current"])
+        self.assertNotIn("code", json.dumps(options))
+        with self.assertRaises(OperationsError):
+            self.ops.pair(second["code"], "test", first["id"])
+        token = self.ops.pair(second["code"], "test", second["id"])
+        self.assertEqual(self.ops.context(token)["device"]["name"], "C2")
+
     def test_device_pairing_is_single_use_and_expires(self):
         p = self.ops.enroll(1, self.branch, "Cashier 1", "cashier", "account:10")
         d = self.ops.pair(p["code"], "test")
@@ -534,6 +546,20 @@ class OperationsApiTests(OperationsFixture, unittest.TestCase):
             self.assertEqual(client.post("/operations/staff/logout", headers={"Origin": "https://evil.example"}).status_code, 403)
             self.assertEqual(client.post("/operations/staff/logout").status_code, 200)
             self.assertIsNone(client.get("/operations/device").json()["staff"])
+
+    def test_device_picker_requires_owner_or_paired_browser_and_hides_secrets(self):
+        pairing = self.ops.enroll(1, self.branch, "C1", "cashier", "account:10")
+        with self.client() as client:
+            self.assertEqual(client.get("/operations/device/options").status_code, 401)
+            self.assertEqual(client.get("/businesses/1/operations/device-options?user_id=10").status_code, 403)
+            owner = client.get("/businesses/1/operations/device-options?user_id=10", headers={"Authorization": "Bearer test-owner"})
+            self.assertEqual(owner.status_code, 200)
+            self.assertEqual(client.post("/operations/device/pair", json={"code": pairing["code"], "device_id": pairing["id"]}).status_code, 200)
+            result = client.get("/operations/device/options")
+            self.assertEqual(result.status_code, 200)
+            item = result.json()["items"][0]
+            self.assertEqual(set(item), {"id", "name", "mode", "branch", "current"})
+            self.assertTrue(item["current"])
 
     def test_api_bounds_request_body_before_json_parsing(self):
         with self.client() as client:

@@ -1,5 +1,6 @@
 (function(){
   'use strict';
+  if(new URLSearchParams(location.search).get('selected')!=='1'){location.replace('./select-device.html');return;}
   const {esc,money,cents,request,mount}=OpsUI,$=id=>document.getElementById(id);
   const local=['localhost','127.0.0.1'].includes(location.hostname),base=local?location.origin:'https://api.keeperbma.com';
   const api=(path,data)=>request(base,path,data===undefined?{}:{method:'POST',body:JSON.stringify(data)});
