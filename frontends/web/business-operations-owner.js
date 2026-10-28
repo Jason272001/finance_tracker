@@ -8,8 +8,9 @@
   const api=(path,data)=>request(base,path,{headers:headers(),...(data===undefined?{}:{method:'POST',body:JSON.stringify(data)})});
   const path=action=>'/businesses/'+business+'/operations/'+action+'?user_id='+user;
   function say(text,error=false){$('ownerOpsStatus').textContent=text;$('ownerOpsStatus').classList.toggle('station-error',error);}
-  function close(message){closed=true;view?.dispose();view=null;$('ownerOpsManagement').hidden=true;$('ownerOpsIdentity').hidden=true;$('ownerOpsCode').textContent='';ownerStaff=null;$('ownerOpsSetup').hidden=true;$('ownerOpsSetupForm').reset();say(message,true);}
+  function close(message){$('ownerOpsSelectDevice')?.setAttribute('hidden','');closed=true;view?.dispose();view=null;$('ownerOpsManagement').hidden=true;$('ownerOpsIdentity').hidden=true;$('ownerOpsCode').textContent='';ownerStaff=null;$('ownerOpsSetup').hidden=true;$('ownerOpsSetupForm').reset();say(message,true);}
   function management(){
+    const deviceEntry=$('ownerOpsSelectDevice');if(deviceEntry){deviceEntry.href=new URL('select-device.html?business_id='+encodeURIComponent(business),location.href).href;deviceEntry.hidden=false;}
     $('ownerOpsSetup').hidden=true;$('ownerOpsManagement').hidden=false;
     view=mount($('ownerOpsManagement'),{load:async day=>{const data=await api(path('admin')+(day?'&date='+encodeURIComponent(day):''));if(!closed){ownerStaff=data.staff.find(person=>person.role==='owner');$('ownerOpsIdentity').hidden=!ownerStaff;$('ownerOpsCode').textContent=ownerStaff?.code||'';$('ownerOpsBusinessName').textContent=data.business.name;}return data;},act:(action,values)=>api(path('admin'),{action,values}),enroll:values=>api(path('enroll'),values),deviceURL:new URL('select-device.html?business_id='+encodeURIComponent(business),location.href).href});
   }
