@@ -8,7 +8,7 @@
   const pendingKey='keeperbma_pending_cash_sale';
   try{pending=JSON.parse(sessionStorage.getItem(pendingKey)||'null');}catch(_){sessionStorage.removeItem(pendingKey);}
   function say(text,error=false){$('stationStatus').textContent=text;$('stationStatus').classList.toggle('station-error',error);}
-  function hide(){for(const id of ['stationOwnerSession','stationPair','stationLogin','stationClock','stationCheckout','stationKitchen','stationManagement'])$(id).hidden=true;}
+  function hide(){for(const id of ['stationOwnerSession','stationPair','stationLogin','stationClock','stationCheckout','stationKitchen','stationManagement','stationAssignment'])$(id).hidden=true;}
   function clearManagement(){managerUI?.dispose();managerUI=null;$('stationManagement').replaceChildren();}
   function savePending(value){pending=value;if(value)sessionStorage.setItem(pendingKey,JSON.stringify(value));else sessionStorage.removeItem(pendingKey);}
   function hasOwnerBearer(){return 'keeperbma_token' in localStorage;}
@@ -19,19 +19,22 @@
     if(disposed||expiring)return;
     if(hasOwnerBearer()){ownerSession();return;}
     const revision=sessionRevision;
-    try{const next=await api('/operations/device');if(expiring||revision!==sessionRevision)return;online=true;const changed=!context||JSON.stringify([context.device.id,context.staff?.id,context.management?.permissions,context.staff?.permissions,context.business.tax_bps,context.business.industry])!==JSON.stringify([next.device.id,next.staff?.id,next.management?.permissions,next.staff?.permissions,next.business.tax_bps,next.business.industry]);if(changed&&context&&JSON.stringify([context.management?.permissions,context.staff?.permissions])!==JSON.stringify([next.management?.permissions,next.staff?.permissions]))clearManagement();if(context&&context.business.industry!==next.business.industry&&!pending){cart=[];catalog=[];$('stationExtras').close();}context=next;if(changed){lastTouch=Date.now()-Math.max(0,idleSeconds()-(Math.min(context.staff?.idle_until||context.server_time,context.staff?.expires||context.server_time)-context.server_time))*1000;lastSentTouch=lastTouch;render();}else if(context.device.mode==='cashier'&&context.staff)$('stationPay').disabled=busy||(!cart.length&&!pending)||!!pending&&pending.staff!==context.staff.id||cart.some(l=>l.unavailable);}
+    try{const next=await api('/operations/device');if(expiring||revision!==sessionRevision)return;online=true;const changed=!context||JSON.stringify([context.device.id,context.device.mode,context.staff?.id,context.management?.permissions,context.staff?.permissions,context.business.tax_bps,context.business.industry])!==JSON.stringify([next.device.id,next.device.mode,next.staff?.id,next.management?.permissions,next.staff?.permissions,next.business.tax_bps,next.business.industry]);if(changed&&context&&JSON.stringify([context.management?.permissions,context.staff?.permissions])!==JSON.stringify([next.management?.permissions,next.staff?.permissions]))clearManagement();if(context&&context.business.industry!==next.business.industry&&!pending){cart=[];catalog=[];$('stationExtras').close();}context=next;if(changed){lastTouch=Date.now()-Math.max(0,idleSeconds()-(Math.min(context.staff?.idle_until||context.server_time,context.staff?.expires||context.server_time)-context.server_time))*1000;lastSentTouch=lastTouch;render();}else if(context.device.mode==='cashier'&&context.staff)$('stationPay').disabled=busy||(!cart.length&&!pending)||!!pending&&pending.staff!==context.staff.id||cart.some(l=>l.unavailable);}
     catch(e){online=false;if(e.status===409){ownerSession();return;}if(e.status===401){context=null;hide();clearManagement();$('stationPair').hidden=false;say('Enter the one-time code from your business owner.');return;}if([402,403].includes(e.status)){context=null;hide();clearManagement();say(e.message,true);return;}if(context){say(e.message,true);if(context.device.mode==='cashier')renderCart();}else{hide();$('stationPair').hidden=false;say(e.message,true);}}
   }
   function render(){
     if(!context)return;
     const actor=context.staff?.id||'';
     if(actor!==lastActor){cart=[];catalog=[];lastActor=actor;$('stationExtras').close();$('stationReceipt').close();$('stationReceiptBody').replaceChildren();}
+    if($('stationStatus').textContent==='Connecting�')say('Device ready. Use your staff ID and PIN to continue.');
     $('stationTitle').textContent=context.device.name;
     $('stationIdentity').textContent=context.business.name+' · '+context.branch+' · '+context.device.mode;
     $('stationManage').hidden=managementActive();$('stationLogout').hidden=!context.staff||managementActive();$('stationLock').hidden=!managementActive();
     hide();
     if(managementActive()){
       $('stationManagement').hidden=false;
+      $('stationAssignment').hidden=!(context.management?.permissions||context.staff?.permissions||[]).includes('devices');
+      $('stationAssignmentMode').value=context.device.mode;
       if(!managerUI){
         managerUI=mount($('stationManagement'),{load:day=>api('/operations/admin'+(day?'?date='+encodeURIComponent(day):'')),act:(action,values)=>api('/operations/admin',{action,values})});
         if(pending){const panel=document.createElement('aside');panel.className='station-card';const text=document.createElement('p');text.textContent='This register has an unconfirmed cash sale. Check whether it was recorded, or cancel its reference before restarting checkout.';const button=document.createElement('button');button.type='button';button.textContent='Resolve pending checkout';button.onclick=async()=>{if(!confirm('Resolve this sale reference? If no sale was recorded, its reference will be canceled. Recount physical cash before starting another sale.'))return;button.disabled=true;try{const result=await api('/operations/admin',{action:'cancel_checkout',values:{request_id:pending.body.request_id}});savePending(null);cart=[];panel.remove();if(result.recorded)showReceipt(result.order);say(result.recorded?'The sale was already recorded.':'Unconfirmed checkout canceled. Recount cash before starting a new sale.');}catch(e){say(e.message,true);button.disabled=false;}};panel.append(text,button);$('stationManagement').append(panel);}
@@ -84,7 +87,7 @@
       $('stationKitchenSync').textContent='Updated '+new Date().toLocaleTimeString();online=true;
     }catch(e){if([401,402,403].includes(e.status))locked(e);else{$('stationKitchenSync').textContent='Connection lost. Tickets may be out of date.';online=false;}}
   }
-  function form(id,fn){$(id).onsubmit=async e=>{e.preventDefault();if(busy)return;busy=true;const button=e.submitter;if(button)button.disabled=true;try{await fn(e);}catch(error){if([401,402].includes(error.status)&&context?.staff)locked(error);else say(error.message,true);}finally{busy=false;if(button?.isConnected)button.disabled=false;if(context?.device.mode==='cashier'&&context.staff)renderCart();}};}
+  function form(id,fn){$(id).onsubmit=async e=>{e.preventDefault();if(busy)return;busy=true;$('stationManage').disabled=true;const button=e.submitter;if(button)button.disabled=true;try{await fn(e);}catch(error){if([401,402].includes(error.status)&&context?.staff)locked(error);else say(error.message,true);}finally{busy=false;$('stationManage').disabled=false;if(button?.isConnected)button.disabled=false;if(context?.device.mode==='cashier'&&context.staff)renderCart();}};}
   form('stationPairForm',async()=>{const f=$('stationPairForm'),code=f.elements.code.value;f.reset();await api('/operations/device/pair',{code});say('Device connected.');await refresh();});
   form('stationLoginForm',async()=>{const f=$('stationLoginForm'),data=Object.fromEntries(new FormData(f));f.reset();await api('/operations/staff/login',data);say('Signed in.');await refresh();if(pending&&context?.staff)await reconcile();});
   form('stationClockForm',async e=>{const f=$('stationClockForm'),data=Object.fromEntries(new FormData(f));data.action=e.submitter?.value;f.reset();$('stationClockResult').textContent='';const result=await api('/operations/clock',data);$('stationClockResult').textContent=result.name+' clocked '+result.action+' at '+new Date(result.time*1000).toLocaleTimeString()+'. Ready for the next staff member.';say('');});
@@ -95,6 +98,12 @@
     if(!pending)savePending({staff:context.staff.id,device:context.device.id,body});
     try{const order=await api('/operations/orders',body);savePending(null);cart=[];$('stationPayForm').reset();$('stationOrderNote').value='';showReceipt(order);say('Cash sale recorded.');await loadCatalog();}
     catch(e){if([400,409,422].includes(e.status)){savePending(null);await refresh();await loadCatalog();}if(!e.status)e.message='Confirmation was interrupted. Check the pending sale or retry with the same reference; do not collect cash again.';throw e;}
+  });
+  form('stationAssignmentForm',async()=>{
+    if(pending)throw Error('Resolve the pending sale before changing this device.');
+    if(cart.length&&!confirm('Changing this device clears the unfinished cart. Continue?'))return;
+    await api('/operations/admin',{action:'assign_device',values:{id:context.device.id,mode:$('stationAssignmentMode').value}});
+    sessionRevision++;clearManagement();context=null;cart=[];catalog=[];lastActor='';await refresh();say('Device assignment saved. Management is locked. Sign in for the assigned workspace.');
   });
   form('stationApprovalForm',async()=>{const f=$('stationApprovalForm'),data=Object.fromEntries(new FormData(f));f.reset();try{await api('/operations/management/unlock',data);$('stationApproval').close();await refresh();}catch(e){$('stationApprovalError').textContent=e.message;throw e;}});
   $('stationExtrasForm').onsubmit=e=>{e.preventDefault();try{const ids=[...e.target.querySelectorAll('[name="extra"]:checked')].map(box=>box.value);const choices=[...e.target.querySelectorAll('[name^="ingredient-"]')].filter(field=>field.value!=='standard').map(field=>({id:field.name.slice(11),choice:field.value}));addProduct(extraProduct,ids,choices,e.target.elements.itemNote.value);$('stationExtras').close();}catch(error){say(error.message,true);}};

@@ -106,3 +106,19 @@ test('device table saves codes across refresh and supports copy renewal and dele
   page.once('dialog',d=>d.accept());await row.getByRole('button',{name:'Delete device',exact:true}).click();await expect(row).toHaveCount(0);await page.reload();await page.getByRole('button',{name:'Devices',exact:true}).click();await expect(row).toHaveCount(0);
  }finally{await context.close();}
 });
+
+
+test('manager assigns the same device to a locked clock then back to office',async({browser})=>{
+ const {context,page}=await station(browser,'Cashier 1');try{
+  await login(page,'10002','654321');await expect(page.locator('#stationCheckout')).toBeVisible();await expect(page.locator('#stationAssignment')).toBeHidden();
+  await unlock(page);await expect(page.locator('#stationAssignment')).toBeVisible();
+  await page.locator('#stationAssignmentMode').selectOption('clock');await page.getByRole('button',{name:'Save and lock device',exact:true}).click();
+  await expect(page.locator('#stationClock')).toBeVisible();await expect(page.locator('#stationManagement')).toBeHidden();await expect(page.locator('#stationAssignment')).toBeHidden();
+  expect([401,403]).toContain((await context.request.get('/operations/admin')).status());
+  await page.reload();await expect(page.locator('#stationClock')).toBeVisible();await expect(page.locator('#stationPair')).toBeHidden();await expect(page.locator('#stationStatus')).not.toHaveText('Connecting…');await page.screenshot({path:'output/assigned-time-clock-'+test.info().project.name+'.png',fullPage:true});
+  await unlock(page);await page.locator('#stationAssignmentMode').selectOption('office');await page.getByRole('button',{name:'Save and lock device',exact:true}).click();
+  await expect(page.locator('#stationLogin')).toBeVisible();await expect(page.locator('#stationIdentity')).toContainText('office');
+  await login(page,'10002','654321');await expect(page.locator('#stationStatus')).toContainText('role');await expect(page.locator('#stationManagement')).toBeHidden();
+  await login(page,'10001','7351');await expect(page.locator('#stationManagement')).toBeVisible();await page.locator('#stationLock').click();await expect(page.locator('#stationLogin')).toBeVisible();
+ }finally{await context.close();}
+});
