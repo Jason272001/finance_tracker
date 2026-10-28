@@ -8,14 +8,13 @@
  const api=(path,body)=>OpsUI.request(base,path,{headers:headers(),...(body===undefined?{}:{method:'POST',body:JSON.stringify(body)})});
  function say(text,error=false){$('selectStatus').textContent=text;$('selectStatus').classList.toggle('station-error',error);}
  function pending(){try{return JSON.parse(sessionStorage.getItem('keeperbma_pending_cash_sale')||'null');}catch(_){return null;}}
- function cancel(){selected=null;$('selectPairForm').reset();$('selectPair').hidden=true;$('selectOwner').hidden=true;$('selectDeviceForm').hidden=!devices.length;$('selectOther').hidden=false;say('Choose a device. Nothing is selected automatically.');}
+ function cancel(){selected=null;$('selectDevice').value='';$('selectDetails').textContent='';$('selectPairForm').reset();$('selectPair').hidden=true;$('selectOwner').hidden=true;$('selectDeviceForm').hidden=!devices.length;$('selectOther').hidden=false;say('Choose a device. Nothing is selected automatically.');}
  function showPair(){ $('selectOwner').hidden=true;$('selectPair').hidden=false;$('selectPairTitle').textContent=selected?'Connect '+selected.name:'Connect a device with its code';$('selectPairForm').reset();say('Enter the code for '+(selected?.name||'the device you want to connect')+'.');}
  async function continueSelection(){
   if(pending()){$('selectResume').hidden=false;say('This browser has an unconfirmed cash sale. Return to its current station and ask a manager to resolve it before selecting a device.',true);return;}
-  $('selectDeviceForm').hidden=true;$('selectOther').hidden=true;
-  if(owner){$('selectOwnerTarget').textContent=selected?'Selected device: '+selected.name:'Connect a different device';$('selectOwner').hidden=false;return;}
+  if(owner){$('selectDeviceForm').hidden=true;$('selectOther').hidden=true;$('selectOwnerTarget').textContent=selected?'Selected device: '+selected.name:'Connect a different device';$('selectOwner').hidden=false;return;}
   if(selected?.current){await api('/operations/staff/logout',{});location.assign('./business-device.html?selected=1');return;}
-  showPair();
+  $('selectDeviceForm').hidden=true;$('selectOther').hidden=true;showPair();
  }
  async function run(fn){if(busy)return;busy=true;for(const b of document.querySelectorAll('button'))b.disabled=true;try{await fn();}catch(e){say(e.message,true);}finally{busy=false;for(const b of document.querySelectorAll('button'))b.disabled=false;}}
  $('selectDevice').onchange=()=>{selected=devices.find(d=>d.id===$('selectDevice').value)||null;$('selectDetails').textContent=selected?[selected.branch,labels[selected.mode]||selected.mode,selected.current?'Saved connection - staff sign-in required':'Device code required'].filter(Boolean).join(' · '):'';};
