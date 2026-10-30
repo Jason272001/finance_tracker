@@ -25,7 +25,7 @@ test('videos stay on the homepage and old links redirect to the inline section',
 
 test('homepage explains business previews and future projects in both themes',async({page})=>{
  await page.route(u=>!['127.0.0.1','localhost'].includes(u.hostname),r=>r.abort());await page.setViewportSize({width:1440,height:1000});await page.goto('/index.html');
- await expect(page.locator('#landingTitle')).toHaveText('Your business, connected.');await expect(page.locator('.home-feature-card')).toHaveCount(6);await expect(page.locator('.home-roadmap-grid article')).toHaveCount(4);await expect(page.locator('#roadmap')).toContainText('Planned / future direction');await expect(page.locator('#features')).toContainText('not yet live business operations');
+ await expect(page.locator('#landingTitle')).toHaveText('Your business, connected.');await expect(page.locator('.home-feature-card')).toHaveCount(6);await expect(page.locator('.home-roadmap-grid article')).toHaveCount(4);await expect(page.locator('#roadmap')).toContainText('Planned / future direction');await expect(page.locator('#features')).toContainText('available in the signed-in business workspace');
  await page.locator('#landingThemeToggle').click();await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
  for(const width of [390,320]){await page.setViewportSize({width,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);await expect(page.locator('#watch')).toContainText('Download vertical MP4');}
 });
