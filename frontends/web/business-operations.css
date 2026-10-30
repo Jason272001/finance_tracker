@@ -20,3 +20,5 @@ body{background:var(--ui-bg);color:var(--ui-text);line-height:1.5}a{color:var(--
 @media print{html{background:#fff!important;color:#000!important}}
 .business-open-station{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:12px 16px;background:#4f63d8;color:#fff;border-radius:10px;text-decoration:none;font-size:13px;font-weight:600}
 :root{--ui-control-border:#8190a5}:root[data-theme="dark"]{--ui-control-border:#7c8ba1}input,select,textarea{border-color:var(--ui-control-border)}.station-header .station-actions>a:not(.business-open-station){display:inline-flex;align-items:center;min-height:44px;padding:8px}
+
+#opsWeeklyTable table{min-width:1050px}#opsWeeklyTable th,#opsWeeklyTable td{min-width:130px}#opsWeeklyTable td>div{padding:4px 0;white-space:nowrap}#opsWeeklyTable th small{font-weight:400;color:var(--ui-muted)}#opsScheduleForm{margin-top:16px}
