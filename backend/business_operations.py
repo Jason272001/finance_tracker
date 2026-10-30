@@ -400,7 +400,7 @@ class Operations:
                      for d in c.execute(select(devices).where((devices.c.business == business) & (devices.c.active == True) & (devices.c.expires > self.now())).order_by(devices.c.name)).mappings()]
             return {"items": items}
 
-    def pair(self, code, address, expected_device=None):
+    def pair(self, code, address, expected_device=None, expected_mode=None):
         with self.tx() as c:
             allowed = self._rate(c, "pair:" + address, 30)
         if not allowed:
@@ -415,6 +415,8 @@ class Operations:
                 raise OperationsError("Pairing code is invalid or expired.", 401)
             if expected_device and d["id"] != expected_device:
                 raise OperationsError("This code belongs to another device. Use the code for your selected device.", 409)
+            if expected_mode and d["mode"] != expected_mode:
+                raise OperationsError("This code is not for the requested device workspace.", 409)
             secret = secrets.token_urlsafe(32)
             c.execute(update(devices).where(devices.c.id == d["id"]).values(token=digest(secret)))
             c.execute(delete(pairings).where(pairings.c.token == pairing["token"]))
@@ -768,6 +770,10 @@ class Operations:
         start = int(datetime(day.year, day.month, day.day, tzinfo=ZoneInfo(config["timezone"])).timestamp())
         from datetime import timedelta
         end = int(datetime.combine(day + timedelta(days=1), datetime.min.time(), tzinfo=ZoneInfo(config["timezone"])).timestamp())
+        week_day = day - timedelta(days=day.weekday())
+        week_start = int(datetime.combine(week_day, datetime.min.time(), tzinfo=ZoneInfo(config["timezone"])).timestamp())
+        week_end = int(datetime.combine(week_day + timedelta(days=7), datetime.min.time(), tzinfo=ZoneInfo(config["timezone"])).timestamp())
+        schedule_range = ((schedules.c.end > week_start) & (schedules.c.start < week_end)) if chosen_day else (schedules.c.end > self.now() - 31 * 86400)
         today = rows(c, orders, (orders.c.business == business) & (orders.c.created >= start) & (orders.c.created < end))
         paid = [r for r in today if r["status"] == "paid"]
         result = {"role": role, "permissions": sorted(granted), "permission_labels": PERMISSION_LABELS, "business": config, "branches": rows(c, branches, branches.c.business == business),
@@ -775,8 +781,8 @@ class Operations:
                 "roles": [{**r, "permissions": json.loads(r["permissions"])} for r in rows(c, roles, roles.c.business == business)],
                 "products": rows(c, products, products.c.business == business),
                 "devices": [{**{k: v for k, v in d.items() if k != "token"}, "paired": bool(d["token"])} for d in rows(c, devices, devices.c.business == business)],
-                "server_time": int(self.now()),
-                "schedules": rows(c, schedules, (schedules.c.business == business) & (schedules.c.end > self.now() - 31 * 86400)),
+                "server_time": int(self.now()), "schedule_week": str(week_day) if chosen_day else None,
+                "schedules": rows(c, schedules, (schedules.c.business == business) & schedule_range),
                 "timesheets": rows(c, punches, (punches.c.business == business) & (punches.c.start >= self.now() - 31 * 86400)),
                 "orders": [self.public_order(o) for o in today],
                 "report": {"date": str(day), "timezone": config["timezone"], "paid_orders": len(paid), "subtotal_cents": sum(o["subtotal"] for o in paid), "tax_cents": sum(o["tax"] for o in paid), "total_cents": sum(o["total"] for o in paid), "void_orders": len(today) - len(paid)},

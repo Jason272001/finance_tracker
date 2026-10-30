@@ -100,6 +100,25 @@ class OperationsTests(OperationsFixture, unittest.TestCase):
         token = self.ops.pair(second["code"], "test", second["id"])
         self.assertEqual(self.ops.context(token)["device"]["name"], "C2")
 
+    def test_selected_week_can_load_historical_schedules(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        past = self.tick - 90 * 86400
+        shift = self.owner("schedule", staff=self.ids["10002"], start=past, end=past + 3600)
+        self.assertFalse(any(s["id"] == shift["id"] for s in self.owner("snapshot")["schedules"]))
+        tz = self.owner("snapshot")["business"]["timezone"]
+        selected = datetime.fromtimestamp(past, ZoneInfo(tz)).strftime("%Y-%m-%d")
+        snapshot = self.owner("snapshot", date=selected)
+        self.assertTrue(any(s["id"] == shift["id"] for s in snapshot["schedules"]))
+        self.assertIsNotNone(snapshot["schedule_week"])
+
+    def test_checkout_code_must_match_cashier_workspace(self):
+        clock = self.ops.enroll(1, self.branch, "Time clock", "clock", "account:10")
+        with self.assertRaises(OperationsError):
+            self.ops.pair(clock["code"], "test", clock["id"], "cashier")
+        device = self.ops.pair(clock["code"], "test", clock["id"], "clock")
+        self.assertEqual(self.ops.context(device)["device"]["mode"], "clock")
+
     def test_device_pairing_is_single_use_and_expires(self):
         p = self.ops.enroll(1, self.branch, "Cashier 1", "cashier", "account:10")
         d = self.ops.pair(p["code"], "test")

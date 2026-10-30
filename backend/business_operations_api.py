@@ -66,6 +66,7 @@ class Enroll(Body):
 class Pair(Body):
     code: str = Field(min_length=1, max_length=32)
     device_id: str | None = Field(default=None, min_length=1, max_length=32)
+    mode: str | None = Field(default=None, pattern=r"^(cashier|kitchen|clock|office)$")
 
 
 class Login(Body):
@@ -175,7 +176,7 @@ def create_operations_router(engine_getter, owner_guard, subscription_guard, *, 
             available = bool(enabled()) and engine_getter() is not None
         except Exception:
             available = False
-        return {"available": available, "api_version": 1, "custom_staff_roles": True, "automatic_staff_ids": True, "saved_device_codes": True, "device_assignments": True, "device_selection": True, "supplier_inventory": True, "staff_idle_seconds": STAFF_IDLE_SECONDS, "business_industries": True, "restaurant_ingredients": True, "customer_tables": True, "customer_portal": True, "bulk_uploads": True}
+        return {"available": available, "api_version": 1, "custom_staff_roles": True, "automatic_staff_ids": True, "saved_device_codes": True, "device_assignments": True, "device_selection": True, "weekly_schedules": True, "supplier_inventory": True, "staff_idle_seconds": STAFF_IDLE_SECONDS, "business_industries": True, "restaurant_ingredients": True, "customer_tables": True, "customer_portal": True, "bulk_uploads": True}
 
     @router.get("/operations/ready")
     def ready(request: Request, response: Response):
@@ -242,7 +243,7 @@ def create_operations_router(engine_getter, owner_guard, subscription_guard, *, 
             reference = subscription_guard(b["owner"], b["id"])
             if b.get("source_reference") and b["source_reference"] != reference:
                 raise HTTPException(403, "Business identity changed. Request fresh owner authorization.")
-        secret = call(ops.pair, body.code, request.client.host if request.client else "unknown", body.device_id)
+        secret = call(ops.pair, body.code, request.client.host if request.client else "unknown", body.device_id, body.mode)
         cookie(response, request, DEVICE_COOKIE, secret, 30 * 86400)
         response.delete_cookie(STAFF_COOKIE, path=COOKIE_PATH)
         response.delete_cookie(MANAGER_COOKIE, path=COOKIE_PATH)
